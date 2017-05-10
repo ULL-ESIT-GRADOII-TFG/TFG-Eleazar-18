@@ -7,22 +7,19 @@ version:        0.0.1
 synopsis:       An easy scripting language
 description:    Please see README.org
 category:       Development
-homepage:       https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-17#readme
-bug-reports:    https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-17/issues
-author:         Eleazar Diaz Delgado
+homepage:       https://github.com/none#readme
+bug-reports:    https://github.com/none/issues
+author:         Eleazar Díaz Delgado
 maintainer:     eleazardzdo@gmail.com
-copyright:      2017 Eleazar Diaz Delgado
+copyright:      2017 Eleazar Díaz Delgado
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 
-extra-source-files:
-    README.org
-
 source-repository head
   type: git
-  location: https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-17
+  location: https://github.com/none
 
 library
   hs-source-dirs:
@@ -58,11 +55,21 @@ library
       Compiler.Language.Lexer
       Compiler.Language.Token
   other-modules:
-      Compiler.Base
-      Paths_ScriptLang
+      ScriptLang.Base
+      ScriptLang.Core
+      ScriptLang.EDSL
+      ScriptLang.Env
+      ScriptLang.Interpreter.Exec
+      ScriptLang.Interpreter.Translate
+      ScriptLang.Language.AST
+      ScriptLang.Language.Lexer
+      ScriptLang.Language.Parser
+      ScriptLang.Language.Token
+      ScriptLang.Primitives
+      Paths_ScriptFlow
   default-language: Haskell2010
 
-executable scriptflow
+executable scriptlang
   main-is: Main.hs
   hs-source-dirs:
       app
@@ -70,7 +77,7 @@ executable scriptflow
   build-depends:
       base
     , optparse-applicative >= 0.12 && < 0.14
-    , ScriptLang
+    , ScriptFlow
   default-language: Haskell2010
 
 test-suite scriptlang-test
@@ -80,7 +87,7 @@ test-suite scriptlang-test
       test
   ghc-options: -Wall
   build-depends:
-      ScriptLang
+      ScriptFlow
     , base
     , hspec >= 2.2 && < 3
     , parsec == 3.1.*
