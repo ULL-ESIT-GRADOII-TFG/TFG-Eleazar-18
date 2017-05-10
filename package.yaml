@@ -1,0 +1,72 @@
+name: ScriptFlow
+version: '0.0.1'
+synopsis: An easy scripting language
+description: Please see README.org
+category: Development
+author: Eleazar Díaz Delgado
+maintainer: eleazardzdo@gmail.com
+copyright: 2017 Eleazar Díaz Delgado
+license: BSD3
+github: none
+extra-source-files:
+  - README.org
+
+library:
+  source-dirs: src
+  ghc-options: -Wall -Wno-orphans
+  default-extensions:
+    - OverloadedStrings
+  exposed-modules:
+    - Compiler.Core
+    - Compiler.Types
+    - Compiler.Primitives
+    - Compiler.Env
+    - Compiler.Interpreter
+    - Compiler.Program
+    - Compiler.Language.Parser
+    - Compiler.Language.AST
+    - Compiler.Language.Lexer
+    - Compiler.Language.Token
+  dependencies:
+    - base >=4.7 && <5
+    - array -any
+    - mtl == 2.2.*
+    - text == 1.2.2.*
+    - containers == 0.5.*
+    - unordered-containers >= 0.2.7.0 && < 0.2.9.0
+    - process == 1.4.*
+    - bytestring == 0.10.*
+    - aeson >= 1 && < 1.2
+    - yaml >= 0.8.21 && < 0.9.0
+    - directory >= 1.3.0.0 && < 1.4.0.0
+    - lens-simple >= 0.1.0.0
+    - vector >= 0.10.0.0
+    - template-haskell >= 2.11 && < 2.12
+    - haskeline == 0.7.*
+    - megaparsec == 5.2.*
+
+executables:
+  scriptlang:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - base
+      - optparse-applicative >= 0.12 && < 0.14
+      - ScriptFlow
+
+tests:
+  scriptlang-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -Wall
+    dependencies:
+      - ScriptFlow
+      - base
+      - hspec >= 2.2 && < 3
+      - parsec == 3.1.*

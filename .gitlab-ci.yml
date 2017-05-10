@@ -1,0 +1,11 @@
+stages:
+  - build
+
+stack-build:
+  stage: build
+  cache:
+    untracked: true
+    paths:
+      - .stack-work
+  script:
+    - stack build
