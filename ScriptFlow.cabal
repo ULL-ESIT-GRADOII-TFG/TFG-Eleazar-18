@@ -1,6 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.17.0.
+-- This file has been generated from package.yaml by hpack version 0.20.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: e04119d09005ada548ad26ebd4eccff588c696564c6cce23e24446317b5d965f
 
 name:           ScriptFlow
 version:        0.0.1
@@ -17,6 +19,9 @@ license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 
+extra-source-files:
+    README.md
+
 source-repository head
   type: git
   location: https://github.com/none
@@ -24,63 +29,64 @@ source-repository head
 library
   hs-source-dirs:
       src
-  default-extensions: OverloadedStrings
   ghc-options: -Wall -Wno-orphans
   build-depends:
-      base >=4.7 && <5
-    , array -any
-    , mtl == 2.2.*
-    , text == 1.2.2.*
-    , containers == 0.5.*
-    , unordered-containers >= 0.2.7.0 && < 0.2.9.0
-    , process == 1.4.*
-    , bytestring == 0.10.*
-    , aeson >= 1 && < 1.2
-    , yaml >= 0.8.21 && < 0.9.0
-    , directory >= 1.3.0.0 && < 1.4.0.0
-    , lens-simple >= 0.1.0.0
-    , vector >= 0.10.0.0
-    , template-haskell >= 2.11 && < 2.12
-    , haskeline == 0.7.*
-    , megaparsec == 5.2.*
+      aeson
+    , array
+    , base
+    , bytestring
+    , containers
+    , formatting
+    , free
+    , haskeline
+    , http-client
+    , http-client-tls
+    , microlens-aeson
+    , microlens-platform
+    , mtl
+    , parsec
+    , process
+    , template-haskell
+    , text
+    , transformers
+    , unordered-containers
+    , vector
+    , yaml
   exposed-modules:
+      Compiler.Ast
       Compiler.Core
-      Compiler.Types
-      Compiler.Primitives
-      Compiler.Env
-      Compiler.Interpreter
-      Compiler.Program
-      Compiler.Language.Parser
-      Compiler.Language.AST
-      Compiler.Language.Lexer
-      Compiler.Language.Token
+      Compiler.Interpreter.Types
+      Compiler.Interpreter.Methods
+      Compiler.Scope.Types
+      Compiler.Scope.Methods
+      Compiler.Object.Types
+      Compiler.Object.Methods
+      Compiler.Instruction.Types
+      Compiler.Instruction.Methods
+      Compiler.World.Types
+      Compiler.World.Methods
+      Compiler.Token.Types
+      Compiler.Token.Methods
+      Compiler.Parser.Types
+      Compiler.Parser.Methods
   other-modules:
-      ScriptLang.Base
-      ScriptLang.Core
-      ScriptLang.EDSL
-      ScriptLang.Env
-      ScriptLang.Interpreter.Exec
-      ScriptLang.Interpreter.Translate
-      ScriptLang.Language.AST
-      ScriptLang.Language.Lexer
-      ScriptLang.Language.Parser
-      ScriptLang.Language.Token
-      ScriptLang.Primitives
       Paths_ScriptFlow
   default-language: Haskell2010
 
-executable scriptlang
+executable Compiler
   main-is: Main.hs
   hs-source-dirs:
       app
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base
-    , optparse-applicative >= 0.12 && < 0.14
-    , ScriptFlow
+      ScriptFlow
+    , base
+    , optparse-applicative
+  other-modules:
+      Paths_ScriptFlow
   default-language: Haskell2010
 
-test-suite scriptlang-test
+test-suite Compiler-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   hs-source-dirs:
@@ -89,10 +95,11 @@ test-suite scriptlang-test
   build-depends:
       ScriptFlow
     , base
-    , hspec >= 2.2 && < 3
-    , parsec == 3.1.*
+    , hspec
+    , megaparsec
   other-modules:
       Lexer
       Parser
       Spec0
+      Paths_ScriptFlow
   default-language: Haskell2010

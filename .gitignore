@@ -8,6 +8,7 @@ l-dev
 .hpc
 .hsenv
 .cabal-sandbox/
+.idea
 cabal.sandbox.config
 *.prof
 *.aux

@@ -1,6 +1,20 @@
-module ScriptLang.Language.Token where
+module Compiler.Token.Types where
 
-import           Data.Text
+import Data.Text
+
+
+-- type Parser = Parsec Void String
+
+-- data TokenInfo = TokenInfo
+--   { startLoc :: (Int, Int)
+--   , tok      :: Token
+--   , fragment :: Text
+--   , endLoc   :: (Int, Int)
+--   } deriving (Eq, Ord, Show)
+
+-- instance Enum TokenInfo where
+--   toEnum tokInfo = toEnum $ tok tokInfo
+--   fromEnum tokInfo = fromEnum $ tok tokInfo
 
 -- ! Tokens available
 data Token
@@ -49,3 +63,4 @@ data Token
   | MultilineOT
   | MultilineCT
   deriving (Show, Eq, Ord)
+

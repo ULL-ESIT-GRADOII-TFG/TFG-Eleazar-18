@@ -1,9 +1,8 @@
 module Main where
 
-import Options.Applicative
-import Data.Monoid
-
-import ScriptLang.Core
+import           Compiler.Core
+import           Data.Monoid
+import           Options.Applicative
 
 data ArgsConfig = Interpreter
 
