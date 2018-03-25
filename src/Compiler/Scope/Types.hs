@@ -2,20 +2,24 @@
 module Compiler.Scope.Types where
 
 import           Control.Monad.State.Strict
+import           Control.Monad.Except
 import qualified Data.Map as M
 import qualified Data.Text as T
 import           Lens.Micro.Platform
 
-type ScopeM last = State (Scope last)
+data ScopeError = NoIdFound T.Text
+  deriving Show
+
+type ScopeM last = ExceptT ScopeError (State (Scope last))
 
 data Scope last = Scope
-  { _nextScope :: Word
-  , _lastScopeInfo :: Maybe (ScopeInfo last)
+  { _nextId :: Word
+  , _currentScope :: ScopeInfo last
+  , _stackScope :: [ScopeInfo last]
   }
 
 data ScopeInfo last = ScopeInfo
   { _prevInfo :: last
-  , _lastScope :: Maybe (ScopeInfo last)
   , _renameInfo :: M.Map T.Text Word
   }
 

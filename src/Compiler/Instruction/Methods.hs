@@ -16,8 +16,6 @@ import Compiler.World.Types
 import Compiler.World.Methods
 import Compiler.Object.Types
 import Compiler.Object.Methods
-import Compiler.Scope.Types
-import Compiler.Scope.Methods
 
 
 callCommand :: (MonadFree Instruction m) => Word -> [VarAccessor] -> m VarAccessor
@@ -61,45 +59,40 @@ unnestLevel :: PPrint -> StPrint ()
 unnestLevel = undefined
 
 
-astToInstructions :: (Monad m) => Expression (ScopeInfo ()) -> FreeT Instruction m VarAccessor
+astToInstructions :: (Monad m) => ExpressionG last Word -> FreeT Instruction m VarAccessor
 astToInstructions expr =
   case expr of
-    FunDecl args prog _ ->
+    FunDecl args prog _info ->
       return . Raw $ OFunc mempty args (astToInstructions prog)
 
-    VarDecl name exprValue scope -> do
+    VarDecl ref exprValue _info -> do
       value <- astToInstructions exprValue
-      let ref = getIdentifier scope name
       ref =: value
       return . Raw $ ONone
 
-    SeqExpr exprs _ ->
+    SeqExpr exprs _info ->
       foldM (\_ expr' -> astToInstructions expr') (Raw ONone) exprs
 
-    If condExpr prog _ -> do
+    If condExpr prog _info -> do
       value <- astToInstructions condExpr
       cond value (astToInstructions prog) (return $ Raw ONone)
 
-    IfElse condExpr trueProg falseProg _ -> do
+    IfElse condExpr trueProg falseProg _info -> do
       value <- astToInstructions condExpr
       cond value (astToInstructions trueProg) (astToInstructions falseProg)
 
-    For name iterExpr prog scope -> do
+    For ref iterExpr prog _info -> do
       value <- astToInstructions iterExpr
-      let ref = getIdentifier scope name
       loop value (\val -> ref =: val >> astToInstructions prog)
       return . Raw $ ONone
 
-    Apply name argsExpr scope -> do
+    Apply ref argsExpr _info -> do
       values <- mapM astToInstructions argsExpr
-      let ref = getIdentifier scope name
       callCommand ref values
 
-    Identifier name scope ->
-      let ref = getIdentifier scope name
-      in getVal ref
+    Identifier ref _info -> getVal ref
 
-    Factor atom _ -> return . Raw $ fromAST atom
+    Factor atom _info -> return . Raw $ fromAST atom
 
 
 -- | TODO: Change type it should be possible make errors in this phase

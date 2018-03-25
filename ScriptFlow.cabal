@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e04119d09005ada548ad26ebd4eccff588c696564c6cce23e24446317b5d965f
+-- hash: f1b6a607ccfa2d359531488cf5208bd1cee42bc2a4869a2e6164a63f0e0c09e8
 
 name:           ScriptFlow
 version:        0.0.1
@@ -52,6 +52,8 @@ library
     , unordered-containers
     , vector
     , yaml
+  build-tools:
+      alex
   exposed-modules:
       Compiler.Ast
       Compiler.Core
@@ -69,6 +71,7 @@ library
       Compiler.Token.Methods
       Compiler.Parser.Types
       Compiler.Parser.Methods
+      Compiler.Token.Lexer
   other-modules:
       Paths_ScriptFlow
   default-language: Haskell2010

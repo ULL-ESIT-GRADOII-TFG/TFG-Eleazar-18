@@ -8,7 +8,9 @@ import           System.Console.Haskeline   (InputT)
 import           Control.Monad.Trans.Except
 import           Lens.Micro.Platform
 
+import Compiler.Parser.Types
 import Compiler.World.Types
+import Compiler.Scope.Types
 import Compiler.Instruction.Types
 import Compiler.Object.Types
 
@@ -24,10 +26,11 @@ type Interpreter = StateT IState (InputT IO)
 
 -- | Represent internal state of compiler
 data IState = IState
-  { _multiline    :: !(Maybe T.Text)
+  { _multiline :: !(Maybe T.Text)
    -- ^ When multiline mode is enable the interpreter storage all code
    --   until found a multiline close token. Then load text to compiler.
-  , _programState :: !World
+  , _memory :: !World
+  , _scope :: !(Scope TokenInfo)
   }
 
 makeLenses ''IState

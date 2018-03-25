@@ -1,92 +1,44 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Compiler.Token.Methods where
 
-import           Data.Char
-import           Data.Functor
-import           Data.Text
+import           Data.Vector (Vector)
+import qualified Data.Vector as V
+import           Data.Text (Text)
 import           Text.Parsec
 import           Text.Parsec.Pos
 
 import Compiler.Token.Types
-
-parseTokens :: Parsec Text u [Token]
-parseTokens = whitespace *> many (whitespace >> parseToken) <* eof
-
-whitespace :: Parsec Text u ()
-whitespace = skipMany (satisfy isSpace)
-
-parseInterpreterTokens :: Parsec Text u [Token]
-parseInterpreterTokens = whitespace *> many (whitespace >> parseTokenInterpreter) <* eof
-
-parseTokenInterpreter :: Parsec Text u Token
-parseTokenInterpreter = choice
-  [ try $ string ":help" $> HelpT
-  , try $ string ":quit" $> ExitT
-  , try $ string ":{" $> MultilineOT
-  , try $ string ":}" $>  MultilineCT
-  , parseToken
-  ]
-
-parseToken :: Parsec Text u Token
-parseToken = choice
-  [ try $ string "as" *> pure AsT
-  , try $ string "for" *> pure ForT
-  , try $ string "if" *> pure IfT
-  , try $ string "else" *> pure ElseT
-  , try $ char ',' *> pure CommaT
-  , try $ char '(' *> pure OParenT
-  , try $ char ')' *> pure CParenT
-  , try $ char '{' *> pure OBraceT
-  , try $ char '}' *> pure CBraceT
-  , try $ char '=' *> pure AssignT
-  , try $ char ':' *> pure DoubleDotsT
-  , try shellCommand
-  , try identifierParser
-  , try stringParser
-  , try numberParser
-  ]
-
-shellCommand :: Parsec Text u Token
-shellCommand = do
-  _ <- char '!'
-  command <- manyTill anyChar (try endOfLine)
-  return $ ShellCommandT (pack command)
+import qualified Compiler.Token.Lexer as L
 
 
--- | Parser a simple integer values it can be negative
-numberParser :: Parsec Text u Token
-numberParser = do
-  signe <- optionMaybe (oneOf "+-")
-  number <- many1 digit
-  case signe of
-    Just '+' -> return $ NumT $ read number
-    Just '-' -> return $ NumT $ negate $ read number
-    Just _   -> error "No possible case"
-    Nothing  ->  return $ NumT $ read number
+instance (Monad m) => Stream (Vector tok) m tok where
+    uncons stream =
+      if V.null stream then
+        return Nothing
+      else
+        return $ Just (V.unsafeHead stream, V.tail stream)
+    {-# INLINE uncons #-}
 
-
--- | Parse a string
-stringParser :: Parsec Text u Token
-stringParser = do
-  _ <- char '"'
-  litText <- manyTill anyChar (try (char '"'))
-  return $ LitTextT $ pack litText
-
-
--- | Parse identifier like methods call, variable names...
-identifierParser :: Parsec Text u Token
-identifierParser = do
-  fLetter <- letter
-  restName <- many alphaNum
-  return $ NameIdT (pack (fLetter:restName))
-
-type TokenParser a = Parsec [Token] () a
+type TokenParser a = Parsec (Vector L.Lexeme) () a
 
 match :: Token -> TokenParser ()
-match tok =
+match tok = do
+  lastPos <- getPosition
   token
     show
-    (\_tok' -> newPos "TODO" 0 0)
-    (\tok' -> if tok == tok' then Just () else Nothing)
+    (\(L.L (L.AlexPn _ l c) _) -> newPos (sourceName lastPos) l c)
+    (\(L.L _ tok') -> if tok == tok' then Just () else Nothing)
+
+match' :: (Token -> Maybe a) -> TokenParser a
+match' fun = do
+  lastPos <- getPosition
+  token
+    show
+    (\(L.L (L.AlexPn _ l c) _) -> newPos (sourceName lastPos) l c)
+    (\(L.L _ tok') -> fun tok')
 
 cBraceT :: TokenParser ()
 cBraceT = match CBraceT
@@ -94,11 +46,29 @@ cBraceT = match CBraceT
 oBraceT :: TokenParser ()
 oBraceT = match OBraceT
 
+cParenT :: TokenParser ()
+cParenT = match CParenT
+
+oParenT :: TokenParser ()
+oParenT = match OParenT
+
+classT :: TokenParser ()
+classT = match ClassT
+
+importT :: TokenParser ()
+importT = match ImportT
+
+lamT :: TokenParser ()
+lamT = match LamT
+
+funT :: TokenParser ()
+funT = match FunT
+
 forT :: TokenParser ()
 forT = match ForT
 
-asT :: TokenParser ()
-asT = match AsT
+inT :: TokenParser ()
+inT = match InT
 
 ifT :: TokenParser ()
 ifT = match IfT
@@ -106,90 +76,51 @@ ifT = match IfT
 elseT :: TokenParser ()
 elseT = match ElseT
 
-shellCommandT :: TokenParser Text
-shellCommandT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        ShellCommandT command -> Just command
-        _                    -> Nothing)
-
-oParenT :: TokenParser ()
-oParenT = match OParenT
-
-cParenT :: TokenParser ()
-cParenT = match CParenT
-
-regexExprT :: TokenParser Text
-regexExprT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        RegexExprT regex -> Just regex
-        _                -> Nothing)
-
-nameIdT :: TokenParser Text
-nameIdT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        NameIdT name -> Just name
-        _            -> Nothing)
-
-litTextT :: TokenParser Text
-litTextT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        LitTextT name -> Just name
-        _             -> Nothing)
-
 commaT :: TokenParser ()
 commaT = match CommaT
 
 assignT :: TokenParser ()
 assignT = match AssignT
 
-doubleDotsT :: TokenParser ()
-doubleDotsT = match DoubleDotsT
+shellCommandT :: TokenParser Text
+shellCommandT = match' $
+  \case
+    ShellCommandT command -> Just command
+    _                     -> Nothing
+
+regexExprT :: TokenParser Text
+regexExprT = match' $
+  \case
+    RegexExprT regex -> Just regex
+    _                -> Nothing
+
+nameIdT :: TokenParser Text
+nameIdT = match' $
+  \case
+    NameIdT name -> Just name
+    _            -> Nothing
+
+litTextT :: TokenParser Text
+litTextT = match' $
+  \case
+    LitTextT name -> Just name
+    _             -> Nothing
 
 numberT :: TokenParser Int
-numberT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        NumT num -> Just num
-        _        -> Nothing)
+numberT = match' $
+  \case
+    NumT num -> Just num
+    _        -> Nothing
 
 operatorT :: TokenParser Text
-operatorT =
-  token
-    show
-    (\_tok -> newPos "TODO" 0 0)
-    (\tok ->
-      case tok of
-        OperatorT op -> Just op
-        _            -> Nothing)
+operatorT = match' $
+  \case
+    OperatorT op -> Just op
+    _            -> Nothing
 
 exitT :: TokenParser ()
-exitT = match ExitT
+exitT = match (ICommandT "exit" [])
 
 helpT :: TokenParser ()
-helpT = match HelpT
-
-multilineCloseT :: TokenParser ()
-multilineCloseT = match MultilineCT
-
-multilineOpenT :: TokenParser ()
-multilineOpenT = match MultilineOT
+helpT = match (ICommandT "help" [])
 

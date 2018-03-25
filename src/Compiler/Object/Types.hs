@@ -12,11 +12,16 @@ data Object
   | OBool Bool
   | ODouble Double
   | ONum Int
-  | OFunc (M.Map T.Text Object) [T.Text] (FreeT Instruction StWorld VarAccessor)
+  | OFunc (M.Map T.Text Object) [Word] (FreeT Instruction StWorld VarAccessor)
   | ONone
 
 instance Show Object where
-  show _ = "TODO"
+  show (OStr text) = show text
+  show (OBool bool) = show bool
+  show (ODouble double) = show double
+  show (ONum num) = show num
+  show (OFunc _ _ _) = "[Function]"
+  show ONone = "None"
 
 newtype ObjectError = ObjectError { info :: T.Text }
 

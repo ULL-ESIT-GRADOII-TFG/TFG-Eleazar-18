@@ -5,88 +5,97 @@ import           Text.Parsec
 import Data.Functor
 
 import Compiler.Ast
-import Compiler.Token.Types
+import Compiler.Parser.Types
 import Compiler.Token.Methods
 
 
-parseInterpreter :: Parsec [Token] () Repl
+parseInterpreter :: TokenParser Repl
 parseInterpreter = choice
   [ try $ exitT $> Command "exit" []
   , try $ helpT $> Command "help" []
-  , try $ multilineOpenT $> Command ":{" []
-  , try $ multilineCloseT $> Command ":}" []
-  , Code <$> try parseExp
+  , Code <$> try parseSeqExpr
   ]
 
 
-parseExp :: Parsec [Token] () (Expression ())
-parseExp = choice
-  [ try parseApply
-  , try parseIfElse
-  , (\txt -> Factor (AStr txt) ()) <$> try litTextT
-  , (\num -> Factor (ANum num) ()) <$> try numberT
+parseExp :: TokenParser (Expression TokenInfo)
+parseExp = choice $ map try
+  [ parseFunDecl
+  , parseLam
+  , parseAssign
+  , parseApply
+  , parseIf
+  , parseIfElse
+  , parseIdentifier
+  , (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
+  , (\num -> Factor (ANum num) TokenInfo) <$> numberT
   -- , Regex () <$> try regexExprT
   , parensExp
   ]
 
+parseSeqExpr :: TokenParser (Expression TokenInfo)
+parseSeqExpr = do
+  exprs <- many1 parseExp
+  return $ SeqExpr exprs TokenInfo
 
-parseIfElse :: Parsec [Token] () (Expression ())
-parseIfElse = do
-  ifT
-  expr <- parseExp
-  progTrue <- between oBraceT cBraceT parseExp
-  elseT
-  progFalse <- between oBraceT cBraceT parseExp
-  return $ IfElse expr progTrue progFalse ()
+parseFunDecl :: TokenParser (Expression TokenInfo)
+parseFunDecl = do
+  funT
+  funName <- nameIdT
+  params <- many nameIdT
+  prog <- between oBraceT cBraceT parseSeqExpr
+  return $ VarDecl funName (FunDecl params prog TokenInfo) TokenInfo
 
+parseLam :: TokenParser (Expression TokenInfo)
+parseLam = do
+  lamT
+  params <- many nameIdT
+  prog <- between oBraceT cBraceT parseSeqExpr
+  return $ FunDecl params prog TokenInfo
 
-parseAssign :: Parsec [Token] () (Expression ())
+parseAssign :: TokenParser (Expression TokenInfo)
 parseAssign = do
   varName <- nameIdT
   assignT
-  expr <- parseExp
-  return $ VarDecl varName expr ()
+  expr <- parseSeqExpr
+  return $ VarDecl varName expr TokenInfo
 
-parseApply :: Parsec [Token] () (Expression ())
-parseApply = do
-  name <- nameIdT
-  params <- parseExp `sepBy` commaT
-  return $ Apply name params ()
-
-
-parensExp :: Parsec [Token] () (Expression ())
-parensExp = between oParenT cParenT parseExp
-
-parseIf :: Parsec [Token] () (Expression ())
+parseIf :: TokenParser (Expression TokenInfo)
 parseIf = do
   ifT
-  expr <- parseExp
-  prog <- between oBraceT cBraceT parseExp
-  return $ If expr prog ()
+  expr <- parseSeqExpr
+  prog <- between oBraceT cBraceT parseSeqExpr
+  return $ If expr prog TokenInfo
 
-parseFor :: Parsec [Token] () (Expression ())
+parseIfElse :: TokenParser (Expression TokenInfo)
+parseIfElse = do
+  ifT
+  expr <- parseSeqExpr
+  progTrue <- between oBraceT cBraceT parseSeqExpr
+  elseT
+  progFalse <- between oBraceT cBraceT parseSeqExpr
+  return $ IfElse expr progTrue progFalse TokenInfo
+
+parseFor :: TokenParser (Expression TokenInfo)
 parseFor = do
   forT
-  expr <- parseExp
-  asT
+  expr <- parseSeqExpr
+  inT
   nameVar <- nameIdT
-  prog <- between oBraceT cBraceT parseExp
-  return $ For nameVar expr prog ()
+  prog <- between oBraceT cBraceT parseSeqExpr
+  return $ For nameVar expr prog TokenInfo
 
-{-
-parseMkScope :: Parsec [Token] () (Statements ())
-parseMkScope = do
-  expr <- parseExp
-  prog <- between oBraceT cBraceT parseLanguage
-  return $ MkScope () expr prog
+parseApply :: TokenParser (Expression TokenInfo)
+parseApply = do
+  name <- nameIdT
+  params <- between oParenT cParenT (parseSeqExpr `sepBy` commaT)
+  return $ Apply name params TokenInfo
 
-parseStatements :: Parsec [Token] () (Expression ())
-parseStatements = choice
-  [ try parseFor
-  --, try parseIf
-  , try parseAssign
-  , try parseMkScope
-  , Expr <$> try parseExp
-  ]
--}
+-- TODO: Ver como configurar el tema de las precedencia de los operadores
 
+parseIdentifier :: TokenParser (Expression TokenInfo)
+parseIdentifier = do
+  name <- nameIdT
+  return $ Identifier name TokenInfo
+
+parensExp :: TokenParser (Expression TokenInfo)
+parensExp = between oParenT cParenT parseSeqExpr

@@ -22,45 +22,51 @@ data Token
   -- ^ "{"
   | CBraceT
   -- ^ "}"
+  | OParenT
+  -- ^ "("
+  | CParenT
+  -- ^ ")"
+  | ClassT
+  -- ^ "class" keyword
+  | ImportT
+  -- ^ "import" keyword
+  | LamT
+  -- ^ "lam" keyword
   | FunT
   -- ^ "fun" keyword
-  | ObjectT
-  -- ^ "obj" keyword
   | ForT
   -- ^ "for" keyword
-  | AsT
+  | InT
   -- ^ "as" keyword
   | IfT
   -- ^ "if" keyword
   | ElseT
   -- ^ "else" keyword
-  | WhileT
-  -- ^ "while" keyword
-  | ShellCommandT Text
-  -- ^ "!shell_command_name arg1 arg" to execute a shell command
-  | OParenT
-  -- ^ "("
-  | CParenT
-  -- ^ ")"
-  | RegexExprT Text
-  -- ^ "r/Project$digit${3,9}/"
-  | NameIdT Text
-  -- ^ "hello"
-  | LitTextT Text
-  -- ^ A literal string
   | CommaT
   -- ^ ","
   | AssignT
   -- ^ "="
-  | DoubleDotsT
-  -- ^ ":"
+  | ShellCommandT Text
+  -- ^ "!shell_command_name arg1 arg" to execute a shell command
+  | RegexExprT Text
+  -- ^ "r/Project$digit${3,9}/"
+  | NameIdT Text
+  -- ^ "hello"
+  | ClassIdT Text
+  -- ^ "Hello" Uppercase
+  | LitTextT Text
+  -- ^ A literal string
   | NumT Int
   -- ^ Represents a integer
   | OperatorT Text
   -- ^ Operators are symbols like +,-,*,/,++....
-  | ExitT
-  | HelpT
-  | MultilineOT
-  | MultilineCT
+  | ICommandT Text [Text]
+  -- ^ Command of interpreter
+  | SkipT
+  -- ^ Aux Token
+  | DedentT Int
+  -- ^ Dedent `x` levels
+  | EosT
+  -- ^ End of source
   deriving (Show, Eq, Ord)
 
