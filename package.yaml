@@ -52,9 +52,11 @@ library:
     - Compiler.World.Methods
     - Compiler.Token.Types
     - Compiler.Token.Methods
+    - Compiler.Token.Lexer
     - Compiler.Parser.Types
     - Compiler.Parser.Methods
-    - Compiler.Token.Lexer
+    - Compiler.Prelude.Types
+    - Compiler.Prelude.Methods
 
 executables:
   Compiler:

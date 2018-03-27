@@ -27,10 +27,17 @@ nameId =: obj = liftF (Assign nameId obj ())
 dropVar :: (MonadFree Instruction m) => Word -> m ()
 dropVar ref = liftF (DropVar ref ())
 
-loop :: (MonadFree Instruction m) => VarAccessor -> (VarAccessor -> FreeT Instruction StWorld VarAccessor) -> m ()
+loop :: (MonadFree Instruction m)
+  => VarAccessor
+  -> (VarAccessor -> FreeT Instruction StWorld VarAccessor)
+  -> m ()
 loop obj prog = liftF (Loop obj prog ())
 
-cond :: (MonadFree Instruction m) => VarAccessor -> FreeT Instruction StWorld VarAccessor -> FreeT Instruction StWorld VarAccessor -> m VarAccessor
+cond :: (MonadFree Instruction m)
+  => VarAccessor
+  -> FreeT Instruction StWorld VarAccessor
+  -> FreeT Instruction StWorld VarAccessor
+  -> m VarAccessor
 cond obj true false = liftF (Cond obj true false id)
 
 getVal :: (MonadFree Instruction m) => Word -> m VarAccessor
@@ -40,26 +47,11 @@ end :: (MonadFree Instruction m) => m a
 end = liftF End
 
 
-newFakeRef :: StPrint Word
-newFakeRef = do
-  fakeId += 1
-  use fakeId
-
-linePP :: T.Text -> StPrint ()
-linePP txt = do
-  -- Fix Indentation
-  generate %= (`T.append` txt)
-
-newLevel :: StPrint PPrint
-newLevel = do
-  level += 1
-  get
-
-unnestLevel :: PPrint -> StPrint ()
-unnestLevel = undefined
-
-
-astToInstructions :: (Monad m) => ExpressionG last Word -> FreeT Instruction m VarAccessor
+-- | Transform AST to a simplified intermediate language, more related to
+-- memory management
+astToInstructions :: (Monad m)
+  => ExpressionG last Word
+  -> FreeT Instruction m VarAccessor
 astToInstructions expr =
   case expr of
     FunDecl args prog _info ->
@@ -102,7 +94,8 @@ runProgram = iterT $ \case
   CallCommand idFun args next -> do
     obj <- findVar idFun
     argsObj <- mapM getObject args
-    next (Raw $ callObject obj argsObj)
+    retObj <- callObject obj argsObj
+    next retObj
 
   Assign idObj accObject next -> do
     object <- getObject accObject
@@ -129,6 +122,24 @@ runProgram = iterT $ \case
     next $ Ref idObj
 
   End -> return $ Raw ONone
+
+newFakeRef :: StPrint Word
+newFakeRef = do
+  fakeId += 1
+  use fakeId
+
+linePP :: T.Text -> StPrint ()
+linePP txt = do
+  -- Fix Indentation
+  generate %= (`T.append` txt)
+
+newLevel :: StPrint PPrint
+newLevel = do
+  level += 1
+  get
+
+unnestLevel :: PPrint -> StPrint ()
+unnestLevel = undefined
 
 -- TODO: Make pretty printer
 pprint :: FreeT Instruction StPrint () -> StPrint ()

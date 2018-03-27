@@ -26,6 +26,10 @@ data Token
   -- ^ "("
   | CParenT
   -- ^ ")"
+  | OBracketT
+  -- ^ "["
+  | CBracketT
+  -- ^ "]"
   | ClassT
   -- ^ "class" keyword
   | ImportT
@@ -58,6 +62,10 @@ data Token
   -- ^ A literal string
   | NumT Int
   -- ^ Represents a integer
+  | DecimalT Double
+  -- ^ Represents a decimal
+  | BoolT Bool
+  -- ^ "true" or "false"
   | OperatorT Text
   -- ^ Operators are symbols like +,-,*,/,++....
   | ICommandT Text [Text]

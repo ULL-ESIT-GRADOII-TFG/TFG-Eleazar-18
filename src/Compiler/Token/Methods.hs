@@ -82,14 +82,20 @@ commaT = match CommaT
 assignT :: TokenParser ()
 assignT = match AssignT
 
+boolT :: TokenParser Bool
+boolT = match' $
+  \case
+    BoolT bool -> Just bool
+    _          -> Nothing
+
 shellCommandT :: TokenParser Text
 shellCommandT = match' $
   \case
     ShellCommandT command -> Just command
     _                     -> Nothing
 
-regexExprT :: TokenParser Text
-regexExprT = match' $
+regexT :: TokenParser Text
+regexT = match' $
   \case
     RegexExprT regex -> Just regex
     _                -> Nothing
@@ -98,6 +104,12 @@ nameIdT :: TokenParser Text
 nameIdT = match' $
   \case
     NameIdT name -> Just name
+    _            -> Nothing
+
+classIdT :: TokenParser Text
+classIdT = match' $
+  \case
+    ClassIdT name -> Just name
     _            -> Nothing
 
 litTextT :: TokenParser Text
@@ -110,6 +122,12 @@ numberT :: TokenParser Int
 numberT = match' $
   \case
     NumT num -> Just num
+    _        -> Nothing
+
+decimalT :: TokenParser Double
+decimalT = match' $
+  \case
+    DecimalT num -> Just num
     _        -> Nothing
 
 operatorT :: TokenParser Text

@@ -14,13 +14,13 @@ import Compiler.Token.Types
 $digit = 0-9
 $alpha = [a-zA-Z]
 $alphaDigit = [a-zA-Z0-9]
-$operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*]
+$operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^]
 
 @nameId = $alpha $alphaDigit*
 @classId = [A-Z] @nameId?
 
 @emptyLines = ([ \t]*\n)+
-@number = [\-\+]? $digit+
+@number = \-? $digit+
 @decimal = @number "." $digit+
 -- TODO: skip \$
 @shellCommand = "$" (~[\n\$])* "$"
@@ -56,16 +56,21 @@ tokens :-
     else          { mkL ElseT }
     class         { mkL ClassT }
     import        { mkL ImportT }
+    "["           { mkL OBracketT }
+    "]"           { mkL CBracketT }
     "{"           { mkL OBraceT }
     "}"           { mkL CBraceT }
     "("           { mkL OParenT }
     ")"           { mkL CParenT }
     ","           { mkL CommaT }
     "="           { mkL AssignT }
+    "true"        { mkL (BoolT True) }
+    "false"       { mkL (BoolT False) }
     @shellCommand { mkL' ShellCommandT }
     @regex        { mkL' RegexExprT }
     @string       { mkL' LitTextT }
     @number       { mkL' (NumT . read . T.unpack) }
+    @decimal      { mkL' (DecimalT . read . T.unpack) }
     $operators+   { mkL' OperatorT }
     @classId      { mkL' ClassIdT }
     @nameId       { mkL' NameIdT }

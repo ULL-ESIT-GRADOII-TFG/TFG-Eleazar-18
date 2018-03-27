@@ -17,6 +17,20 @@ parseInterpreter = choice
   ]
 
 
+parseClassStatement :: TokenParser (Statement TokenInfo)
+parseClassStatement = do
+  classT
+  nameClass <- classIdT
+  bodyClass <- between oBraceT cBraceT parseBodyClass
+  return $ Class nameClass bodyClass TokenInfo
+
+parseBodyClass :: TokenParser (Expression TokenInfo)
+parseBodyClass = choice $ map try
+  [ parseFunDecl
+  , parseAssign
+  , parseIdentifier
+  ]
+
 parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map try
   [ parseFunDecl
@@ -28,7 +42,10 @@ parseExp = choice $ map try
   , parseIdentifier
   , (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
   , (\num -> Factor (ANum num) TokenInfo) <$> numberT
-  -- , Regex () <$> try regexExprT
+  , (\num -> Factor (ADecimal num) TokenInfo) <$> decimalT
+  , (\reg -> Factor (ARegex reg) TokenInfo) <$> regexT
+  , (\cmd -> Factor (AShellCommand cmd) TokenInfo) <$> shellCommandT
+  , (\bool -> Factor (ABool bool) TokenInfo) <$> boolT
   , parensExp
   ]
 

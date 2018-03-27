@@ -10,7 +10,9 @@ data Repl
   | Code (Expression TokenInfo)
   deriving Show
 
-data Statement a id
+type Statement a = StatementG a T.Text
+
+data StatementG a id
   = Import T.Text a
   | Class id (ExpressionG a id) a
 
@@ -35,6 +37,7 @@ data Atom
   | ARegex T.Text
   | AShellCommand T.Text
   | AStr T.Text
+  | ABool Bool
   deriving Show
 
 -- | TODO: Tiene un gran problema tiene una alta dependencia del AST, y puede ser complicar el proceso

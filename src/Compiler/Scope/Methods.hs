@@ -9,12 +9,7 @@ import Compiler.Scope.Types
 import Compiler.Ast
 
 
-{-
-class ThroughAST a b m where
-  throughtAST :: Expression a -> m (Expression b)
-
--}
-
+-- | Initial scope
 initialScope :: last -> Scope last
 initialScope lastScope = Scope
   { _nextId = 0
@@ -25,7 +20,7 @@ initialScope lastScope = Scope
   , _stackScope =  []
   }
 
-
+-- | Create a temporal scope with a info
 withNewScope :: a -> ScopeM a b -> ScopeM a b
 withNewScope info body = do
   lastScope <- use currentScope
@@ -36,19 +31,21 @@ withNewScope info body = do
   currentScope .= first
   return value
 
+-- | Generates a new ID
 getNewId :: ScopeM a Word
 getNewId = do
   newId <- use nextId
   nextId .= newId + 1
   return newId
 
+-- | Add new variable name to scope and return its ID
 addNewIdentifier :: T.Text -> ScopeM a Word
 addNewIdentifier name = do
   newId <- getNewId
   currentScope.renameInfo %= M.insert name newId
   return newId
 
-
+-- | Get a specific ID from variable name
 getIdentifier :: T.Text -> ScopeM a Word
 getIdentifier name = do
   renamer <- use $ currentScope.renameInfo
@@ -65,7 +62,8 @@ getIdentifier name = do
       Just ref -> Just ref
       Nothing -> findInStack xs
 
-
+-- | Make a translation of variable names from AST, convert all to IDs and check rules
+-- of scoping
 scopingThroughtAST :: Expression a -> ScopeM a (ExpressionG a Word)
 scopingThroughtAST expr =
   case expr of

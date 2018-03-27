@@ -6,18 +6,24 @@ import qualified Data.Text as T
 import qualified Text.Parsec as P
 import           Control.Monad.State.Strict
 import           Control.Monad.Except
+import           Control.Monad.IO.Class
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
 import Compiler.Interpreter.Types
+import Compiler.Object.Types
 import Compiler.World.Types
-import Compiler.Parser.Types
+import Compiler.World.Methods
 import Compiler.Instruction.Methods
+import Compiler.Scope.Types
 import Compiler.Scope.Methods
+import Compiler.Parser.Types
 import Compiler.Parser.Methods
+import Compiler.Prelude.Methods
 import Compiler.Token.Lexer (scanner, getTokens, Tokenizer(..))
 
 
+-- | Initial State of interpreter
 initialState :: IState
 initialState = IState
   { _multiline    = Nothing
@@ -27,6 +33,7 @@ initialState = IState
   , _scope = initialScope TokenInfo
   }
 
+-- | Start an repl without prelude
 repl :: Interpreter ()
 repl = do
   {-
@@ -56,32 +63,65 @@ repl = do
             Complete _ -> compileFile (T.pack input) "**Interpreter**"
   repl
 
+-- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
 tokenizer input =
   case scanner False $ T.unpack input of
     Left err -> do
-      lift . lift $ putStrLn err
+      liftIO $ putStrLn err
       return $ Complete mempty
     Right tokens -> return tokens
 
+-- | Compile a file
 compileFile :: T.Text -> P.SourceName -> Interpreter ()
 compileFile rawFile name =
   case scanner True $ T.unpack rawFile of
-    Left err -> lift . lift $ putStrLn err
+    Left err -> liftIO $ putStrLn err
     Right tokenizer -> do
-      lift . lift $ print tokenizer
+      liftIO $ print tokenizer
       case P.parse parseExp name (getTokens tokenizer) of
-        Left _ -> return ()
+        Left err -> liftIO $ print err
         Right ast -> do
-          lift . lift $ print ast
-          lastScope <- use scope
-          let (astScoped, newScope) = runState (runExceptT (scopingThroughtAST ast)) lastScope
-          scope .= newScope
+          liftIO $ print ast
+          astScoped <- liftScope $ scopingThroughtAST ast
           case astScoped of
             Right scopeAst -> do
-              lastMemory <- use memory
-              (value, newMemory) <- lift.lift $ runStateT (runProgram (astToInstructions scopeAst)) lastMemory
-              lift . lift $ print value
-              memory .= newMemory
-              return ()
-            Left err -> lift . lift $ print err
+              value <- liftWorld (runProgram (astToInstructions scopeAst))
+              liftIO $ print value
+            Left err -> liftIO $ print err
+
+-- | Prelude load action
+loadPrelude :: Interpreter ()
+loadPrelude = mapM_ (uncurry newVar) baseObjects
+
+-- | Allow execute actions from ScopeM into Interpreter
+liftScope :: ScopeM TokenInfo b -> Interpreter (Either ScopeError b)
+liftScope scopeM = do
+  lastScope <- use scope
+  let (value, newScope) = runState (runExceptT scopeM) lastScope
+  scope .= newScope
+  return value
+
+-- | Allow execute actions from StWorld into Interpreter
+liftWorld :: StWorld a -> Interpreter a
+liftWorld stWorld = do
+  lastMemory <- use memory
+  (value, newMemory) <- liftIO $ runStateT stWorld lastMemory
+  memory .= newMemory
+  return value
+
+-- | Internal use. To create native objects
+newVar :: T.Text -> Object -> Interpreter ()
+newVar idName obj = do
+  eRef <- liftScope $ addNewIdentifier idName
+  case eRef of
+    Right ref -> liftWorld $ addObject ref obj
+    Left err -> liftIO $ print err
+
+-- | Internal use to get specific interpreter variables
+getVar :: T.Text -> Interpreter Object
+getVar idName = do
+  eRef <- liftScope $ getIdentifier idName
+  case eRef of
+    Right ref -> liftWorld $ findVar ref
+    Left err -> liftIO $ print err >> return ONone

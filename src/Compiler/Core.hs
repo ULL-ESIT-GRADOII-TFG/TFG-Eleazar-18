@@ -9,5 +9,5 @@ import           Compiler.Interpreter.Methods
 -- | Start the program searching a config with authentication tokens,
 --   or request to user to log in
 start :: IO ()
-start = runInputT defaultSettings . flip evalStateT initialState $ repl
+start = runInputT defaultSettings . flip evalStateT initialState $ (loadPrelude >> repl)
 
