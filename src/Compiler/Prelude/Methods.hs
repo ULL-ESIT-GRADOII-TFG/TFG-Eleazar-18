@@ -8,14 +8,24 @@ import qualified Data.Text as T
 import Compiler.Prelude.Types
 import Compiler.Object.Types
 import Compiler.World.Types
-import Compiler.Scope.Types
-import Compiler.Scope.Methods
 import Compiler.Instruction.Types
+
 
 baseObjects :: [(T.Text, Object)]
 baseObjects =
-  [("print", ONative (normalize printObj))]
+    [ ("print", ONative (normalize printObj))
+    , ("not"  , ONative (normalizePure not))
+    ]
 
 printObj :: Object -> FreeT Instruction StWorld VarAccessor
-printObj obj =
-  liftIO $ print obj >> return (Raw ONone)
+printObj obj = liftIO $ print obj >> return (Raw ONone)
+
+normalizePure
+    :: (ToObject o, FromObject a)
+    => (a -> o)
+    -> [Object]
+    -> FreeT Instruction StWorld VarAccessor
+normalizePure fun = normalize (toObject . fun)
+
+
+

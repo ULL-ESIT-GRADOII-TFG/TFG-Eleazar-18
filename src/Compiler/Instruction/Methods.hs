@@ -18,7 +18,8 @@ import Compiler.Object.Types
 import Compiler.Object.Methods
 
 
-callCommand :: (MonadFree Instruction m) => Word -> [VarAccessor] -> m VarAccessor
+callCommand
+  :: (MonadFree Instruction m) => Word -> [VarAccessor] -> m VarAccessor
 callCommand nameId objs = liftF (CallCommand nameId objs id)
 
 (=:) :: (MonadFree Instruction m) => Word -> VarAccessor -> m ()
@@ -27,13 +28,15 @@ nameId =: obj = liftF (Assign nameId obj ())
 dropVar :: (MonadFree Instruction m) => Word -> m ()
 dropVar ref = liftF (DropVar ref ())
 
-loop :: (MonadFree Instruction m)
+loop
+  :: (MonadFree Instruction m)
   => VarAccessor
   -> (VarAccessor -> FreeT Instruction StWorld VarAccessor)
   -> m ()
 loop obj prog = liftF (Loop obj prog ())
 
-cond :: (MonadFree Instruction m)
+cond
+  :: (MonadFree Instruction m)
   => VarAccessor
   -> FreeT Instruction StWorld VarAccessor
   -> FreeT Instruction StWorld VarAccessor
@@ -49,42 +52,40 @@ end = liftF End
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
-astToInstructions :: (Monad m)
-  => ExpressionG last Word
-  -> FreeT Instruction m VarAccessor
-astToInstructions expr =
-  case expr of
-    FunDecl args prog _info ->
-      return . Raw $ OFunc mempty args (astToInstructions prog)
+astToInstructions
+  :: (Monad m) => ExpressionG last Word -> FreeT Instruction m VarAccessor
+astToInstructions expr = case expr of
+  FunDecl args prog _info ->
+    return . Raw $ OFunc mempty args (astToInstructions prog)
 
-    VarDecl ref exprValue _info -> do
-      value <- astToInstructions exprValue
-      ref =: value
-      return . Raw $ ONone
+  VarDecl ref exprValue _info -> do
+    value <- astToInstructions exprValue
+    ref =: value
+    return . Raw $ ONone
 
-    SeqExpr exprs _info ->
-      foldM (\_ expr' -> astToInstructions expr') (Raw ONone) exprs
+  SeqExpr exprs _info ->
+    foldM (\_ expr' -> astToInstructions expr') (Raw ONone) exprs
 
-    If condExpr prog _info -> do
-      value <- astToInstructions condExpr
-      cond value (astToInstructions prog) (return $ Raw ONone)
+  If condExpr prog _info -> do
+    value <- astToInstructions condExpr
+    cond value (astToInstructions prog) (return $ Raw ONone)
 
-    IfElse condExpr trueProg falseProg _info -> do
-      value <- astToInstructions condExpr
-      cond value (astToInstructions trueProg) (astToInstructions falseProg)
+  IfElse condExpr trueProg falseProg _info -> do
+    value <- astToInstructions condExpr
+    cond value (astToInstructions trueProg) (astToInstructions falseProg)
 
-    For ref iterExpr prog _info -> do
-      value <- astToInstructions iterExpr
-      loop value (\val -> ref =: val >> astToInstructions prog)
-      return . Raw $ ONone
+  For ref iterExpr prog _info -> do
+    value <- astToInstructions iterExpr
+    loop value (\val -> ref =: val >> astToInstructions prog)
+    return . Raw $ ONone
 
-    Apply ref argsExpr _info -> do
-      values <- mapM astToInstructions argsExpr
-      callCommand ref values
+  Apply ref argsExpr _info -> do
+    values <- mapM astToInstructions argsExpr
+    callCommand ref values
 
-    Identifier ref _info -> getVal ref
+  Identifier ref  _info -> getVal ref
 
-    Factor atom _info -> return . Raw $ fromAST atom
+  Factor     atom _info -> return . Raw $ fromAST atom
 
 
 -- | TODO: Change type it should be possible make errors in this phase
@@ -92,9 +93,9 @@ runProgram :: FreeT Instruction StWorld VarAccessor -> StWorld VarAccessor
 runProgram = iterT $ \case
   -- Find into world function and correspondent objects
   CallCommand idFun args next -> do
-    obj <- findVar idFun
+    obj     <- findVar idFun
     argsObj <- mapM getObject args
-    retObj <- callObject obj argsObj
+    retObj  <- callObject obj argsObj
     next retObj
 
   Assign idObj accObject next -> do
@@ -102,26 +103,24 @@ runProgram = iterT $ \case
     addObject idObj object
     next
 
-  DropVar idObj next ->  do
+  DropVar idObj next -> do
     dropVarWorld idObj
     next
 
   Loop accObject prog next -> do
     oIter <- getObject accObject
-    _ <- mapObj oIter (runProgram . prog . Raw)
+    _     <- mapObj oIter (runProgram . prog . Raw)
     next
 
   Cond objectCond trueNext falseNext next -> do
     boolean <- getObject objectCond
-    if checkBool boolean then
-      runProgram trueNext >>= next
-    else
-      runProgram falseNext >>= next
+    if checkBool boolean
+      then runProgram trueNext >>= next
+      else runProgram falseNext >>= next
 
-  GetVal idObj next ->
-    next $ Ref idObj
+  GetVal idObj next -> next $ Ref idObj
 
-  End -> return $ Raw ONone
+  End               -> return $ Raw ONone
 
 newFakeRef :: StPrint Word
 newFakeRef = do
@@ -129,7 +128,7 @@ newFakeRef = do
   use fakeId
 
 linePP :: T.Text -> StPrint ()
-linePP txt = do
+linePP txt =
   -- Fix Indentation
   generate %= (`T.append` txt)
 
@@ -167,7 +166,7 @@ pprint = iterT $ \case
     linePP (format ("Cond " % shown) objectCond)
     _level <- newLevel
     --pprint prog
-    refId <- newFakeRef -- show id where is generate
+    refId  <- newFakeRef -- show id where is generate
     next $ Ref refId
 
   GetVal idObj next -> do
@@ -175,5 +174,4 @@ pprint = iterT $ \case
     refId <- newFakeRef -- show id where is generate
     next $ Ref refId
 
-  End ->
-    linePP "End"
+  End -> linePP "End"

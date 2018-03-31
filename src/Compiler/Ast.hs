@@ -7,7 +7,7 @@ import           Compiler.Parser.Types
 
 data Repl
   = Command T.Text [T.Text]
-  | Code (Expression TokenInfo)
+  | Code ([Statement TokenInfo])
   deriving Show
 
 type Statement a = StatementG a T.Text
@@ -15,6 +15,8 @@ type Statement a = StatementG a T.Text
 data StatementG a id
   = Import T.Text a
   | Class id (ExpressionG a id) a
+  | Expr (ExpressionG a id) a
+  deriving Show
 
 type Expression a = ExpressionG a T.Text
 
@@ -80,3 +82,5 @@ data Resolver a = Trie CrumbExpression a
 [CIfTrue, CSeq 1, CAppArg 0, CAppArg 0, Id "val_0"] -> val_0
 [CIfFalse, CForValue] ->
 -}
+
+

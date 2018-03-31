@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7e485c6df19224a18e642c99e40ef1f88ff64867857a87d4fbf346bbca3f2507
+-- hash: 0e78bc47bbf1673bb3635298886d995f34b78244e3e6999ae06ce788f0adf6a3
 
 name:           ScriptFlow
 version:        0.0.1
@@ -75,6 +75,7 @@ library
       Compiler.Prelude.Types
       Compiler.Prelude.Methods
   other-modules:
+      Compiler.Prelude.Th
       Paths_ScriptFlow
   default-language: Haskell2010
 

@@ -3,13 +3,13 @@ module Compiler.Interpreter.Methods where
 
 import           Data.Maybe
 import qualified Data.Text as T
-import qualified Text.Parsec as P
+import           Data.Bifunctor
 import           Control.Monad.State.Strict
 import           Control.Monad.Except
-import           Control.Monad.IO.Class
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
+import Compiler.Ast
 import Compiler.Interpreter.Types
 import Compiler.Object.Types
 import Compiler.World.Types
@@ -26,22 +26,16 @@ import Compiler.Token.Lexer (scanner, getTokens, Tokenizer(..))
 -- | Initial State of interpreter
 initialState :: IState
 initialState = IState
-  { _multiline    = Nothing
-  , _memory = World
-    { _table = mempty
-    }
-  , _scope = initialScope TokenInfo
+  { _multiline = Nothing
+  , _memory    = World {_table = mempty}
+  , _scope     = initialScope TokenInfo
   }
 
 -- | Start an repl without prelude
+--
+-- TODO: Se tiene que declarar variables propias del interprete
 repl :: Interpreter ()
 repl = do
-  {-
-  prim <- use (programState . env . implicit)
-  let prompt = if isNone prim
-        then " >>> "
-        else "[" ++ T.unpack (infoPrim prim) ++ "] >>> "
-  -}
   inMultiline <- isJust <$> use multiline
   let prompt = if inMultiline then "... " else ">>> "
   minput <- lift $ getInputLine prompt
@@ -54,41 +48,46 @@ repl = do
           | T.null . T.strip $ T.pack input -> do
             multiline .= Nothing
             compileFile text "**Interpreter**"
-          | otherwise             -> do
+          | otherwise -> do
             multiline .= Just (text `mappend` "\n" `mappend` (T.pack input))
         Nothing -> do
           tokenizer' <- tokenizer $ T.pack input
           case tokenizer' of
-            Partial _ -> multiline .= Just (T.pack input)
+            Partial  _ -> multiline .= Just (T.pack input)
             Complete _ -> compileFile (T.pack input) "**Interpreter**"
   repl
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
-tokenizer input =
-  case scanner False $ T.unpack input of
-    Left err -> do
-      liftIO $ putStrLn err
-      return $ Complete mempty
-    Right tokens -> return tokens
+tokenizer input = case scanner False $ T.unpack input of
+  Left err -> do
+    liftIO $ putStrLn err
+    return $ Complete mempty
+  Right tokens -> return tokens
 
 -- | Compile a file
-compileFile :: T.Text -> P.SourceName -> Interpreter ()
-compileFile rawFile name =
-  case scanner True $ T.unpack rawFile of
-    Left err -> liftIO $ putStrLn err
-    Right tokenizer -> do
-      liftIO $ print tokenizer
-      case P.parse parseExp name (getTokens tokenizer) of
-        Left err -> liftIO $ print err
-        Right ast -> do
-          liftIO $ print ast
-          astScoped <- liftScope $ scopingThroughtAST ast
+compileFile :: T.Text -> String -> Interpreter ()
+compileFile rawFile name = do
+  let ast = do
+        tokenizer' <- scanner True $ T.unpack rawFile
+        first show (parserLexer name (getTokens tokenizer')) -- TODO Take better Error
+  case ast of
+    Left  err  -> liftIO $ print err
+    Right ast' -> do
+      liftIO $ putStrLn "Hello something"
+      liftIO $ print ast'
+      mStatements <- tryExecuteICommand ast'
+      case mStatements of
+        Nothing         -> return ()
+        Just statements -> do
+          expr      <- computeStatements statements
+          astScoped <- liftScope $ scopingThroughtAST expr
           case astScoped of
             Right scopeAst -> do
               value <- liftWorld (runProgram (astToInstructions scopeAst))
               liftIO $ print value
             Left err -> liftIO $ print err
+
 
 -- | Prelude load action
 loadPrelude :: Interpreter ()
@@ -105,7 +104,7 @@ liftScope scopeM = do
 -- | Allow execute actions from StWorld into Interpreter
 liftWorld :: StWorld a -> Interpreter a
 liftWorld stWorld = do
-  lastMemory <- use memory
+  lastMemory         <- use memory
   (value, newMemory) <- liftIO $ runStateT stWorld lastMemory
   memory .= newMemory
   return value
@@ -116,7 +115,7 @@ newVar idName obj = do
   eRef <- liftScope $ addNewIdentifier idName
   case eRef of
     Right ref -> liftWorld $ addObject ref obj
-    Left err -> liftIO $ print err
+    Left  err -> liftIO $ print err
 
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
@@ -124,4 +123,31 @@ getVar idName = do
   eRef <- liftScope $ getIdentifier idName
   case eRef of
     Right ref -> liftWorld $ findVar ref
-    Left err -> liftIO $ print err >> return ONone
+    Left  err -> liftIO $ print err >> return ONone
+
+tryExecuteICommand :: Repl -> Interpreter (Maybe ([Statement TokenInfo]))
+tryExecuteICommand (Command name args) =
+  executeCommand name args >> return Nothing
+tryExecuteICommand (Code statements) = return $ Just statements
+
+executeCommand :: T.Text -> [T.Text] -> Interpreter ()
+executeCommand _ _ = liftIO $ putStrLn "In Progress"
+
+-- Computar las class y los import, unir todos los Expression con seq
+computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
+computeStatements =
+  flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st -> do
+    case st of
+      Import _path _       -> error "No implemented yet import functionality"
+      Class _name _exprs _ -> error "To Implement"
+      Expr expr _          -> return $ SeqExpr (expr : exprs) t
+
+
+
+
+
+
+
+
+
+

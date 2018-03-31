@@ -2,20 +2,38 @@
 module Compiler.Parser.Methods where
 
 import           Text.Parsec
-import Data.Functor
+import qualified Data.Vector as V
+import           Data.Functor
 
 import Compiler.Ast
 import Compiler.Parser.Types
 import Compiler.Token.Methods
+import Compiler.Token.Lexer (Lexeme)
 
+
+parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
+parserLexer = parse parseInterpreter
 
 parseInterpreter :: TokenParser Repl
 parseInterpreter = choice
   [ try $ exitT $> Command "exit" []
   , try $ helpT $> Command "help" []
-  , Code <$> try parseSeqExpr
+  , Code <$> try parseStatements
   ]
 
+parseStatements :: TokenParser ([Statement TokenInfo])
+parseStatements = many $ choice $ map
+  try
+  [ parseClassStatement
+  , parseImportStatement
+  , (\expr -> Expr expr TokenInfo) <$> parseExp
+  ]
+
+parseImportStatement :: TokenParser (Statement TokenInfo)
+parseImportStatement = do
+  importT
+  text <- litTextT
+  return $ Import text TokenInfo
 
 parseClassStatement :: TokenParser (Statement TokenInfo)
 parseClassStatement = do
@@ -25,14 +43,11 @@ parseClassStatement = do
   return $ Class nameClass bodyClass TokenInfo
 
 parseBodyClass :: TokenParser (Expression TokenInfo)
-parseBodyClass = choice $ map try
-  [ parseFunDecl
-  , parseAssign
-  , parseIdentifier
-  ]
+parseBodyClass = choice $ map try [parseFunDecl, parseAssign, parseIdentifier]
 
 parseExp :: TokenParser (Expression TokenInfo)
-parseExp = choice $ map try
+parseExp = choice $ map
+  try
   [ parseFunDecl
   , parseLam
   , parseAssign
@@ -58,15 +73,15 @@ parseFunDecl :: TokenParser (Expression TokenInfo)
 parseFunDecl = do
   funT
   funName <- nameIdT
-  params <- many nameIdT
-  prog <- between oBraceT cBraceT parseSeqExpr
+  params  <- many nameIdT
+  prog    <- between oBraceT cBraceT parseSeqExpr
   return $ VarDecl funName (FunDecl params prog TokenInfo) TokenInfo
 
 parseLam :: TokenParser (Expression TokenInfo)
 parseLam = do
   lamT
   params <- many nameIdT
-  prog <- between oBraceT cBraceT parseSeqExpr
+  prog   <- between oBraceT cBraceT parseSeqExpr
   return $ FunDecl params prog TokenInfo
 
 parseAssign :: TokenParser (Expression TokenInfo)
@@ -86,7 +101,7 @@ parseIf = do
 parseIfElse :: TokenParser (Expression TokenInfo)
 parseIfElse = do
   ifT
-  expr <- parseSeqExpr
+  expr     <- parseSeqExpr
   progTrue <- between oBraceT cBraceT parseSeqExpr
   elseT
   progFalse <- between oBraceT cBraceT parseSeqExpr
@@ -98,12 +113,12 @@ parseFor = do
   expr <- parseSeqExpr
   inT
   nameVar <- nameIdT
-  prog <- between oBraceT cBraceT parseSeqExpr
+  prog    <- between oBraceT cBraceT parseSeqExpr
   return $ For nameVar expr prog TokenInfo
 
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = do
-  name <- nameIdT
+  name   <- nameIdT
   params <- between oParenT cParenT (parseSeqExpr `sepBy` commaT)
   return $ Apply name params TokenInfo
 
@@ -116,3 +131,17 @@ parseIdentifier = do
 
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
+
+
+
+
+
+
+
+
+
+
+
+
+
+

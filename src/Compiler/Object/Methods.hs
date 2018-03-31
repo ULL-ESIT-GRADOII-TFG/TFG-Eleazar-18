@@ -22,6 +22,8 @@ infoPrim prim = case prim of
   ODouble i -> "Int:" <> T.pack (show i)
   OStr t    -> "Text:" <> (if T.length t > 8 then T.take 5 t <> "..." else t)
   OFunc {}  -> "Fun"
+  ORegex t  -> "Regex: /" <> T.pack (show t) <> "/"
+  OShellCommand t  -> "Cmd: /" <> T.pack (show t) <> "/"
   ONative {}  -> "Native"
 
 
@@ -37,7 +39,7 @@ fromAST atom =
 
 -- TODO: Set args
 callObject :: Object -> [Object] -> StWorld VarAccessor
-callObject (OFunc _ ids prog) objs = runProgram prog
+callObject (OFunc _ _ids prog) _objs = runProgram prog
 callObject (ONative native) objs = runProgram (native objs)
 callObject _ _ = return $ Raw ONone
 

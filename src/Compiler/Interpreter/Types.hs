@@ -18,8 +18,9 @@ type Prog = Except CompilerError (FreeT Instruction StWorld Object)
 
 -- TODO: Define better
 data CompilerError
-  = Semantic String
-  | Syntactic String
+  = Lexer String
+  | Parser String
+  | Scope String
 
 -- | Used to control flow of all interpreter
 type Interpreter = StateT IState (InputT IO)
@@ -34,4 +35,6 @@ data IState = IState
   }
 
 makeLenses ''IState
+
+
 

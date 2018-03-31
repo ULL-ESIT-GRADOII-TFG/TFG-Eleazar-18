@@ -7,6 +7,13 @@ import           Control.Monad.Trans.Free
 import Compiler.World.Types
 import {-# SOURCE #-} Compiler.Instruction.Types
 
+
+class ToObject o where
+  toObject :: o -> Object
+
+class FromObject o where
+  fromObject :: Object -> o
+
 data Object
   = OStr T.Text
   | OBool Bool
@@ -29,5 +36,23 @@ instance Show Object where
   show (ONative _) = "[Native Function]"
   show ONone = "None"
 
+instance ToObject Object where
+  toObject = id
+
+instance FromObject Object where
+  fromObject = id
+
+instance ToObject Bool where
+  toObject bool = OBool bool
+
+instance FromObject Bool where
+  fromObject (OBool bool) = bool
+  fromObject _ = error "Not Implemented"
+
+
 newtype ObjectError = ObjectError { info :: T.Text }
+
+
+
+
 
