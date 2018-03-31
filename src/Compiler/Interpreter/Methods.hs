@@ -48,8 +48,8 @@ repl = do
           | T.null . T.strip $ T.pack input -> do
             multiline .= Nothing
             compileFile text "**Interpreter**"
-          | otherwise -> do
-            multiline .= Just (text `mappend` "\n" `mappend` (T.pack input))
+          | otherwise ->
+            multiline .= Just (text `mappend` "\n" `mappend` T.pack input)
         Nothing -> do
           tokenizer' <- tokenizer $ T.pack input
           case tokenizer' of
@@ -88,7 +88,6 @@ compileFile rawFile name = do
               liftIO $ print value
             Left err -> liftIO $ print err
 
-
 -- | Prelude load action
 loadPrelude :: Interpreter ()
 loadPrelude = mapM_ (uncurry newVar) baseObjects
@@ -125,7 +124,7 @@ getVar idName = do
     Right ref -> liftWorld $ findVar ref
     Left  err -> liftIO $ print err >> return ONone
 
-tryExecuteICommand :: Repl -> Interpreter (Maybe ([Statement TokenInfo]))
+tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
 tryExecuteICommand (Command name args) =
   executeCommand name args >> return Nothing
 tryExecuteICommand (Code statements) = return $ Just statements
@@ -136,18 +135,8 @@ executeCommand _ _ = liftIO $ putStrLn "In Progress"
 -- Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
 computeStatements =
-  flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st -> do
+  flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st ->
     case st of
       Import _path _       -> error "No implemented yet import functionality"
       Class _name _exprs _ -> error "To Implement"
       Expr expr _          -> return $ SeqExpr (expr : exprs) t
-
-
-
-
-
-
-
-
-
-

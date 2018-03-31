@@ -7,6 +7,9 @@ import Compiler.Object.Types
 import Compiler.World.Types
 import Compiler.Instruction.Types
 
+
+data Assoc = LeftAssoc | RightAssoc deriving (Show, Eq)
+
 class Normalize a where
   normalize :: a -> [Object] -> FreeT Instruction StWorld VarAccessor
 
@@ -26,12 +29,3 @@ instance Normalize Object where
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
   normalize _   []     = return $ Raw ONone -- TODO: Add Error
   normalize fun (a:xs) = normalize (fun (fromObject a)) xs
-
-
-
-
-
-
-
-
-

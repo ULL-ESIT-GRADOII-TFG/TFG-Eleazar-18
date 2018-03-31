@@ -2,12 +2,11 @@ module Compiler.Ast where
 
 
 import qualified Data.Text             as T
-
 import           Compiler.Parser.Types
 
 data Repl
   = Command T.Text [T.Text]
-  | Code ([Statement TokenInfo])
+  | Code [Statement TokenInfo]
   deriving Show
 
 type Statement a = StatementG a T.Text
@@ -82,5 +81,3 @@ data Resolver a = Trie CrumbExpression a
 [CIfTrue, CSeq 1, CAppArg 0, CAppArg 0, Id "val_0"] -> val_0
 [CIfFalse, CForValue] ->
 -}
-
-

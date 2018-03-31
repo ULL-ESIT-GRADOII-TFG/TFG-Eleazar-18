@@ -43,16 +43,17 @@ instance FromObject Object where
   fromObject = id
 
 instance ToObject Bool where
-  toObject bool = OBool bool
+  toObject = OBool
 
 instance FromObject Bool where
   fromObject (OBool bool) = bool
   fromObject _ = error "Not Implemented"
 
+instance ToObject Int where
+  toObject = ONum
+
+instance FromObject Int where
+  fromObject (ONum num) = num
+  fromObject _ = error "Not Implemented"
 
 newtype ObjectError = ObjectError { info :: T.Text }
-
-
-
-
-

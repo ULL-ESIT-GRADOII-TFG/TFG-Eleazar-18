@@ -6,6 +6,7 @@ import qualified Data.Vector as V
 import           Data.Functor
 
 import Compiler.Ast
+import Compiler.Prelude.Methods (operatorsPrecedence)
 import Compiler.Parser.Types
 import Compiler.Token.Methods
 import Compiler.Token.Lexer (Lexeme)
@@ -21,12 +22,12 @@ parseInterpreter = choice
   , Code <$> try parseStatements
   ]
 
-parseStatements :: TokenParser ([Statement TokenInfo])
+parseStatements :: TokenParser [Statement TokenInfo]
 parseStatements = many $ choice $ map
   try
   [ parseClassStatement
   , parseImportStatement
-  , (\expr -> Expr expr TokenInfo) <$> parseExp
+  , (`Expr` TokenInfo) <$> parseExp
   ]
 
 parseImportStatement :: TokenParser (Statement TokenInfo)
@@ -123,6 +124,10 @@ parseApply = do
   return $ Apply name params TokenInfo
 
 -- TODO: Ver como configurar el tema de las precedencia de los operadores
+parseOperators :: TokenParser (Expression TokenInfo)
+parseOperators = do
+  -- TODO: Check operator and continue
+  return undefined
 
 parseIdentifier :: TokenParser (Expression TokenInfo)
 parseIdentifier = do
@@ -131,17 +136,3 @@ parseIdentifier = do
 
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
-
-
-
-
-
-
-
-
-
-
-
-
-
-
