@@ -72,9 +72,8 @@ compileFile rawFile name = do
         tokenizer' <- scanner True $ T.unpack rawFile
         first show (parserLexer name (getTokens tokenizer')) -- TODO Take better Error
   case ast of
-    Left  err  -> liftIO $ print err
+    Left  err  -> liftIO $ putStrLn err
     Right ast' -> do
-      liftIO $ putStrLn "Hello something"
       liftIO $ print ast'
       mStatements <- tryExecuteICommand ast'
       case mStatements of
@@ -111,7 +110,7 @@ liftWorld stWorld = do
 -- | Internal use. To create native objects
 newVar :: T.Text -> Object -> Interpreter ()
 newVar idName obj = do
-  eRef <- liftScope $ addNewIdentifier idName
+  eRef <- liftScope $ addNewIdentifier (Simple idName TokenInfo)
   case eRef of
     Right ref -> liftWorld $ addObject ref obj
     Left  err -> liftIO $ print err
@@ -119,7 +118,7 @@ newVar idName obj = do
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
 getVar idName = do
-  eRef <- liftScope $ getIdentifier idName
+  eRef <- liftScope $ getIdentifier (Simple idName TokenInfo)
   case eRef of
     Right ref -> liftWorld $ findVar ref
     Left  err -> liftIO $ print err >> return ONone

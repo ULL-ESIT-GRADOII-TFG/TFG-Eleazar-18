@@ -1,7 +1,6 @@
 module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
-import qualified Data.Text as T
 import qualified Data.Map as M
 import           Lens.Micro.Platform
 
@@ -36,15 +35,17 @@ getNewId = do
   return newId
 
 -- | Add new variable name to scope and return its ID
-addNewIdentifier :: T.Text -> ScopeM a Word
-addNewIdentifier name = do
+addNewIdentifier :: Accessor a -> ScopeM a Word
+addNewIdentifier (Simple name _) = do
   newId <- getNewId
   currentScope . renameInfo %= M.insert name newId
   return newId
+addNewIdentifier _ = error ""
+
 
 -- | Get a specific ID from variable name
-getIdentifier :: T.Text -> ScopeM a Word
-getIdentifier name = do
+getIdentifier :: Accessor a -> ScopeM a Word
+getIdentifier (Simple name _) = do
   renamer <- use $ currentScope . renameInfo
   case M.lookup name renamer of
     Just ref -> return ref
@@ -57,13 +58,14 @@ getIdentifier name = do
   findInStack (scope:xs) = case scope ^. renameInfo & M.lookup name of
     Just ref -> Just ref
     Nothing  -> findInStack xs
+getIdentifier _ = error ""
 
 -- | Make a translation of variable names from AST, convert all to IDs and check rules
 -- of scoping
 scopingThroughtAST :: Expression a -> ScopeM a (ExpressionG a Word)
 scopingThroughtAST expr = case expr of
   FunDecl args body info -> withNewScope info $ do
-    argsId    <- mapM addNewIdentifier args
+    argsId    <- mapM (addNewIdentifier . (`Simple` info)) args
     scopeBody <- scopingThroughtAST body
     return $ FunDecl argsId scopeBody info
 
@@ -71,7 +73,7 @@ scopingThroughtAST expr = case expr of
     nameId <- addNewIdentifier name
     withNewScope info $ do
       expr'' <- scopingThroughtAST expr'
-      return $ VarDecl nameId expr'' info
+      return $ VarDecl (Simple nameId info) expr'' info
 
   SeqExpr exprs info -> withNewScope info $ do
     expr' <- mapM scopingThroughtAST exprs
@@ -90,20 +92,17 @@ scopingThroughtAST expr = case expr of
 
   For name iterExpr body info -> do
     iterExpr' <- withNewScope info $ scopingThroughtAST iterExpr
-    nameId    <- addNewIdentifier name
+    nameId    <- addNewIdentifier (Simple name info)
     body'     <- withNewScope info $ scopingThroughtAST body
     return $ For nameId iterExpr' body' info
-
 
   Apply name args info -> do
     args'  <- withNewScope info $ mapM scopingThroughtAST args
     nameId <- getIdentifier name
-    return $ Apply nameId args' info
+    return $ Apply (Simple nameId info) args' info
 
   Identifier name info -> do
     nameId <- getIdentifier name
-    return $ Identifier nameId info
+    return $ Identifier (Simple nameId info) info
 
   Factor atom info -> return $ Factor atom info
-
-

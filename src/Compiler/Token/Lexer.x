@@ -156,7 +156,11 @@ checkDecrement input len = do
       mkL (DedentT $ length removes) input len
 
 -- | Run tokenizer over string
-scanner :: Bool -> String -> Either String Tokenizer
+scanner
+  :: Bool -- ^ Use to close indentation, by default it should be true. (Used in
+          --   interpreter to check multiline input)
+   -> String -- ^ Source text code
+   -> Either String Tokenizer
 scanner autoClose str = runAlex str $ do
   let loop vec = do
         lexeme@(L i tok) <- alexMonadScan

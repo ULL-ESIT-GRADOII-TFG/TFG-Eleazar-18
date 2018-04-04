@@ -136,9 +136,16 @@ operatorT = match' $
     OperatorT op -> Just op
     _            -> Nothing
 
+operatorT' :: Text -> TokenParser ()
+operatorT' val = match' $
+  \case
+    OperatorT op
+      | op == val -> Just ()
+      | otherwise -> Nothing            
+    _            -> Nothing
+
 exitT :: TokenParser ()
 exitT = match (ICommandT "exit" [])
 
 helpT :: TokenParser ()
 helpT = match (ICommandT "help" [])
-

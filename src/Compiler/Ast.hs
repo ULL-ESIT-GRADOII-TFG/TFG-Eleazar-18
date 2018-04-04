@@ -22,14 +22,22 @@ type Expression a = ExpressionG a T.Text
 -- | Generic representation of expression
 data ExpressionG a id
   = FunDecl [id] (ExpressionG a id) a
-  | VarDecl id (ExpressionG a id) a
+  | VarDecl (AccessorG a id) (ExpressionG a id) a
   | SeqExpr [ExpressionG a id] a
   | If (ExpressionG a id) (ExpressionG a id) a
   | IfElse (ExpressionG a id) (ExpressionG a id) (ExpressionG a id) a
   | For id (ExpressionG a id) (ExpressionG a id) a
-  | Apply id [ExpressionG a id] a
-  | Identifier id a
+  | Apply (AccessorG a id) [ExpressionG a id] a
+  | Identifier (AccessorG a id) a
   | Factor Atom a
+  deriving Show
+
+type Accessor a = AccessorG a T.Text
+
+data AccessorG a id
+  = Dot id (AccessorG a id) a
+  | Bracket id (ExpressionG a id) (Maybe (AccessorG a id)) a
+  | Simple id a
   deriving Show
 
 data Atom

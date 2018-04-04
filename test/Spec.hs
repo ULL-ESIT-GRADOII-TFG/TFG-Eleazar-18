@@ -9,5 +9,4 @@ main :: IO ()
 main = hspec $ do
   describe "GitScript Test" $ do
     lexerTest
-    parserTest
-
+    --parserTest

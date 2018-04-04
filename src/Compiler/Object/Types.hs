@@ -22,6 +22,7 @@ data Object
   | ORegex T.Text -- TODO: search precompiled type
   | OShellCommand T.Text
   | OFunc (M.Map T.Text Object) [Word] (FreeT Instruction StWorld VarAccessor)
+  | OObject Word (M.Map T.Text Object)
   | ONative ([Object] -> FreeT Instruction StWorld VarAccessor)
   | ONone
 

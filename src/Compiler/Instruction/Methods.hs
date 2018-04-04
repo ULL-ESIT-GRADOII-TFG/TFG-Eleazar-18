@@ -49,6 +49,9 @@ getVal obj = liftF (GetVal obj id)
 end :: (MonadFree Instruction m) => m a
 end = liftF End
 
+getRefFromAccessor :: (Monad m) => AccessorG a Word -> FreeT Instruction m Word
+getRefFromAccessor (Simple word _) = return word
+getRefFromAccessor _ = error "Bracket or Dot not handle on instruction"
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
@@ -58,8 +61,9 @@ astToInstructions expr = case expr of
   FunDecl args prog _info ->
     return . Raw $ OFunc mempty args (astToInstructions prog)
 
-  VarDecl ref exprValue _info -> do
+  VarDecl acc exprValue _info -> do
     value <- astToInstructions exprValue
+    ref <- getRefFromAccessor acc
     ref =: value
     return . Raw $ ONone
 
@@ -79,11 +83,14 @@ astToInstructions expr = case expr of
     loop value (\val -> ref =: val >> astToInstructions prog)
     return . Raw $ ONone
 
-  Apply ref argsExpr _info -> do
+  Apply acc argsExpr _info -> do
     values <- mapM astToInstructions argsExpr
+    ref <- getRefFromAccessor acc
     callCommand ref values
 
-  Identifier ref  _info -> getVal ref
+  Identifier acc  _info -> do
+    ref <- getRefFromAccessor acc
+    getVal ref
 
   Factor     atom _info -> return . Raw $ fromAST atom
 
