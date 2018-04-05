@@ -27,7 +27,7 @@ import Compiler.Token.Lexer (scanner, getTokens, Tokenizer(..))
 initialState :: IState
 initialState = IState
   { _multiline = Nothing
-  , _memory    = World {_table = mempty}
+  , _memory    = World {_table = mempty, _typeDefinitions = mempty}
   , _scope     = initialScope TokenInfo
   }
 
@@ -84,7 +84,8 @@ compileFile rawFile name = do
           case astScoped of
             Right scopeAst -> do
               value <- liftWorld (runProgram (astToInstructions scopeAst))
-              liftIO $ print value
+              showable <- showInterpreter value
+              liftIO $ putStrLn showable
             Left err -> liftIO $ print err
 
 -- | Prelude load action
@@ -112,7 +113,7 @@ newVar :: T.Text -> Object -> Interpreter ()
 newVar idName obj = do
   eRef <- liftScope $ addNewIdentifier (Simple idName TokenInfo)
   case eRef of
-    Right ref -> liftWorld $ addObject ref obj
+    Right ref -> liftWorld $ addObject [ref] obj
     Left  err -> liftIO $ print err
 
 -- | Internal use to get specific interpreter variables
@@ -120,7 +121,7 @@ getVar :: T.Text -> Interpreter Object
 getVar idName = do
   eRef <- liftScope $ getIdentifier (Simple idName TokenInfo)
   case eRef of
-    Right ref -> liftWorld $ findVar ref
+    Right ref -> liftWorld $ findVar [ref]
     Left  err -> liftIO $ print err >> return ONone
 
 tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
@@ -129,7 +130,9 @@ tryExecuteICommand (Command name args) =
 tryExecuteICommand (Code statements) = return $ Just statements
 
 executeCommand :: T.Text -> [T.Text] -> Interpreter ()
-executeCommand _ _ = liftIO $ putStrLn "In Progress"
+executeCommand _ _ = do
+  mem <- use memory
+  liftIO $ print mem
 
 -- Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
@@ -139,3 +142,14 @@ computeStatements =
       Import _path _       -> error "No implemented yet import functionality"
       Class _name _exprs _ -> error "To Implement"
       Expr expr _          -> return $ SeqExpr (expr : exprs) t
+
+showInterpreter :: Object -> Interpreter String
+showInterpreter (OStr str) = return $ "\"" ++ T.unpack str ++ "\""
+showInterpreter (ORegex str) = return $ "/" ++ T.unpack str ++ "/"
+showInterpreter (OShellCommand str) = return $ "$ " ++ T.unpack str
+showInterpreter (ODouble val) = return $ show val
+showInterpreter (OBool val) = return $ show val
+showInterpreter (ONum val) = return $ show val
+showInterpreter (ORef rfs) = liftWorld (findVar rfs) >>= showInterpreter <&> ("*-> " ++)
+showInterpreter ONone = return "None"
+showInterpreter obj = return $ show obj

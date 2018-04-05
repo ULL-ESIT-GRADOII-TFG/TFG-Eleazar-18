@@ -35,6 +35,3 @@ data IState = IState
   }
 
 makeLenses ''IState
-
-
-

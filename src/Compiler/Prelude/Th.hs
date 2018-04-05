@@ -18,7 +18,7 @@ normalizePure'
     :: (ToObject o, FromObject a, FromObject b)
     => (a -> b -> o)
     -> [Object]
-    -> FreeT Instruction StWorld VarAccessor
+    -> FreeT Instruction StWorld Object
 normalizePure' fun = normalize (\a b -> toObject $ fun a b)
 -}
 
@@ -35,5 +35,5 @@ normalizeArity n = do
                         [| f |]
                         (map varE vs))
             |])
-      -- :: (ToObject $(varT out), $()) => ($(foldl appT  (varT out)  (map (appT arrowT) (map varT tvs)))) -> [Object] -> FreeT Instruction StWorld VarAccessor
+      -- :: (ToObject $(varT out), $()) => ($(foldl appT  (varT out)  (map (appT arrowT) (map varT tvs)))) -> [Object] -> FreeT Instruction StWorld Object
      |]

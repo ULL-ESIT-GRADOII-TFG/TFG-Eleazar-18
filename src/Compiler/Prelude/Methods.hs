@@ -43,26 +43,26 @@ baseObjects =
     , ("sum"  , ONative (normalizePure' ((+) :: Int -> Int -> Int)))
     ]
 
-printObj :: Object -> FreeT Instruction StWorld VarAccessor
-printObj obj = liftIO $ print obj >> return (Raw ONone)
+printObj :: Object -> FreeT Instruction StWorld Object
+printObj obj = liftIO $ print obj >> return ONone
 
 normalizePure
     :: (ToObject o, FromObject a)
     => (a -> o)
     -> [Object]
-    -> FreeT Instruction StWorld VarAccessor
+    -> FreeT Instruction StWorld Object
 normalizePure fun = normalize (toObject . fun)
 
 normalizePure'
     :: (ToObject o, FromObject a, FromObject b)
     => (a -> b -> o)
     -> [Object]
-    -> FreeT Instruction StWorld VarAccessor
+    -> FreeT Instruction StWorld Object
 normalizePure' = $(normalizeArity 2)
 
 normalizePure''
     :: (ToObject o, FromObject a, FromObject b, FromObject c)
     => (a -> b -> c -> o)
     -> [Object]
-    -> FreeT Instruction StWorld VarAccessor
+    -> FreeT Instruction StWorld Object
 normalizePure'' = $(normalizeArity 3)

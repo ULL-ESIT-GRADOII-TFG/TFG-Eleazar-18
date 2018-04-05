@@ -11,21 +11,21 @@ import Compiler.Instruction.Types
 data Assoc = LeftAssoc | RightAssoc deriving (Show, Eq)
 
 class Normalize a where
-  normalize :: a -> [Object] -> FreeT Instruction StWorld VarAccessor
+  normalize :: a -> [Object] -> FreeT Instruction StWorld Object
 
-instance Normalize (FreeT Instruction StWorld VarAccessor)  where
+instance Normalize (FreeT Instruction StWorld Object)  where
   normalize f ls =
     case ls of
       [] -> f
-      _ -> return $ Raw ONone -- TODO: Add Error
+      _ -> return ONone -- TODO: Add Error
 
 instance Normalize Object where
   normalize f ls =
     case ls of
-      [] -> return $ Raw f
-      _ -> return $ Raw ONone -- TODO: Add Error
+      [] -> return f
+      _ -> return ONone -- TODO: Add Error
 
 -- TODO: cambiar object por algo convertible a el -> normalize (+)
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
-  normalize _   []     = return $ Raw ONone -- TODO: Add Error
+  normalize _   []     = return ONone -- TODO: Add Error
   normalize fun (a:xs) = normalize (fun (fromObject a)) xs

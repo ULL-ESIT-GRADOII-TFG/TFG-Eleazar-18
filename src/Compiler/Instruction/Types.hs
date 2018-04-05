@@ -10,23 +10,18 @@ import qualified Data.Text.Lazy as T
 import Compiler.Object.Types
 import Compiler.World.Types
 
-data VarAccessor
-  = Ref Word
-  | Raw Object
-  deriving Show
-
 data Instruction next
-  = CallCommand !Word ![VarAccessor] (VarAccessor -> next)
+  = CallCommand ![Word] ![Object] (Object -> next)
   -- ^ Make a call to and defined function
-  | Assign !Word !VarAccessor next
+  | Assign ![Word] !Object next
   -- ^ Assign an object to local variable
-  | DropVar !Word next
-  | GetVal !Word (VarAccessor -> next)
-  | Loop VarAccessor (VarAccessor -> FreeT Instruction StWorld VarAccessor) next
-  | Cond VarAccessor
-      (FreeT Instruction StWorld VarAccessor)
-      (FreeT Instruction StWorld VarAccessor)
-      (VarAccessor -> next)
+  | DropVar ![Word] next
+  | GetVal ![Word] (Object -> next)
+  | Loop Object (Object -> FreeT Instruction StWorld Object) next
+  | Cond Object
+      (FreeT Instruction StWorld Object)
+      (FreeT Instruction StWorld Object)
+      (Object -> next)
   | End
   -- ^ End program, ignore all after that
   deriving Functor
@@ -43,4 +38,3 @@ type StPrint = StateT PPrint IO
 
 
 makeLenses ''PPrint
-

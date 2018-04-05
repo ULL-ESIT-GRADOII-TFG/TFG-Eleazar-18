@@ -38,10 +38,10 @@ fromAST atom =
     ABool bool -> OBool bool
 
 -- TODO: Set args
-callObject :: Object -> [Object] -> StWorld VarAccessor
+callObject :: Object -> [Object] -> StWorld Object
 callObject (OFunc _ _ids prog) _objs = runProgram prog
 callObject (ONative native) objs = runProgram (native objs)
-callObject _ _ = return $ Raw ONone
+callObject _ _ = return ONone
 
 mapObj :: Object -> (Object -> a) -> a
 mapObj = undefined

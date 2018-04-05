@@ -4,5 +4,6 @@ import           Control.Monad.Trans.Free
 
 import Compiler.Instruction.Types
 import Compiler.World.Types
+import Compiler.Object.Types
 
-runProgram :: FreeT Instruction StWorld VarAccessor -> StWorld VarAccessor
+runProgram :: FreeT Instruction StWorld Object -> StWorld Object

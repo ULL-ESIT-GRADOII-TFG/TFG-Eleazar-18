@@ -21,21 +21,24 @@ data Object
   | ONum Int
   | ORegex T.Text -- TODO: search precompiled type
   | OShellCommand T.Text
-  | OFunc (M.Map T.Text Object) [Word] (FreeT Instruction StWorld VarAccessor)
+  | OFunc (M.Map T.Text Object) [Word] (FreeT Instruction StWorld Object)
   | OObject Word (M.Map T.Text Object)
-  | ONative ([Object] -> FreeT Instruction StWorld VarAccessor)
+  | ONative ([Object] -> FreeT Instruction StWorld Object)
+  | ORef [Word]
   | ONone
 
 instance Show Object where
-  show (OStr text) = show text
-  show (OBool bool) = show bool
-  show (ODouble double) = show double
-  show (ORegex reg) = "regex/" ++ show reg ++ "/"
-  show (OShellCommand cmd) = "cmd$" ++ show cmd ++ "$"
-  show (ONum num) = show num
-  show (OFunc _ _ _) = "[Function]"
-  show (ONative _) = "[Native Function]"
-  show ONone = "None"
+  show OStr{} = "[String]"
+  show OBool{} = "[Bool]"
+  show ODouble{} = "[Double]"
+  show ORegex{} = "[Regex]"
+  show OShellCommand{} = "[ShellCmd]"
+  show ONum{} = "[Int]"
+  show OFunc{} = "[Function]"
+  show ONative{} = "[Native Function]"
+  show ORef{} = "[Reference]"
+  show OObject{} = "[Object]"
+  show ONone = "[None]"
 
 instance ToObject Object where
   toObject = id

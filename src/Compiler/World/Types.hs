@@ -9,23 +9,33 @@ import qualified Data.Text as T
 import           Lens.Micro.Platform
 
 import {-# SOURCE #-} Compiler.Object.Types
-import {-# SOURCE #-}Compiler.Instruction.Types
+import {-# SOURCE #-} Compiler.Instruction.Types
 
 
 data ClassDefinition = ClassDefinition
   { _name :: T.Text
-  , _values :: M.Map T.Text ([Object] -> FreeT Instruction StWorld VarAccessor)
+  --, _values :: M.Map T.Text ([Object] -> FreeT Instruction StWorld Object)
   }
+  deriving Show
 
-data Var = Var
-  { _refs :: !Word
-  , _rawVar :: !Object
-  }
+-- | Used to storage vars into memory, atleast its reference structure
+data Var
+  = Var
+    { _refs :: !Word
+    , _rawVar :: !Object
+    }
+  | SetVar
+    { _refsMain :: !Word
+    , _vars :: IM.IntMap Var
+    , _rawMainVar :: !Object
+    }
+  deriving Show
 
 data World = World
   { _table :: IM.IntMap Var
   , _typeDefinitions :: IM.IntMap ClassDefinition
   }
+  deriving Show
 
 -- TODO: Error
 type StWorld = StateT World IO
