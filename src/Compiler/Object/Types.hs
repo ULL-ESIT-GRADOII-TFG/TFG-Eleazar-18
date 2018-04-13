@@ -2,9 +2,7 @@ module Compiler.Object.Types where
 
 import qualified Data.Text                  as T
 import qualified Data.Map                   as M
-import           Control.Monad.Trans.Free
 
-import Compiler.World.Types
 import {-# SOURCE #-} Compiler.Instruction.Types
 
 
@@ -21,10 +19,13 @@ data Object
   | ONum Int
   | ORegex T.Text -- TODO: search precompiled type
   | OShellCommand T.Text
-  | OFunc (M.Map T.Text Object) [Word] (FreeT Instruction StWorld Object)
-  | OObject Word (M.Map T.Text Object)
-  | ONative ([Object] -> FreeT Instruction StWorld Object)
-  | ORef [Word]
+  | OFunc (M.Map T.Text Object) [Word] Prog
+  | OObject (Maybe Word) (M.Map T.Text Word)
+  -- ^ Object instance from class Word
+  | ONative ([Object] -> Prog)
+  -- ^ Native object
+  | ORef Word
+  -- ^ Pointer reference
   | ONone
 
 instance Show Object where
@@ -60,4 +61,10 @@ instance FromObject Int where
   fromObject (ONum num) = num
   fromObject _ = error "Not Implemented"
 
+instance ToObject Double where
+  toObject = ODouble
+
+instance FromObject Double where
+  fromObject (ODouble num) = num
+  fromObject _ = error "Not Implemented"
 newtype ObjectError = ObjectError { info :: T.Text }

@@ -7,22 +7,26 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import           Lens.Micro.Platform
 
-data ScopeError = NoIdFound T.Text
+import Compiler.Instruction.Types
+
+
+data ScopeError
+  = NoIdFound T.Text
+  | InternalFail
   deriving Show
 
-type ScopeM last = ExceptT ScopeError (State (Scope last))
+type ScopeM = ExceptT ScopeError (State Scope)
 
-data Scope last = Scope
+data Scope = Scope
   { _nextId :: Word
-  , _currentScope :: ScopeInfo last
-  , _stackScope :: [ScopeInfo last]
-  }
+  , _currentScope :: ScopeInfo
+  , _stackScope :: [ScopeInfo]
+  } deriving Show
 
-data ScopeInfo last = ScopeInfo
-  { _prevInfo :: last
-  , _renameInfo :: M.Map T.Text Word
-  }
+newtype ScopeInfo = ScopeInfo
+  { _renameInfo :: M.Map T.Text AddressRef
+  } deriving Show
+
 
 makeLenses ''Scope
 makeLenses ''ScopeInfo
-

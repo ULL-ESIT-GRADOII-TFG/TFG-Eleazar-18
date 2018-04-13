@@ -1,30 +1,26 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Compiler.Object.Methods where
-
-import qualified Data.Text                  as T
-import           Data.Monoid
 
 import Compiler.Ast
 import Compiler.World.Types
-import Compiler.Instruction.Types
 import {-# SOURCE #-} Compiler.Instruction.Methods
 import Compiler.Object.Types
+
 
 isNone :: Object -> Bool
 isNone ONone = True
 isNone _     = False
 
-infoPrim :: Object -> T.Text
-infoPrim prim = case prim of
-  ONone     -> ""
-  OBool b   -> "Bool:" <> T.pack (show b)
-  ONum i    -> "Int:" <> T.pack (show i)
-  ODouble i -> "Int:" <> T.pack (show i)
-  OStr t    -> "Text:" <> (if T.length t > 8 then T.take 5 t <> "..." else t)
-  OFunc {}  -> "Fun"
-  ORegex t  -> "Regex: /" <> T.pack (show t) <> "/"
-  OShellCommand t  -> "Cmd: /" <> T.pack (show t) <> "/"
-  ONative {}  -> "Native"
+-- infoPrim :: Object -> T.Text
+-- infoPrim prim = case prim of
+--   ONone     -> ""
+--   OBool b   -> "Bool:" <> T.pack (show b)
+--   ONum i    -> "Int:" <> T.pack (show i)
+--   ODouble i -> "Int:" <> T.pack (show i)
+--   OStr t    -> "Text:" <> (if T.length t > 8 then T.take 5 t <> "..." else t)
+--   OFunc {}  -> "Fun"
+--   ORegex t  -> "Regex: /" <> T.pack (show t) <> "/"
+--   OShellCommand t  -> "Cmd: /" <> T.pack (show t) <> "/"
+--   ONative {}  -> "Native"
 
 
 fromAST :: Atom -> Object

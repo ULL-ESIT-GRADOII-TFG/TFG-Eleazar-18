@@ -40,7 +40,15 @@ baseObjects :: [(T.Text, Object)]
 baseObjects =
     [ ("print", ONative (normalize printObj))
     , ("not"  , ONative (normalizePure not))
-    , ("sum"  , ONative (normalizePure' ((+) :: Int -> Int -> Int)))
+    , ("!"  , ONative (normalizePure not)) -- TODO: Check unary operators in the parser
+    , ("||"  , ONative (normalizePure' (||)))
+    , ("&&"  , ONative (normalizePure' (&&)))
+    , ("+"  , ONative (normalizePure' ((+) :: Int -> Int -> Int))) -- TODO: Allow polymorfims
+    , ("-"  , ONative (normalizePure' ((-) :: Int -> Int -> Int)))
+    , ("/"  , ONative (normalizePure' (div :: Int -> Int -> Int)))
+    , ("%"  , ONative (normalizePure' (mod :: Int -> Int -> Int)))
+    , ("*"  , ONative (normalizePure' ((*) :: Int -> Int -> Int)))
+    , ("**"  , ONative (normalizePure' ((**) :: Double -> Double -> Double)))
     ]
 
 printObj :: Object -> FreeT Instruction StWorld Object

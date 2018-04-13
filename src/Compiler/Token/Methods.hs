@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -141,11 +140,11 @@ operatorT' val = match' $
   \case
     OperatorT op
       | op == val -> Just ()
-      | otherwise -> Nothing            
+      | otherwise -> Nothing
     _            -> Nothing
 
-exitT :: TokenParser ()
-exitT = match (ICommandT "exit" [])
-
-helpT :: TokenParser ()
-helpT = match (ICommandT "help" [])
+iCommandT :: TokenParser (Text, [Text])
+iCommandT = match' $
+  \case
+    ICommandT op args -> Just (op, args)
+    _                 -> Nothing

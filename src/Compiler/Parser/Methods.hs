@@ -4,7 +4,6 @@ module Compiler.Parser.Methods where
 import           Text.Parsec
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import           Data.Functor
 import qualified Data.Map as M
 
 import Compiler.Ast
@@ -19,14 +18,13 @@ parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
 parserLexer = parse parseInterpreter
 
 parseInterpreter :: TokenParser Repl
-parseInterpreter = (choice
-  [ try $ exitT $> Command "exit" []
-  , try $ helpT $> Command "help" []
+parseInterpreter = choice
+  [ uncurry Command <$> try iCommandT
   , Code <$> try parseStatements
-  ]) <* eof
+  ] <* eof
 
 parseStatements :: TokenParser [Statement TokenInfo]
-parseStatements = (many $ choice $ map
+parseStatements = many (choice $ map
   try
   [ parseClassStatement
   , parseImportStatement
@@ -143,7 +141,7 @@ checkOperator level = do
     Nothing -> parserFail "No valid operator"
 
 levels :: [Int] -> TokenParser (Expression TokenInfo)
-levels = flip foldl parseFactor level
+levels = foldl level parseFactor
   where
     level nextLevel leveln = do
       expr <- nextLevel

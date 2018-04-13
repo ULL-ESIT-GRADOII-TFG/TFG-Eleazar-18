@@ -4,9 +4,10 @@
 module Compiler.Instruction.Methods where
 
 import           Control.Monad
+import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
 import           Control.Monad.Trans.State.Strict
-import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy as LT
 import           Lens.Micro.Platform
 import           Formatting
 
@@ -19,14 +20,14 @@ import Compiler.Object.Methods
 
 
 callCommand
-  :: (MonadFree Instruction m) => [Word] -> [Object] -> m Object
+  :: (MonadFree Instruction m) => AddressRef -> [Object] -> m Object
 callCommand nameId objs = liftF (CallCommand nameId objs id)
 
-(=:) :: (MonadFree Instruction m) => [Word] -> Object -> m ()
+(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m ()
 nameId =: obj = liftF (Assign nameId obj ())
 
-dropVar :: (MonadFree Instruction m) => [Word] -> m ()
-dropVar ref = liftF (DropVar ref ())
+dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
+dropVar r = liftF (DropVar r ())
 
 loop
   :: (MonadFree Instruction m)
@@ -43,30 +44,29 @@ cond
   -> m Object
 cond obj true false = liftF (Cond obj true false id)
 
-getVal :: (MonadFree Instruction m) => [Word] -> m Object
+getVal :: (MonadFree Instruction m) => AddressRef -> m Object
 getVal obj = liftF (GetVal obj id)
 
 end :: (MonadFree Instruction m) => m a
 end = liftF End
 
-getRefFromAccessor
-  :: (Monad m) => AccessorG a Word -> FreeT Instruction m [Word]
-getRefFromAccessor (Simple word _ ) = return [word]
-getRefFromAccessor (Dot word acc _) = (word :) <$> getRefFromAccessor acc
-getRefFromAccessor _                = error "Bracket not handle on instruction"
+-- getRefFromAccessor
+--   :: (Monad m) => AccessorG a Word -> FreeT Instruction m [Word]
+-- getRefFromAccessor (Simple word _ ) = return [word]
+-- getRefFromAccessor (Dot word acc _) = (word :) <$> getRefFromAccessor acc
+-- getRefFromAccessor _                = error "Bracket not handle on instruction"
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
 astToInstructions
-  :: (Monad m) => ExpressionG last Word -> FreeT Instruction m Object
+  :: (Monad m) => ExpressionG Identity last AddressRef -> FreeT Instruction m Object
 astToInstructions expr = case expr of
   FunDecl args prog _info ->
-    return $ OFunc mempty args (astToInstructions prog)
+    return $ OFunc mempty (map (\(AddressRef ref' _) -> ref') args) (astToInstructions prog)
 
-  VarDecl acc exprValue _info -> do
+  VarDecl ref' exprValue _info -> do
     value <- astToInstructions exprValue
-    ref   <- getRefFromAccessor acc
-    ref =: value
+    runIdentity ref' =: value
     return ONone
 
   SeqExpr exprs _info ->
@@ -80,19 +80,17 @@ astToInstructions expr = case expr of
     value <- astToInstructions condExpr
     cond value (astToInstructions trueProg) (astToInstructions falseProg)
 
-  For ref iterExpr prog _info -> do
+  For ref' iterExpr prog _info -> do
     value <- astToInstructions iterExpr
-    loop value (\val -> [ref] =: val >> astToInstructions prog)
+    loop value (\val -> ref' =: val >> astToInstructions prog)
     return ONone
 
-  Apply acc argsExpr _info -> do
-    values <- mapM astToInstructions argsExpr
-    ref    <- getRefFromAccessor acc
-    callCommand ref values
+  Apply ref' argsExpr _info -> do
+    values' <- mapM astToInstructions argsExpr
+    callCommand (runIdentity ref') values'
 
-  Identifier acc _info -> do
-    ref <- getRefFromAccessor acc
-    getVal ref
+  Identifier ref' _info -> do
+    getVal (runIdentity ref')
 
   Factor atom _info -> return $ fromAST atom
 
@@ -127,19 +125,21 @@ runProgram = iterT $ \case
       then runProgram trueNext >>= next
       else runProgram falseNext >>= next
 
-  GetVal idObj next -> next $ ORef idObj
+  GetVal idObj next -> do
+    ref' <- findVar idObj
+    next $ ref'
 
   End               -> return ONone
 
-newFakeRef :: StPrint [Word]
+newFakeRef :: StPrint Word
 newFakeRef = do
   fakeId += 1
-  (:[]) <$> use fakeId
+  use fakeId
 
-linePP :: T.Text -> StPrint ()
+linePP :: LT.Text -> StPrint ()
 linePP txt =
   -- Fix Indentation
-  generate %= (`T.append` txt)
+  generate %= (`LT.append` txt)
 
 newLevel :: StPrint PPrint
 newLevel = do
@@ -153,16 +153,16 @@ unnestLevel = undefined
 pprint :: FreeT Instruction StPrint () -> StPrint ()
 pprint = iterT $ \case
   CallCommand idFun args next -> do
-    linePP (format ("Call #" % int % " With: " % shown) (head idFun) args)
+    linePP (format ("Call #" % shown % " With: " % shown) idFun args)
     refId <- newFakeRef -- show id where is generate
     next $ ORef refId
 
   Assign idObj accObject next -> do
-    linePP (format ("#" % int % " = " % shown) (head idObj) accObject)
+    linePP (format ("#" % shown % " = " % shown) idObj accObject)
     next
 
   DropVar idObj next -> do
-    linePP (format ("Drop #" % int) (head idObj))
+    linePP (format ("Drop #" % shown) idObj)
     next
 
   Loop accObject _prog next -> do
@@ -179,7 +179,7 @@ pprint = iterT $ \case
     next $ ORef refId
 
   GetVal idObj next -> do
-    linePP (format ("Loop " % int) (head idObj))
+    linePP (format ("Loop " % shown) idObj)
     refId <- newFakeRef -- show id where is generate
     next $ ORef refId
 

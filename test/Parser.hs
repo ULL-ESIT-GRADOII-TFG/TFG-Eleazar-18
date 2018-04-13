@@ -1,8 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE OverloadedStrings #-}
 module Parser where
 
-import Test.Hspec
-import Text.Parsec
+--import Test.Hspec
+--import Text.Parsec
 --
 -- import GHS.Language.Lexer
 -- import GHS.Language.Token

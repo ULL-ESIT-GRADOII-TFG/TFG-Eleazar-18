@@ -27,8 +27,7 @@ import Compiler.Token.Lexer (scanner, getTokens, Tokenizer(..))
 initialState :: IState
 initialState = IState
   { _multiline = Nothing
-  , _memory    = World {_table = mempty, _typeDefinitions = mempty}
-  , _scope     = initialScope TokenInfo
+  , _memory    = World {_table = mempty, _typeDefinitions = mempty, _scope = initialScope}
   }
 
 -- | Start an repl without prelude
@@ -67,10 +66,10 @@ tokenizer input = case scanner False $ T.unpack input of
 
 -- | Compile a file
 compileFile :: T.Text -> String -> Interpreter ()
-compileFile rawFile name = do
+compileFile rawFile nameFile = do
   let ast = do
         tokenizer' <- scanner True $ T.unpack rawFile
-        first show (parserLexer name (getTokens tokenizer')) -- TODO Take better Error
+        first show (parserLexer nameFile (getTokens tokenizer')) -- TODO Take better Error
   case ast of
     Left  err  -> liftIO $ putStrLn err
     Right ast' -> do
@@ -93,11 +92,11 @@ loadPrelude :: Interpreter ()
 loadPrelude = mapM_ (uncurry newVar) baseObjects
 
 -- | Allow execute actions from ScopeM into Interpreter
-liftScope :: ScopeM TokenInfo b -> Interpreter (Either ScopeError b)
+liftScope :: ScopeM b -> Interpreter (Either ScopeError b)
 liftScope scopeM = do
-  lastScope <- use scope
+  lastScope <- use (memory.scope)
   let (value, newScope) = runState (runExceptT scopeM) lastScope
-  scope .= newScope
+  memory.scope .= newScope
   return value
 
 -- | Allow execute actions from StWorld into Interpreter
@@ -111,24 +110,25 @@ liftWorld stWorld = do
 -- | Internal use. To create native objects
 newVar :: T.Text -> Object -> Interpreter ()
 newVar idName obj = do
-  eRef <- liftScope $ addNewIdentifier (Simple idName TokenInfo)
+  eRef <- liftScope $ addNewIdentifier [idName]
   case eRef of
-    Right ref -> liftWorld $ addObject [ref] obj
+    Right ref -> liftWorld $ addObject ref obj
     Left  err -> liftIO $ print err
 
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
 getVar idName = do
-  eRef <- liftScope $ getIdentifier (Simple idName TokenInfo)
+  eRef <- liftScope $ getIdentifier [idName]
   case eRef of
-    Right ref -> liftWorld $ findVar [ref]
+    Right ref -> liftWorld $ findVar ref
     Left  err -> liftIO $ print err >> return ONone
 
 tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
-tryExecuteICommand (Command name args) =
-  executeCommand name args >> return Nothing
+tryExecuteICommand (Command cmd args) =
+  executeCommand cmd args >> return Nothing
 tryExecuteICommand (Code statements) = return $ Just statements
 
+-- TODO:
 executeCommand :: T.Text -> [T.Text] -> Interpreter ()
 executeCommand _ _ = do
   mem <- use memory
@@ -139,17 +139,20 @@ computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
 computeStatements =
   flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st ->
     case st of
-      Import _path _       -> error "No implemented yet import functionality"
-      Class _name _exprs _ -> error "To Implement"
-      Expr expr _          -> return $ SeqExpr (expr : exprs) t
+      Import _path _ -> error "No implemented yet import functionality"
+      cls@Class{}    -> do
+        _ <- liftScope $ scopingClassAST cls
+        return $ SeqExpr [] TokenInfo
+      Expr expr _    -> return $ SeqExpr (expr : exprs) t
 
 showInterpreter :: Object -> Interpreter String
-showInterpreter (OStr str) = return $ "\"" ++ T.unpack str ++ "\""
-showInterpreter (ORegex str) = return $ "/" ++ T.unpack str ++ "/"
-showInterpreter (OShellCommand str) = return $ "$ " ++ T.unpack str
-showInterpreter (ODouble val) = return $ show val
-showInterpreter (OBool val) = return $ show val
-showInterpreter (ONum val) = return $ show val
-showInterpreter (ORef rfs) = liftWorld (findVar rfs) >>= showInterpreter <&> ("*-> " ++)
-showInterpreter ONone = return "None"
-showInterpreter obj = return $ show obj
+showInterpreter obj = case obj of
+  (OStr str) -> return $ "\"" ++ T.unpack str ++ "\""
+  (ORegex str) -> return $ "/" ++ T.unpack str ++ "/"
+  (OShellCommand str) -> return $ "$ " ++ T.unpack str
+  (ODouble val) -> return $ show val
+  (OBool val) -> return $ show val
+  (ONum val) -> return $ show val
+  (ORef rfs) -> liftWorld (follow rfs) >>= showInterpreter <&> ("*-> " ++)
+  ONone -> return "None"
+  object -> return $ show object
