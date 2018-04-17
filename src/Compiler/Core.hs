@@ -4,6 +4,7 @@ import           Control.Monad.State.Strict
 import           System.Console.Haskeline
 
 import           Compiler.Interpreter.Methods
+import           Compiler.Prelude.Methods
 
 
 -- | Start the program searching a config with authentication tokens,

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7ca1cd9645c68b96726314592db252a1a03a5bcf722d522597e1776fb3482da1
+-- hash: eca69f76670100629aa5702637a4bab46921beb8236613ea8770a21c2cd4ce05
 
 name:           ScriptFlow
 version:        0.0.1
@@ -59,6 +59,8 @@ library
       Compiler.Core
       Compiler.Interpreter.Types
       Compiler.Interpreter.Methods
+      Compiler.Interpreter.Utils
+      Compiler.Interpreter.Command.Methods
       Compiler.Scope.Types
       Compiler.Scope.Methods
       Compiler.Object.Types

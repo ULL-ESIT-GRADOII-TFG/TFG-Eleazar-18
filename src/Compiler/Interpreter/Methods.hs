@@ -1,26 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Interpreter.Methods where
 
-import           Data.Maybe
-import qualified Data.Text as T
-import           Data.Bifunctor
 import           Control.Monad.State.Strict
-import           Control.Monad.Except
+import           Data.Bifunctor
+import           Data.Maybe
+import qualified Data.Text                            as T
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
-import Compiler.Ast
-import Compiler.Interpreter.Types
-import Compiler.Object.Types
-import Compiler.World.Types
-import Compiler.World.Methods
-import Compiler.Instruction.Methods
-import Compiler.Scope.Types
-import Compiler.Scope.Methods
-import Compiler.Parser.Types
-import Compiler.Parser.Methods
-import Compiler.Prelude.Methods
-import Compiler.Token.Lexer (scanner, getTokens, Tokenizer(..))
+import           Compiler.Ast
+import           Compiler.Instruction.Methods
+import           Compiler.Interpreter.Command.Methods
+import           Compiler.Interpreter.Types
+import           Compiler.Interpreter.Utils
+import           Compiler.Parser.Methods
+import           Compiler.Parser.Types
+import           Compiler.Scope.Methods
+import           Compiler.Token.Lexer                 (Tokenizer (..),
+                                                       getTokens, scanner)
+import           Compiler.World.Types
 
 
 -- | Initial State of interpreter
@@ -83,56 +81,17 @@ compileFile rawFile nameFile = do
           case astScoped of
             Right scopeAst -> do
               value <- liftWorld (runProgram (astToInstructions scopeAst))
-              showable <- showInterpreter value
-              liftIO $ putStrLn showable
+              case value of
+                Just value' -> do
+                  showable <- showInterpreter value'
+                  liftIO $ putStrLn showable
+                Nothing -> return ()
             Left err -> liftIO $ print err
-
--- | Prelude load action
-loadPrelude :: Interpreter ()
-loadPrelude = mapM_ (uncurry newVar) baseObjects
-
--- | Allow execute actions from ScopeM into Interpreter
-liftScope :: ScopeM b -> Interpreter (Either ScopeError b)
-liftScope scopeM = do
-  lastScope <- use (memory.scope)
-  let (value, newScope) = runState (runExceptT scopeM) lastScope
-  memory.scope .= newScope
-  return value
-
--- | Allow execute actions from StWorld into Interpreter
-liftWorld :: StWorld a -> Interpreter a
-liftWorld stWorld = do
-  lastMemory         <- use memory
-  (value, newMemory) <- liftIO $ runStateT stWorld lastMemory
-  memory .= newMemory
-  return value
-
--- | Internal use. To create native objects
-newVar :: T.Text -> Object -> Interpreter ()
-newVar idName obj = do
-  eRef <- liftScope $ addNewIdentifier [idName]
-  case eRef of
-    Right ref -> liftWorld $ addObject ref obj
-    Left  err -> liftIO $ print err
-
--- | Internal use to get specific interpreter variables
-getVar :: T.Text -> Interpreter Object
-getVar idName = do
-  eRef <- liftScope $ getIdentifier [idName]
-  case eRef of
-    Right ref -> liftWorld $ findVar ref
-    Left  err -> liftIO $ print err >> return ONone
 
 tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
 tryExecuteICommand (Command cmd args) =
   executeCommand cmd args >> return Nothing
 tryExecuteICommand (Code statements) = return $ Just statements
-
--- TODO:
-executeCommand :: T.Text -> [T.Text] -> Interpreter ()
-executeCommand _ _ = do
-  mem <- use memory
-  liftIO $ print mem
 
 -- Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
@@ -144,15 +103,3 @@ computeStatements =
         _ <- liftScope $ scopingClassAST cls
         return $ SeqExpr [] TokenInfo
       Expr expr _    -> return $ SeqExpr (expr : exprs) t
-
-showInterpreter :: Object -> Interpreter String
-showInterpreter obj = case obj of
-  (OStr str) -> return $ "\"" ++ T.unpack str ++ "\""
-  (ORegex str) -> return $ "/" ++ T.unpack str ++ "/"
-  (OShellCommand str) -> return $ "$ " ++ T.unpack str
-  (ODouble val) -> return $ show val
-  (OBool val) -> return $ show val
-  (ONum val) -> return $ show val
-  (ORef rfs) -> liftWorld (follow rfs) >>= showInterpreter <&> ("*-> " ++)
-  ONone -> return "None"
-  object -> return $ show object

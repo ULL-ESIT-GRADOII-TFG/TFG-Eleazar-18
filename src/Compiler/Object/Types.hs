@@ -1,11 +1,12 @@
 module Compiler.Object.Types where
 
-import qualified Data.Text                  as T
 import qualified Data.Map                   as M
+import qualified Data.Text                  as T
 
 import {-# SOURCE #-} Compiler.Instruction.Types
 
 
+-- | TODO: It could fail. Change type signature
 class ToObject o where
   toObject :: o -> Object
 
@@ -29,17 +30,18 @@ data Object
   | ONone
 
 instance Show Object where
-  show OStr{} = "[String]"
-  show OBool{} = "[Bool]"
-  show ODouble{} = "[Double]"
-  show ORegex{} = "[Regex]"
-  show OShellCommand{} = "[ShellCmd]"
-  show ONum{} = "[Int]"
-  show OFunc{} = "[Function]"
-  show ONative{} = "[Native Function]"
-  show ORef{} = "[Reference]"
-  show OObject{} = "[Object]"
-  show ONone = "[None]"
+  show obj = case obj of
+    OStr{}          -> "[String]"
+    OBool{}         -> "[Bool]"
+    ODouble{}       -> "[Double]"
+    ORegex{}        -> "[Regex]"
+    OShellCommand{} -> "[ShellCmd]"
+    ONum{}          -> "[Int]"
+    OFunc{}         -> "[Function]"
+    ONative{}       -> "[Native Function]"
+    ORef{}          -> "[Reference]"
+    OObject{}       -> "[Object]"
+    ONone           -> "[None]"
 
 instance ToObject Object where
   toObject = id
@@ -52,19 +54,19 @@ instance ToObject Bool where
 
 instance FromObject Bool where
   fromObject (OBool bool) = bool
-  fromObject _ = error "Not Implemented"
+  fromObject _            = error "Not Implemented"
 
 instance ToObject Int where
   toObject = ONum
 
 instance FromObject Int where
   fromObject (ONum num) = num
-  fromObject _ = error "Not Implemented"
+  fromObject _          = error "Not Implemented"
 
 instance ToObject Double where
   toObject = ODouble
 
 instance FromObject Double where
   fromObject (ODouble num) = num
-  fromObject _ = error "Not Implemented"
+  fromObject _             = error "Not Implemented"
 newtype ObjectError = ObjectError { info :: T.Text }

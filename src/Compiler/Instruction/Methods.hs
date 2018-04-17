@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Instruction.Methods where
 
@@ -7,54 +7,17 @@ import           Control.Monad
 import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
 import           Control.Monad.Trans.State.Strict
-import qualified Data.Text.Lazy as LT
-import           Lens.Micro.Platform
+import qualified Data.Text.Lazy                   as LT
 import           Formatting
+import           Lens.Micro.Platform
 
-import Compiler.Ast
-import Compiler.Instruction.Types
-import Compiler.World.Types
-import Compiler.World.Methods
-import Compiler.Object.Types
-import Compiler.Object.Methods
+import           Compiler.Ast
+import           Compiler.Instruction.Types
+import           Compiler.Object.Methods
+import           Compiler.Object.Types
+import           Compiler.World.Methods
+import           Compiler.World.Types
 
-
-callCommand
-  :: (MonadFree Instruction m) => AddressRef -> [Object] -> m Object
-callCommand nameId objs = liftF (CallCommand nameId objs id)
-
-(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m ()
-nameId =: obj = liftF (Assign nameId obj ())
-
-dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
-dropVar r = liftF (DropVar r ())
-
-loop
-  :: (MonadFree Instruction m)
-  => Object
-  -> (Object -> FreeT Instruction StWorld Object)
-  -> m ()
-loop obj prog = liftF (Loop obj prog ())
-
-cond
-  :: (MonadFree Instruction m)
-  => Object
-  -> FreeT Instruction StWorld Object
-  -> FreeT Instruction StWorld Object
-  -> m Object
-cond obj true false = liftF (Cond obj true false id)
-
-getVal :: (MonadFree Instruction m) => AddressRef -> m Object
-getVal obj = liftF (GetVal obj id)
-
-end :: (MonadFree Instruction m) => m a
-end = liftF End
-
--- getRefFromAccessor
---   :: (Monad m) => AccessorG a Word -> FreeT Instruction m [Word]
--- getRefFromAccessor (Simple word _ ) = return [word]
--- getRefFromAccessor (Dot word acc _) = (word :) <$> getRefFromAccessor acc
--- getRefFromAccessor _                = error "Bracket not handle on instruction"
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
@@ -95,19 +58,18 @@ astToInstructions expr = case expr of
   Factor atom _info -> return $ fromAST atom
 
 
--- | TODO: Change type it should be possible make errors in this phase
+-- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object
 runProgram = iterT $ \case
   -- Find into world function and correspondent objects
   CallCommand idFun args next -> do
-    obj     <- findVar idFun
-    argsObj <- mapM getObject args
-    retObj  <- callObject obj argsObj
+    -- TODO:Es necesario unir estos dos para poder hacer la llamada a un metodo del objeto
+    retObj  <- callObject idFun args
     next retObj
 
   Assign idObj accObject next -> do
-    object <- getObject accObject
-    addObject idObj object
+    -- object <- getObject accObject
+    addObject idObj accObject
     next
 
   DropVar idObj next -> do
@@ -115,19 +77,19 @@ runProgram = iterT $ \case
     next
 
   Loop accObject prog next -> do
-    oIter <- getObject accObject
-    _     <- mapObj oIter (runProgram . prog)
+    -- oIter <- getObject accObject
+    _     <- mapObj accObject (runProgram . prog)
     next
 
   Cond objectCond trueNext falseNext next -> do
-    boolean <- getObject objectCond
-    if checkBool boolean
+    bool <-  checkBool objectCond
+    if bool
       then runProgram trueNext >>= next
       else runProgram falseNext >>= next
 
   GetVal idObj next -> do
-    ref' <- findVar idObj
-    next $ ref'
+    ref' <- findObject idObj
+    next ref'
 
   End               -> return ONone
 
@@ -184,3 +146,37 @@ pprint = iterT $ \case
     next $ ORef refId
 
   End -> linePP "End"
+
+-------------------------------------------------------------------------------
+-- * Utils
+-------------------------------------------------------------------------------
+callCommand
+  :: (MonadFree Instruction m) => AddressRef -> [Object] -> m Object
+callCommand nameId objs = liftF (CallCommand nameId objs id)
+
+(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m ()
+nameId =: obj = liftF (Assign nameId obj ())
+
+dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
+dropVar r = liftF (DropVar r ())
+
+loop
+  :: (MonadFree Instruction m)
+  => Object
+  -> (Object -> FreeT Instruction StWorld Object)
+  -> m ()
+loop obj prog = liftF (Loop obj prog ())
+
+cond
+  :: (MonadFree Instruction m)
+  => Object
+  -> FreeT Instruction StWorld Object
+  -> FreeT Instruction StWorld Object
+  -> m Object
+cond obj true false = liftF (Cond obj true false id)
+
+getVal :: (MonadFree Instruction m) => AddressRef -> m Object
+getVal obj = liftF (GetVal obj id)
+
+end :: (MonadFree Instruction m) => m a
+end = liftF End

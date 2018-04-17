@@ -1,18 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Compiler.Prelude.Th where
 
-import Control.Monad
+import           Control.Monad
 --import           Control.Monad.Trans.Free
-import Language.Haskell.TH
+import           Language.Haskell.TH
 
-import Compiler.Object.Types
+import           Compiler.Object.Types
 --import Compiler.World.Types
 --import Compiler.Instruction.Types
 
-import Compiler.Prelude.Types
+import           Compiler.Prelude.Types
 
--- take function
--- include :: () -> Q Exp
+
 {-
 normalizePure'
     :: (ToObject o, FromObject a, FromObject b)

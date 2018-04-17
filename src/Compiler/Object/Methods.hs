@@ -1,46 +1,45 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Compiler.Object.Methods where
 
-import Compiler.Ast
-import Compiler.World.Types
+import           Compiler.Ast
 import {-# SOURCE #-} Compiler.Instruction.Methods
-import Compiler.Object.Types
-
+import           Compiler.Instruction.Types
+import           Compiler.Object.Types
+import           Compiler.World.Methods
+import           Compiler.World.Types
 
 isNone :: Object -> Bool
 isNone ONone = True
 isNone _     = False
 
--- infoPrim :: Object -> T.Text
--- infoPrim prim = case prim of
---   ONone     -> ""
---   OBool b   -> "Bool:" <> T.pack (show b)
---   ONum i    -> "Int:" <> T.pack (show i)
---   ODouble i -> "Int:" <> T.pack (show i)
---   OStr t    -> "Text:" <> (if T.length t > 8 then T.take 5 t <> "..." else t)
---   OFunc {}  -> "Fun"
---   ORegex t  -> "Regex: /" <> T.pack (show t) <> "/"
---   OShellCommand t  -> "Cmd: /" <> T.pack (show t) <> "/"
---   ONative {}  -> "Native"
-
-
+-- | Transform literal data from AST to an object
 fromAST :: Atom -> Object
 fromAST atom =
   case atom of
-    ANum int -> ONum int
-    AStr str -> OStr str
-    ADecimal double -> ODouble double
-    ARegex reg -> ORegex reg
+    ANum int          -> ONum int
+    AStr str          -> OStr str
+    ADecimal double   -> ODouble double
+    ARegex reg        -> ORegex reg
     AShellCommand cmd -> OShellCommand cmd
-    ABool bool -> OBool bool
+    ABool bool        -> OBool bool
 
--- TODO: Set args
-callObject :: Object -> [Object] -> StWorld Object
-callObject (OFunc _ _ids prog) _objs = runProgram prog
-callObject (ONative native) objs = runProgram (native objs)
-callObject _ _ = return ONone
+callObject :: AddressRef -> [Object] -> StWorld Object
+callObject address args = do
+  lookupObj <- lookupInMemory address
+  case lookupObj of
+    Just (obj, accessors) -> do
+      mObj <- through obj accessors
+      case mObj of
+        Just (OFunc _ ids prog) -> runProgram (undefined ids args >> prog) -- TODO:
+        Just (ONative native)   -> runProgram (native args)
+        _                       -> return ONone
+    Nothing               -> return ONone
 
-mapObj :: Object -> (Object -> a) -> a
-mapObj = undefined
+mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
+mapObj = undefined -- TODO: Implement iterable objects __map__
 
-checkBool :: Object -> Bool
-checkBool = undefined
+-- | Check truthfulness of an object
+checkBool :: Object -> StWorld Bool
+checkBool (OBool bool) = return bool
+checkBool _            = return False
+

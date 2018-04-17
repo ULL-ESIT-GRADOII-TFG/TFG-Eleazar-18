@@ -1,5 +1,6 @@
 module Compiler.World.Types where
 
+import           Control.Monad.Except
 import           Control.Monad.State.Strict
 
 
@@ -9,4 +10,6 @@ data Var
 
 data World
 
-type StWorld = StateT World IO
+data WorldError
+
+type StWorld = StateT World (ExceptT WorldError IO)

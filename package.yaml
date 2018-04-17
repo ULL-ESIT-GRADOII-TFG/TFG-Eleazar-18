@@ -42,6 +42,8 @@ library:
     - Compiler.Core
     - Compiler.Interpreter.Types
     - Compiler.Interpreter.Methods
+    - Compiler.Interpreter.Utils
+    - Compiler.Interpreter.Command.Methods
     - Compiler.Scope.Types
     - Compiler.Scope.Methods
     - Compiler.Object.Types
