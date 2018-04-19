@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.World.Methods where
 
@@ -10,6 +9,7 @@ import           Lens.Micro.Platform
 
 import           Compiler.Instruction.Types
 import           Compiler.Object.Types
+import           Compiler.Scope.Types
 import           Compiler.World.Types
 
 
@@ -22,7 +22,7 @@ addObject (AddressRef word dyns) obj = do
       if null dyns then
         table %= IM.insert (fromIntegral word) (Var 0 obj)
       else do
-        mRef <- getLastRef (var ^. rawVar) dyns
+        mRef <- getLastRef (var ^. rawObj) dyns
         case mRef of
           Just ref' ->
             table %= IM.insert (fromIntegral ref') (Var 0 obj)
@@ -45,23 +45,23 @@ lookupInMemory :: AddressRef -> StWorld (Maybe (Object, [T.Text]))
 lookupInMemory (AddressRef word accessors) = do
   table' <- use table
   case IM.lookup (fromIntegral word) table' of
-    Just var@Var{} -> return $ Just (var ^. rawVar, accessors)
+    Just var@Var{} -> return $ Just (var ^. rawObj, accessors)
     Nothing        -> return Nothing
 
 getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
-  OStr str               ->
+  OStr _str               ->
     case name of
-      "++" -> Just $ \objs -> return ONone
-      _ -> Nothing
-  OBool val              -> Nothing
-  ODouble val            -> Nothing
-  ONum val               -> Nothing
-  ORegex str             -> Nothing
-  OShellCommand str      -> Nothing
-  OFunc bind args prog   -> Nothing
-  OObject classId dicObj -> Nothing
-  ORef rfs               -> Nothing
+      "++" -> Just $ \_objs -> return ONone
+      _    -> Nothing
+  OBool _val              -> Nothing
+  ODouble _val            -> Nothing
+  ONum _val               -> Nothing
+  ORegex _str             -> Nothing
+  OShellCommand _str      -> Nothing
+  OFunc _bind _args _prog   -> Nothing
+  OObject _classId _dicObj -> Nothing
+  ORef _rfs               -> Nothing
   ONone                  -> Nothing
 
 -- | Helper to object reference by `AddressRef`
@@ -79,12 +79,12 @@ getLastRef (OObject mClassId dic) (x:xs) =
         getLastRef obj xs
     Nothing -> do
       -- Search into class definition of object
-      classes <- use typeDefinitions
+      classes <- use $ scope . typeDefinitions
       let
         mRef = do
           classId <- mClassId
           classDef <- IM.lookup (fromIntegral classId) classes
-          M.lookup x (classDef^.values)
+          M.lookup x (classDef ^. attributesClass)
 
       case mRef of
         Just ref' ->
@@ -102,18 +102,17 @@ getLastRef (ORef word) xs =
   else do
     obj <- follow word
     getLastRef obj xs -- TODO: Problem
-getLastRef obj values = return Nothing -- TODO: Specific methods of primitive objects
+getLastRef _obj _values = return Nothing -- TODO: Specific methods of primitive objects
 
 -- | Find object
--- TODO: getMethods in case of fail
 findObject :: AddressRef -> StWorld Object
 findObject (AddressRef word dyns) = do
   table' <- use table
   case IM.lookup (fromIntegral word) table' of
     Just var@Var{} -> do
-      mRef <- getLastRef (var^.rawVar) dyns
+      mRef <- through (var ^. rawObj) dyns
       case mRef of
-        Just ref' -> follow ref'
+        Just ref' -> return ref'
         Nothing   -> return ONone
     Nothing -> return ONone
 

@@ -18,6 +18,7 @@ import           Compiler.Interpreter.Utils
 import           Compiler.Object.Types
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
+import           Compiler.Scope.Types
 import           Compiler.Scope.Methods
 import           Compiler.World.Methods
 import           Compiler.World.Types
@@ -53,6 +54,7 @@ loadPrelude = do
     -- TODO: Add basic operators, change operators name to method specific name. (Really neccesary do it?)
     [ internalMethod "__brace__"
     , internalMethod "__print__"
+    , internalMethod "__init__"
     , internalMethod "__call__"
     , internalMethod "__callable__"
   -- , ("+"  , ONative (normalizePure' ((+) :: Int -> Int -> Int)))
@@ -97,7 +99,7 @@ newClass name attributes = do
     classDef = ClassDefinition
       name
       (M.fromList (zip (map fst attributes) listRefs))
-  memory.typeDefinitions %= IM.insert (fromIntegral classId) classDef
+  memory.scope.typeDefinitions %= IM.insert (fromIntegral classId) classDef
   return classId
 
 -- | Create a object instance from referenced class

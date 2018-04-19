@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eca69f76670100629aa5702637a4bab46921beb8236613ea8770a21c2cd4ce05
+-- hash: f9a5ab3aa5e7af5d71c0e315d9c5385a107d1d5f4b217d7c6557a948047b6274
 
 name:           ScriptFlow
 version:        0.0.1
@@ -38,6 +38,7 @@ library
     , containers
     , formatting
     , free
+    , groom
     , haskeline
     , http-client
     , http-client-tls
@@ -45,10 +46,10 @@ library
     , microlens-platform
     , mtl
     , parsec
-    , process
     , template-haskell
     , text
     , transformers
+    , unix
     , unordered-containers
     , vector
     , yaml

@@ -24,8 +24,6 @@ simple :: Word -> AddressRef
 simple word = AddressRef word []
 
 -- | Intermediate set of instructions.
---
--- TODO: Extract Ref var from ADT
 data Instruction next
   = CallCommand !AddressRef ![Object] (Object -> next)
   -- ^ Make a call to and defined function

@@ -25,7 +25,7 @@ import           Compiler.World.Types
 initialState :: IState
 initialState = IState
   { _multiline = Nothing
-  , _memory    = World {_table = mempty, _typeDefinitions = mempty, _scope = initialScope}
+  , _memory    = World {_table = mempty, _scope = initialScope}
   }
 
 -- | Start an repl without prelude
@@ -89,8 +89,7 @@ compileFile rawFile nameFile = do
             Left err -> liftIO $ print err
 
 tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
-tryExecuteICommand (Command cmd args) =
-  executeCommand cmd args >> return Nothing
+tryExecuteICommand (Command cmd args) = executeCommand cmd args >> return Nothing
 tryExecuteICommand (Code statements) = return $ Just statements
 
 -- Computar las class y los import, unir todos los Expression con seq

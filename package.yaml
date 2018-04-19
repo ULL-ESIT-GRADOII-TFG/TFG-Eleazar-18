@@ -21,11 +21,12 @@ library:
     - mtl
     - text
     - free
+    - groom
     - formatting
     - transformers
     - containers
     - unordered-containers
-    - process
+    - unix
     - bytestring
     - microlens-platform
     - microlens-aeson

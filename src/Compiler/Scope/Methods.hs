@@ -4,8 +4,9 @@ module Compiler.Scope.Methods where
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import qualified Data.Map                   as M
-import           Data.Monoid
+--import           Data.Monoid
 import qualified Data.Text                  as T
+--import           Debug.Trace
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
@@ -19,6 +20,7 @@ initialScope = Scope
   { _nextId       = 0
   , _currentScope = ScopeInfo {_renameInfo = mempty}
   , _stackScope   = []
+  , _typeDefinitions = mempty
   }
 
 -- | Create a temporal scope with a info
@@ -28,8 +30,9 @@ withNewScope body = do
   stackScope %= (lastScope :)
   currentScope .= ScopeInfo mempty
   value <- body
-  first <- head <$> use stackScope
-  currentScope .= first
+  (curScope:rest) <- use stackScope
+  currentScope .= curScope
+  stackScope .= rest
   return value
 
 -- | Generates a new ID
@@ -66,14 +69,17 @@ getIdentifier (name:names) = do
     Nothing                  -> findInStack xs
 
 -- | Class renaming scope
--- TODO: Implement
+-- TODO: Add syntax to build a class __init__
 scopingClassAST :: Statement a -> ScopeM ()
-scopingClassAST (Class _name _expression _) = undefined
+scopingClassAST (Class name _expression _) = do
+ _addrRef <- addNewIdentifier [name]
+ --namescopingThroughtAST expression
+ return ()
 scopingClassAST _                           = undefined
 
 -- | Make a translation of variable names from AST, convert all to IDs and check rules
 -- of scoping
-scopingThroughtAST :: Expression a -> ScopeM (ExpressionG Identity a AddressRef)
+scopingThroughtAST :: Show a => Expression a -> ScopeM (ExpressionG Identity a AddressRef)
 scopingThroughtAST expr = case expr of
   FunDecl args body info -> withNewScope $ do
     argsId    <- mapM (addNewIdentifier . (: [])) args
@@ -81,12 +87,14 @@ scopingThroughtAST expr = case expr of
     return $ FunDecl argsId scopeBody info
 
   VarDecl name expr' info -> do
-    (exprAcc, addrRef) <- desugarAccessor name
+    let accSimple = simplifiedAccessor name
+    addrRef <- catchError (getIdentifier accSimple) $
+      \_error -> addNewIdentifier accSimple
     withNewScope $ do
       expr'' <- scopingThroughtAST expr'
-      return $ SeqExpr [exprAcc, VarDecl (Identity addrRef) expr'' info] info
+      return $ VarDecl (Identity addrRef) expr'' info
 
-  SeqExpr exprs info -> withNewScope $ do
+  SeqExpr exprs info -> do
     expr' <- mapM scopingThroughtAST exprs
     return $ SeqExpr expr' info
 
@@ -109,54 +117,65 @@ scopingThroughtAST expr = case expr of
 
   Apply name args info -> do
     args'             <- withNewScope $ mapM scopingThroughtAST args
-    (exprAcc, accRef) <- desugarAccessor name
-    return $ SeqExpr [exprAcc, Apply (Identity accRef) args' info] info
+    let accSimple = simplifiedAccessor name
+    addrRef <- getIdentifier accSimple
+    return $ Apply (Identity addrRef) args' info
 
   Identifier name info -> do
-    (exprAcc, accRef) <- desugarAccessor name
-    return $ SeqExpr [exprAcc, Identifier (Identity accRef) info] info
+    let accSimple = simplifiedAccessor name
+    addrRef <- getIdentifier accSimple
+    return $ Identifier (Identity addrRef) info
 
   Factor atom info -> return $ Factor atom info
 
--- |
 simplifiedAccessor
-  :: Accessor a -> [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
+  :: Show a => Accessor a -> [T.Text]
 simplifiedAccessor acc = case acc of
-  Simple id' tok            -> [(return $ \_ lastAddress -> Identifier (Identity lastAddress) tok, [id'])]
-  Bracket id' expr mAcc tok ->
-    let
-      expr' = do
-        expr'' <- scopingThroughtAST expr
-        return $ \braceOP lastAddress ->
-          Apply (Identity braceOP) [Identifier (Identity lastAddress) tok, expr''] tok
-    in case mAcc of
-      Just acc' ->
-        (expr', [id']) : simplifiedAccessor acc'
-      Nothing -> [(expr', [id'])]
-  Dot id' acc' _ -> simplifiedAccessor acc' & _head._2 %~ (id':)
+  Simple id' _tok               -> [id']
+  Bracket _id' _expr _mAcc _tok -> error "Not Implemented"
+  Dot id' acc' _                -> id' : simplifiedAccessor acc'
 
--- TODO: Add test
-generateCode :: [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
-  -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
-generateCode [] = error "Internal Error transform Accessor"
-generateCode values = do
-  braceOp <- getIdentifier ["self", "__brace__"]
-  (exprs, lastRef) <- foldM (\(ret, lastRef) (scope, path) -> do
-    expr <- scope
-    id' <- use nextId
-    lastAddress <-
-      case lastRef of
-        Just (AddressRef word _) -> return $ AddressRef word path
-        Nothing                  -> addNewIdentifier path
-    ref' <- addNewIdentifier ["$" <> (T.pack $ show id') :: T.Text]
-    return (ret ++ [VarDecl (Identity ref') (expr braceOp lastAddress) undefined], (Just ref'))
-    )
-    ([], Nothing) values
+-- |
+-- simplifiedAccessor
+--   :: Show a => Accessor a -> [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
+-- simplifiedAccessor acc = case acc of
+--   Simple id' tok            -> [(return $ \_ lastAddress -> Identifier (Identity lastAddress) tok, [id'])]
+--   Bracket id' expr mAcc tok ->
+--     let
+--       expr' = do
+--         expr'' <- scopingThroughtAST expr
+--         return $ \braceOP lastAddress ->
+--           Apply (Identity braceOP) [Identifier (Identity lastAddress) tok, expr''] tok
+--     in case mAcc of
+--       Just acc' ->
+--         (expr', [id']) : simplifiedAccessor acc'
+--       Nothing -> [(expr', [id'])]
+--   Dot id' acc' _ -> simplifiedAccessor acc' & _head._2 %~ (id':)
 
-  case lastRef of
-    Just lastRef' -> return (SeqExpr exprs undefined, lastRef')
-    Nothing       -> error "Internal Error"
+-- -- TODO: Add test
+-- generateCode :: Show a => [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
+--   -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
+-- generateCode [] = error "Internal Error transform Accessor"
+-- generateCode values = do
+--   braceOp <- traceShow (map snd values) $ getIdentifier ["self", "__brace__"]
+--   (exprs, lastRef) <- foldM (\(ret, lastRef) (scope, path) -> do
+--     expr <- scope
+--     id' <- use nextId
+--     lastAddress <-
+--       case lastRef of
+--         Just (AddressRef word _) -> return $ AddressRef word path
+--         Nothing                  -> addNewIdentifier path
 
-desugarAccessor :: Accessor a
-  -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
-desugarAccessor =  generateCode . simplifiedAccessor
+--     ref' <- addNewIdentifier ["$" <> T.pack (show id') :: T.Text]
+
+--     return (ret ++ [VarDecl (Identity ref') (traceShowId $ expr braceOp lastAddress) undefined], Just ref')
+--     )
+--     ([], Nothing) values
+
+--   case lastRef of
+--     Just lastRef' -> return (SeqExpr exprs undefined, lastRef')
+--     Nothing       -> error "Internal Error"
+
+-- desugarAccessor :: Show a => Accessor a
+--   -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
+-- desugarAccessor =  generateCode . simplifiedAccessor

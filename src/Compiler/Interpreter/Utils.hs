@@ -5,8 +5,8 @@ import           Control.Monad.State.Strict
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
+import           Compiler.Instruction.Types
 import           Compiler.Interpreter.Types
-import Compiler.Instruction.Types
 import           Compiler.Object.Types
 import           Compiler.Scope.Methods
 import           Compiler.Scope.Types
@@ -69,7 +69,7 @@ showInterpreter obj = case obj of
   ORef rfs -> do
     mObj <- liftWorld (follow rfs)
     case mObj of
-      Just obj -> showInterpreter obj <&> ("*-> " ++)
+      Just obj' -> showInterpreter obj' <&> ("*-> " ++)
       Nothing  -> return ""
   ONone -> return "None"
   object -> return $ show object -- TODO: __print__

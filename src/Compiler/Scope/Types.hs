@@ -1,13 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Compiler.Scope.Types where
 
-import           Control.Monad.State.Strict
 import           Control.Monad.Except
-import qualified Data.Map as M
-import qualified Data.Text as T
+import           Control.Monad.State.Strict
+import qualified Data.IntMap                as IM
+import qualified Data.Map                   as M
+import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
-import Compiler.Instruction.Types
+import           Compiler.Instruction.Types
 
 
 data ScopeError
@@ -18,15 +19,23 @@ data ScopeError
 type ScopeM = ExceptT ScopeError (State Scope)
 
 data Scope = Scope
-  { _nextId :: Word
-  , _currentScope :: ScopeInfo
-  , _stackScope :: [ScopeInfo]
+  { _nextId          :: Word
+  , _currentScope    :: ScopeInfo
+  , _stackScope      :: [ScopeInfo]
+  , _typeDefinitions :: IM.IntMap ClassDefinition
   } deriving Show
 
 newtype ScopeInfo = ScopeInfo
   { _renameInfo :: M.Map T.Text AddressRef
   } deriving Show
 
+data ClassDefinition = ClassDefinition
+  { _nameClass       :: T.Text
+  , _attributesClass :: M.Map T.Text Word
+  }
+  deriving Show
+
 
 makeLenses ''Scope
 makeLenses ''ScopeInfo
+makeLenses ''ClassDefinition
