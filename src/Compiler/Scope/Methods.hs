@@ -3,6 +3,7 @@ module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
 import           Control.Monad.Identity
+import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
 --import           Data.Monoid
 import qualified Data.Text                  as T
@@ -57,7 +58,7 @@ getIdentifier []     = throwError InternalFail
 getIdentifier (name:names) = do
   renamer <- use $ currentScope . renameInfo
   case M.lookup name renamer of
-    Just ref' -> return ref'
+    Just ref' -> return $ AddressRef (ref'^.ref) names
     Nothing  -> do
       stack <- use stackScope
       maybe (throwError $ NoIdFound name) return (findInStack stack)
@@ -70,12 +71,16 @@ getIdentifier (name:names) = do
 
 -- | Class renaming scope
 -- TODO: Add syntax to build a class __init__
-scopingClassAST :: Statement a -> ScopeM ()
-scopingClassAST (Class name _expression _) = do
- _addrRef <- addNewIdentifier [name]
- --namescopingThroughtAST expression
- return ()
-scopingClassAST _                           = undefined
+scopingClassAST :: Show a => Statement a -> ScopeM (ExpressionG Identity a AddressRef)
+scopingClassAST (Class name expression _) = do
+  AddressRef ref' _ <- addNewIdentifier [name]
+  (classDef, codeScope) <- withNewScope $ do
+    codeScoped <- scopingThroughtAST expression
+    currScope <- use $ currentScope.renameInfo
+    return (M.map _ref currScope, codeScoped)
+  typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
+  return codeScope
+scopingClassAST _                         = undefined
 
 -- | Make a translation of variable names from AST, convert all to IDs and check rules
 -- of scoping
@@ -132,6 +137,7 @@ simplifiedAccessor
   :: Show a => Accessor a -> [T.Text]
 simplifiedAccessor acc = case acc of
   Simple id' _tok               -> [id']
+  Operator id' _tok               -> ["self", id']
   Bracket _id' _expr _mAcc _tok -> error "Not Implemented"
   Dot id' acc' _                -> id' : simplifiedAccessor acc'
 

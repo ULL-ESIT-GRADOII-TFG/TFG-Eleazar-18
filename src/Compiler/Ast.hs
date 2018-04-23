@@ -37,6 +37,7 @@ data AccessorG a id
   = Dot id (AccessorG a id) a
   | Bracket id (ExpressionG (AccessorG a) a id) (Maybe (AccessorG a id)) a
   | Simple id a
+  | Operator id a
   deriving Show
 
 data Atom

@@ -7,6 +7,7 @@ import           Compiler.Instruction.Types
 import           Compiler.Object.Types
 import           Compiler.World.Methods
 import           Compiler.World.Types
+import Debug.Trace
 
 isNone :: Object -> Bool
 isNone ONone = True
@@ -31,8 +32,8 @@ callObject address args = do
       mObj <- through obj accessors
       case mObj of
         Just (OFunc _ ids prog) -> runProgram (undefined ids args >> prog) -- TODO:
-        Just (ONative native)   -> runProgram (native args)
-        _                       -> return ONone
+        Just (ONative native)   -> traceShow "Calling" runProgram (native args)
+        t                       -> traceShow (show t) return ONone
     Nothing               -> return ONone
 
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object

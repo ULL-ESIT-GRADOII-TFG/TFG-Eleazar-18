@@ -12,8 +12,8 @@ import Compiler.Token.Types
 %wrapper "monadUserState"
 
 $digit = 0-9
-$alpha = [a-zA-Z]
-$alphaDigit = [a-zA-Z0-9]
+$alpha = [_a-zA-Z]
+$alphaDigit = [_a-zA-Z0-9]
 $operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^]
 
 @nameId = $alpha $alphaDigit*

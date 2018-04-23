@@ -33,6 +33,22 @@ liftWorld stWorld = do
       return $ Just value
     Left err -> liftIO $ print err >> return Nothing
 
+-- | Catch `Maybe` error into interpreter to handle apart
+catchMaybe :: InterpreterError -> Interpreter (Maybe a) -> Interpreter a
+catchMaybe errorMsg m = do
+  option <- m
+  case option of
+    Just a -> return a
+    Nothing -> throwError errorMsg
+
+-- | Catch `Either` error into interpreter to handle apart
+catchEither :: (a -> InterpreterError) -> Interpreter (Either a b) -> Interpreter b
+catchEither errorMsg m = do
+  option <- m
+  case option of
+    Right a -> return a
+    Left err -> throwError $ errorMsg err
+
 -- | Internal use. To create native objects
 newVar :: T.Text -> Object -> Interpreter (Maybe AddressRef)
 newVar idName obj = do

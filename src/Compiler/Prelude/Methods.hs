@@ -50,20 +50,30 @@ operatorsPrecedence = M.fromList
 loadPrelude :: Interpreter ()
 loadPrelude = do
   mapM_ (uncurry newVar) baseBasicFunctions
-  idClass <- newClass "MetaClass"
+  idClass <- newClass "MetaClass" $
     -- TODO: Add basic operators, change operators name to method specific name. (Really neccesary do it?)
-    [ internalMethod "__brace__"
-    , internalMethod "__print__"
-    , internalMethod "__init__"
-    , internalMethod "__call__"
-    , internalMethod "__callable__"
-  -- , ("+"  , ONative (normalizePure' ((+) :: Int -> Int -> Int)))
-  -- , ("-"  , ONative (normalizePure' ((-) :: Int -> Int -> Int)))
-  -- , ("/"  , ONative (normalizePure' (div :: Int -> Int -> Int)))
-  -- , ("%"  , ONative (normalizePure' (mod :: Int -> Int -> Int)))
-  -- , ("*"  , ONative (normalizePure' ((*) :: Int -> Int -> Int)))
-  -- , ("**"  , ONative (normalizePure' ((**) :: Double -> Double -> Double)))
-  -- , ("__brace__"  , ONative (normalizePure' ((**) :: Double -> Double -> Double)))
+    map internalMethod
+    [ "__brace__"
+    , "__init__"
+    , "__call__"
+    , "print"
+    , "**"
+    , "*"
+    , "/"
+    , "%"
+    , "+"
+    , "-"
+    , "++"
+    , "=="
+    , "!="
+    , "/="
+    , ">"
+    , "<"
+    , "<="
+    , ">="
+    , "&&"
+    , "||"
+    , "??"
     ]
   void $ instanceClass idClass "self"
 
@@ -78,6 +88,35 @@ internalMethod name =
         case getMethods obj name of
           Just func -> func objs
           Nothing   -> return ONone) --
+
+getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
+getMethods obj name = case obj of
+  OStr _str               ->
+    case name of
+      "++" -> Just $ \_objs -> return ONone
+      _    -> Nothing
+  OBool _val              -> Nothing
+  ODouble _val            ->
+    case name of
+      "*" -> Just $ normalizePure' ((*) :: Double -> Double -> Double)
+      "/" -> Just $ normalizePure' ((/) :: Double -> Double -> Double)
+      "+" -> Just $ normalizePure' ((+) :: Double -> Double -> Double)
+      "-" -> Just $ normalizePure' ((-) :: Double -> Double -> Double)
+      _ -> Nothing
+  ONum _val               ->
+    case name of
+      "*" -> Just $ normalizePure' ((*) :: Int -> Int -> Int)
+      "/" -> Just $ normalizePure' (div :: Int -> Int -> Int)
+      "+" -> Just $ normalizePure' ((+) :: Int -> Int -> Int)
+      "-" -> Just $ normalizePure' ((-) :: Int -> Int -> Int)
+      _ -> Nothing
+  ORegex _str             -> Nothing
+  OShellCommand _str      -> Nothing
+  OFunc _bind _args _prog   -> Nothing
+  ONative _func -> Nothing
+  OObject _classId _dicObj -> Nothing
+  ORef _rfs               -> Nothing
+  ONone                  -> Nothing
 
 -- |
 -- TODO: Add specific functions to modify internal interpreter variables. Like prompt, or path options ...

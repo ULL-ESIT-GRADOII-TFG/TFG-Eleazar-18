@@ -1,15 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Interpreter.Methods where
 
-import           Control.Monad.State.Strict
-import           Data.Bifunctor
+import           Control.Monad.Except
+import           Control.Monad.Identity
 import           Data.Maybe
 import qualified Data.Text                            as T
+import qualified Data.Text.IO                         as T
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
 import           Compiler.Ast
 import           Compiler.Instruction.Methods
+import           Compiler.Instruction.Types
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Types
 import           Compiler.Interpreter.Utils
@@ -35,7 +37,7 @@ repl :: Interpreter ()
 repl = do
   inMultiline <- isJust <$> use multiline
   let prompt = if inMultiline then "... " else ">>> "
-  minput <- lift $ getInputLine prompt
+  minput <- lift . lift $ getInputLine prompt
   case minput of
     Nothing    -> return ()
     Just input -> do
@@ -44,15 +46,21 @@ repl = do
         Just text
           | T.null . T.strip $ T.pack input -> do
             multiline .= Nothing
-            compileFile text "**Interpreter**"
+            compileSource text "**Interpreter**"
           | otherwise ->
             multiline .= Just (text `mappend` "\n" `mappend` T.pack input)
         Nothing -> do
           tokenizer' <- tokenizer $ T.pack input
           case tokenizer' of
             Partial  _ -> multiline .= Just (T.pack input)
-            Complete _ -> compileFile (T.pack input) "**Interpreter**"
+            Complete _ -> compileSource (T.pack input) "**Interpreter**" `catchError` handleError
   repl
+
+-- | Handle possible errors during execution of interpreter
+handleError :: InterpreterError -> Interpreter ()
+handleError err = case err of
+  Compiling err -> liftIO $ T.putStrLn err
+  Internal err -> liftIO $ T.putStrLn err
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
@@ -62,35 +70,30 @@ tokenizer input = case scanner False $ T.unpack input of
     return $ Complete mempty
   Right tokens -> return tokens
 
--- | Compile a file
-compileFile :: T.Text -> String -> Interpreter ()
-compileFile rawFile nameFile = do
-  let ast = do
-        tokenizer' <- scanner True $ T.unpack rawFile
-        first show (parserLexer nameFile (getTokens tokenizer')) -- TODO Take better Error
+-- | Compile source code
+-- TODO: Improve errors translation between them
+compileSource :: T.Text -> String -> Interpreter ()
+compileSource rawFile nameFile = do
+  tokenizer' <- catchEither (Compiling . T.pack) . return . scanner True $ T.unpack rawFile
+  ast <- catchEither (Compiling . T.pack . show) . return . parserLexer nameFile $ getTokens tokenizer'
+  liftIO $ print ast
   case ast of
-    Left  err  -> liftIO $ putStrLn err
-    Right ast' -> do
-      liftIO $ print ast'
-      mStatements <- tryExecuteICommand ast'
-      case mStatements of
-        Nothing         -> return ()
-        Just statements -> do
-          expr      <- computeStatements statements
-          astScoped <- liftScope $ scopingThroughtAST expr
-          case astScoped of
-            Right scopeAst -> do
-              value <- liftWorld (runProgram (astToInstructions scopeAst))
-              case value of
-                Just value' -> do
-                  showable <- showInterpreter value'
-                  liftIO $ putStrLn showable
-                Nothing -> return ()
-            Left err -> liftIO $ print err
+    Command cmd args -> executeCommand cmd args
+    Code statements -> do
+      expr      <- computeStatements statements
+      astScoped <- catchEither (Compiling . T.pack . show) . liftScope $ scopingThroughtAST expr
+      liftIO $ print astScoped
+      evaluateScopedProgram astScoped
 
-tryExecuteICommand :: Repl -> Interpreter (Maybe [Statement TokenInfo])
-tryExecuteICommand (Command cmd args) = executeCommand cmd args >> return Nothing
-tryExecuteICommand (Code statements) = return $ Just statements
+-- | Evaluate program with AST already scoped
+evaluateScopedProgram :: ExpressionG Identity TokenInfo AddressRef -> Interpreter ()
+evaluateScopedProgram astScoped = do
+  value <- liftWorld (runProgram (astToInstructions astScoped))
+  case value of
+    Just value' -> do
+      showable <- showInterpreter value'
+      liftIO $ putStrLn showable
+    Nothing -> return ()
 
 -- Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
@@ -99,6 +102,7 @@ computeStatements =
     case st of
       Import _path _ -> error "No implemented yet import functionality"
       cls@Class{}    -> do
-        _ <- liftScope $ scopingClassAST cls
+        expr <- catchEither undefined . liftScope $ scopingClassAST cls
+        evaluateScopedProgram expr
         return $ SeqExpr [] TokenInfo
       Expr expr _    -> return $ SeqExpr (expr : exprs) t

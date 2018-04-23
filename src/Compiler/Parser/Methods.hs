@@ -154,10 +154,10 @@ treeOperators expr list@((op, _):_) =
   case M.lookup op operatorsPrecedence of
     Just (_, LeftAssoc) ->
       foldl (\acc (_, expr') ->
-        Apply (Simple op TokenInfo) [acc, expr'] TokenInfo) expr list
+        Apply (Operator op TokenInfo) [acc, expr'] TokenInfo) expr list
     Just (_, RightAssoc) ->
       foldr1 (\expr' acc ->
-        Apply (Simple op TokenInfo)  [expr', acc] TokenInfo) (expr: map snd list)
+        Apply (Operator op TokenInfo)  [expr', acc] TokenInfo) (expr: map snd list)
     Nothing -> error ""
 
 parseOperators :: TokenParser (Expression TokenInfo)

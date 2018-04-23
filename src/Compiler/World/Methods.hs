@@ -7,6 +7,7 @@ import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
+import {-# SOURCE #-} Compiler.Prelude.Methods
 import           Compiler.Instruction.Types
 import           Compiler.Object.Types
 import           Compiler.Scope.Types
@@ -31,7 +32,24 @@ addObject (AddressRef word dyns) obj = do
 
 -- | Access through an object
 on :: Object -> T.Text -> StWorld (Maybe Object)
-on obj acc = return $ ONative <$> getMethods obj acc
+on obj acc = case obj of
+  OObject mClassId _dicObj ->
+    case mClassId of
+      Just classId -> do
+        classDefs <- use $ scope.typeDefinitions
+        case IM.lookup (fromIntegral classId) classDefs of
+          Just classDef ->
+            case M.lookup acc (classDef ^. attributesClass) of
+              Just word -> do
+                mObj <- lookupInMemory $ simple word
+                case mObj of
+                  Just (obj', _) -> return $ Just obj'
+                  Nothing -> return Nothing
+              Nothing -> return Nothing
+          Nothing -> return Nothing
+      Nothing -> return Nothing
+  ORef _rfs               -> return Nothing
+  _                  -> return $ ONative <$>  getMethods obj acc
 
 -- | Access through a path accessors
 through :: Object -> [T.Text] -> StWorld (Maybe Object)
@@ -47,22 +65,6 @@ lookupInMemory (AddressRef word accessors) = do
   case IM.lookup (fromIntegral word) table' of
     Just var@Var{} -> return $ Just (var ^. rawObj, accessors)
     Nothing        -> return Nothing
-
-getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
-getMethods obj name = case obj of
-  OStr _str               ->
-    case name of
-      "++" -> Just $ \_objs -> return ONone
-      _    -> Nothing
-  OBool _val              -> Nothing
-  ODouble _val            -> Nothing
-  ONum _val               -> Nothing
-  ORegex _str             -> Nothing
-  OShellCommand _str      -> Nothing
-  OFunc _bind _args _prog   -> Nothing
-  OObject _classId _dicObj -> Nothing
-  ORef _rfs               -> Nothing
-  ONone                  -> Nothing
 
 -- | Helper to object reference by `AddressRef`
 --   TODO: Try to remove, too verbose
