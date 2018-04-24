@@ -47,6 +47,7 @@ operatorsPrecedence = M.fromList
   ]
 
 -- | Prelude load action
+-- TODO: Create a class to interact with http connections
 loadPrelude :: Interpreter ()
 loadPrelude = do
   mapM_ (uncurry newVar) baseBasicFunctions

@@ -20,14 +20,8 @@ $operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^]
 @classId = [A-Z] @nameId?
 
 @emptyLines = ([ \t]*\n)+
-@number = \-? $digit+
+@number = $digit+
 @decimal = @number "." $digit+
--- TODO: skip \$
-@shellCommand = "$" (~[\n\$])* "$"
--- TODO: skip \/
-@regex = "/" (~[\n\/])* "/"
--- TODO: skip \" and others
-@string = \" (~[\"\n])* \"
 
 
 tokens :-
@@ -66,12 +60,12 @@ tokens :-
     "="           { mkL AssignT }
     "true"        { mkL (BoolT True) }
     "false"       { mkL (BoolT False) }
-    @shellCommand { mkL' ShellCommandT }
-    @regex        { mkL' RegexExprT }
-    @string       { mkL' LitTextT }
+    \"            { begin string }
+    "$"           { begin shell }
+    "/"           { begin regex }
+    $operators+   { mkL' OperatorT }
     @number       { mkL' (NumT . read . T.unpack) }
     @decimal      { mkL' (DecimalT . read . T.unpack) }
-    $operators+   { mkL' OperatorT }
     @classId      { mkL' ClassIdT }
     @nameId       { mkL' NameIdT }
   }
@@ -79,11 +73,29 @@ tokens :-
 
   <dec_indent> [\ \t]* { checkDecrement `andBegin` code_st }
 
-  -- \"      { begin string }
-  -- <string> [^\"]*          { string }
-  -- <string> \"             { begin code_st }
+  <string> {
+    \\\"           { skipJustAdd "\"" }
+    \\n            { skipJustAdd "\n" }
+    \\t            { skipJustAdd "\t" }
+    [^\"]          { addToInnerString }
+    \"             { generateLexerFromInner LitTextT `andBegin` code_st }
+  }
 
+  <shell> {
+    "\$"           { skipJustAdd "$" }
+    \\n            { skipJustAdd "\n" }
+    \\t            { skipJustAdd "\t" }
+    [^\$]          { addToInnerString }
+    "$"            { generateLexerFromInner ShellCommandT `andBegin` code_st }
+  }
 
+  <regex> {
+    "\/"           { skipJustAdd "/" }
+    \\n            { skipJustAdd "\n" }
+    \\t            { skipJustAdd "\t" }
+    [^\/]          { addToInnerString }
+    "/"            { generateLexerFromInner RegexExprT `andBegin` code_st }
+  }
 {
 
 -- | Used to check if there more code to come. For interpreter to enter
@@ -107,12 +119,12 @@ data Lexeme = L
 -- | Internal use. Used to take account of indent level
 data AlexUserState = AlexUserState
   { indentStack :: [Int]
+  , generatedString :: String
   }
 
 -- | Internal use.
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState []
-
+alexInitUserState = AlexUserState [] ""
 
 -- | Internal use.
 alexEOF = return (L (AlexPn 0 0 0) EosT)
@@ -125,12 +137,34 @@ mkL c (p,_,_,_) _ = return (L p c)
 mkL' :: (T.Text -> Token) -> AlexInput -> Int -> Alex Lexeme
 mkL' mkTok (p,_,_,str) len = return (L p (mkTok . T.pack $ take len str))
 
+-- | Remove delimitators from string
+skipDels :: T.Text -> T.Text
+skipDels = T.dropEnd 1 . T.drop 1
+
+-- | FIX: Position token
+addToInnerString :: AlexInput -> Int -> Alex Lexeme
+addToInnerString input@(_,_,_,str) len = do
+  userState <- alexGetUserState
+  alexSetUserState $ userState { generatedString = (generatedString userState) ++ (take len str) }
+  mkL SkipT input len
+
+skipJustAdd :: String -> AlexInput -> Int -> Alex Lexeme
+skipJustAdd val input len = do
+  userState <- alexGetUserState
+  alexSetUserState $ userState { generatedString = generatedString userState ++ val }
+  mkL SkipT input len
+
+generateLexerFromInner :: (T.Text -> Token) -> AlexInput -> Int -> Alex Lexeme
+generateLexerFromInner mkTok input len = do
+  userState <- alexGetUserState
+  alexSetUserState $ userState { generatedString = "" }
+  mkL (mkTok . T.pack $ generatedString userState) input len
 
 -- | Internal use. Generate a new ident in the tokenizer
 newIndent :: AlexInput -> Int -> Alex Lexeme
 newIndent input len = do
   indentStackOld <- alexGetUserState
-  alexSetUserState $ AlexUserState { indentStack = len : (indentStack indentStackOld) }
+  alexSetUserState $ indentStackOld { indentStack = len : (indentStack indentStackOld) }
   mkL SkipT input len
 
 -- | Internal use. Check to add correspond token to decrement
@@ -147,12 +181,12 @@ checkDecrement input len = do
     getDedent :: Int -> [Int] -> Alex Lexeme
     getDedent currIndent [] =
       if currIndent == 0 then do
-        alexSetUserState (AlexUserState [])
+        alexSetUserState alexInitUserState
         mkL CBraceT input len
       else mkL SkipT input len
     getDedent currIndent xs = do
       let (removes, rest) = break (<= currIndent) xs
-      alexSetUserState (AlexUserState rest)
+      alexSetUserState alexInitUserState
       mkL (DedentT $ length removes) input len
 
 -- | Run tokenizer over string

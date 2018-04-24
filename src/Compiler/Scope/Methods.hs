@@ -137,7 +137,7 @@ simplifiedAccessor
   :: Show a => Accessor a -> [T.Text]
 simplifiedAccessor acc = case acc of
   Simple id' _tok               -> [id']
-  Operator id' _tok               -> ["self", id']
+  Operator id' _tok             -> ["self", id']
   Bracket _id' _expr _mAcc _tok -> error "Not Implemented"
   Dot id' acc' _                -> id' : simplifiedAccessor acc'
 
