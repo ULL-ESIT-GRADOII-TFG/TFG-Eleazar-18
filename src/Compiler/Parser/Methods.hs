@@ -13,6 +13,10 @@ import Compiler.Parser.Types
 import Compiler.Token.Methods
 import Compiler.Token.Lexer (Lexeme)
 
+{-
+  TODO: Generate an useful `TokenInfo`
+  TODO: Parse Vector
+ -}
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
 parserLexer = parse parseInterpreter
@@ -28,7 +32,7 @@ parseStatements = many (choice $ map
   try
   [ parseClassStatement
   , parseImportStatement
-  , (`Expr` TokenInfo) <$> parseExp
+  , (`Expr` TokenInfo) <$> parseSeqExpr
   ]) <* eof
 
 parseImportStatement :: TokenParser (Statement TokenInfo)
@@ -51,6 +55,7 @@ parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map
   try
   [ parseOperators
+  , parseUnaryOperators
   , parseFunDecl
   , parseLam
   , parseAssign
@@ -124,6 +129,12 @@ parseFor = do
   prog    <- between oBraceT cBraceT parseSeqExpr
   return $ For nameVar expr prog TokenInfo
 
+parseUnaryOperators :: TokenParser (Expression TokenInfo)
+parseUnaryOperators = do
+  operator <- operatorT
+  expr <- parseExp
+  return $ Apply (Operator operator TokenInfo) [expr] TokenInfo
+
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = do
   name   <- parseAccessor
@@ -158,7 +169,7 @@ treeOperators expr list@((op, _):_) =
     Just (_, RightAssoc) ->
       foldr1 (\expr' acc ->
         Apply (Operator op TokenInfo)  [expr', acc] TokenInfo) (expr: map snd list)
-    Nothing -> error ""
+    Nothing -> error "Operator not found. Internal error"
 
 parseOperators :: TokenParser (Expression TokenInfo)
 parseOperators = levels [10,9..1]
