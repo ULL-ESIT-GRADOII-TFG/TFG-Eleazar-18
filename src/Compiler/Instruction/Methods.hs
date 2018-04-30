@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -8,6 +9,8 @@ import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
 import           Control.Monad.Trans.State.Strict
 import qualified Data.Text.Lazy                   as LT
+import qualified Data.Vector                      as V
+import qualified Data.Map                         as M
 import           Formatting
 import           Lens.Micro.Platform
 
@@ -52,11 +55,23 @@ astToInstructions expr = case expr of
     values' <- mapM astToInstructions argsExpr
     callCommand (runIdentity ref') values'
 
-  Identifier ref' _info -> do
+  Identifier ref' _info ->
     getVal (runIdentity ref')
 
-  Factor atom _info -> return $ fromAST atom
+  Factor atom _info -> fromAST atom
 
+-- | Transform literal data from AST to an object
+fromAST :: (Monad m) => AtomG Identity a AddressRef -> FreeT Instruction m Object
+fromAST atom =
+  case atom of
+    ANum num          -> return $ ONum num
+    AStr str          -> return $ OStr str
+    ADecimal double   -> return $ ODouble double
+    ARegex reg        -> return $ ORegex reg
+    AShellCommand cmd -> return $ OShellCommand cmd
+    ABool bool        -> return $ OBool bool
+    AVector items     -> mapM astToInstructions items >>= return . OVector . V.fromList
+    ADic items        -> mapM (\(key, expr) -> astToInstructions expr >>= return . (key,)) items >>= return . ODic . M.fromList
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object

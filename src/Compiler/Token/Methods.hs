@@ -46,6 +46,12 @@ cBraceT = match CBraceT
 oBraceT :: TokenParser ()
 oBraceT = match OBraceT
 
+cBracketT :: TokenParser ()
+cBracketT = match CBracketT
+
+oBracketT :: TokenParser ()
+oBracketT = match OBracketT
+
 cParenT :: TokenParser ()
 cParenT = match CParenT
 

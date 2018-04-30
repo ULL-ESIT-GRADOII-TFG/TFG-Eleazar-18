@@ -28,7 +28,7 @@ data ExpressionG acc a id
   | For id (ExpressionG acc a id) (ExpressionG acc a id) a
   | Apply (acc id) [ExpressionG acc a id] a
   | Identifier (acc id) a
-  | Factor Atom a
+  | Factor (AtomG acc a id) a
   deriving Show
 
 type Accessor a = AccessorG a T.Text
@@ -40,11 +40,15 @@ data AccessorG a id
   | Operator id a
   deriving Show
 
-data Atom
+type Atom a = AtomG (AccessorG a) a T.Text
+
+data AtomG acc a id
   = ANum Int
   | ADecimal Double
   | ARegex T.Text
   | AShellCommand T.Text
   | AStr T.Text
   | ABool Bool
+  | AVector [ExpressionG acc a id]
+  | ADic [(T.Text, ExpressionG acc a id)]
   deriving Show

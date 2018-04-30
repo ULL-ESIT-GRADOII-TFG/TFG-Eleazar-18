@@ -67,7 +67,7 @@ lookupInMemory (AddressRef word accessors) = do
     Nothing        -> return Nothing
 
 -- | Helper to object reference by `AddressRef`
---   TODO: Try to remove, too verbose
+--   TODO: Try to remove, too verboseqe
 getLastRef :: Object -> [T.Text] -> StWorld (Maybe Word)
 getLastRef _ [] = return Nothing
 getLastRef (OObject mClassId dic) (x:xs) =

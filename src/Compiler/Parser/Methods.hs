@@ -66,17 +66,6 @@ parseExp = choice $ map
   , parseFactor
   ]
 
-parseFactor :: TokenParser (Expression TokenInfo)
-parseFactor = choice $ map try
-  [ (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
-  , (\num -> Factor (ANum num) TokenInfo) <$> numberT
-  , (\num -> Factor (ADecimal num) TokenInfo) <$> decimalT
-  , (\reg -> Factor (ARegex reg) TokenInfo) <$> regexT
-  , (\cmd -> Factor (AShellCommand cmd) TokenInfo) <$> shellCommandT
-  , (\bool -> Factor (ABool bool) TokenInfo) <$> boolT
-  , parensExp
-  ]
-
 parseSeqExpr :: TokenParser (Expression TokenInfo)
 parseSeqExpr = do
   exprs <- many1 parseExp
@@ -196,3 +185,31 @@ parseIdentifier = do
 
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
+
+parseFactor :: TokenParser (Expression TokenInfo)
+parseFactor = choice $ map try
+  [ (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
+  , (\num -> Factor (ANum num) TokenInfo) <$> numberT
+  , (\num -> Factor (ADecimal num) TokenInfo) <$> decimalT
+  , (\reg -> Factor (ARegex reg) TokenInfo) <$> regexT
+  , (\cmd -> Factor (AShellCommand cmd) TokenInfo) <$> shellCommandT
+  , (\bool -> Factor (ABool bool) TokenInfo) <$> boolT
+  , parseVector
+  , parseDic
+  , parensExp
+  ]
+
+parseVector :: TokenParser (Expression TokenInfo)
+parseVector = do
+  items <- between oBracketT cBracketT (parseExp `sepBy` commaT)
+  return $ Factor (AVector items) TokenInfo
+
+parseDic :: TokenParser (Expression TokenInfo)
+parseDic = do
+  let item = do
+        key <- litTextT <|> nameIdT
+        operatorT' ":"
+        body <- parseExp
+        return (key, body)
+  items <- between oBraceT cBraceT (item `sepBy` commaT)
+  return $ Factor (ADic items) TokenInfo

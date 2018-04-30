@@ -1,6 +1,7 @@
 module Compiler.Object.Types where
 
 import qualified Data.Map                   as M
+import qualified Data.Vector                as V
 import qualified Data.Text                  as T
 
 import {-# SOURCE #-} Compiler.Instruction.Types
@@ -20,6 +21,8 @@ data Object
   | ONum Int
   | ORegex T.Text -- TODO: search precompiled type
   | OShellCommand T.Text
+  | OVector (V.Vector Object)
+  | ODic (M.Map T.Text Object)
   | OFunc (M.Map T.Text Object) [Word] Prog
   | OObject (Maybe Word) (M.Map T.Text Word)
   -- ^ Object instance from class Word
@@ -41,6 +44,8 @@ instance Show Object where
     ONative{}       -> "[Native Function]"
     ORef{}          -> "[Reference]"
     OObject{}       -> "[Object]"
+    OVector{}       -> "[Vector]"
+    ODic{}          -> "[Dictionary]"
     ONone           -> "[None]"
 
 instance ToObject Object where

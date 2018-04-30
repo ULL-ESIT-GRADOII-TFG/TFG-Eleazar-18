@@ -38,7 +38,7 @@ catchMaybe :: InterpreterError -> Interpreter (Maybe a) -> Interpreter a
 catchMaybe errorMsg m = do
   option <- m
   case option of
-    Just a -> return a
+    Just a  -> return a
     Nothing -> throwError errorMsg
 
 -- | Catch `Either` error into interpreter to handle apart
@@ -46,7 +46,7 @@ catchEither :: (a -> InterpreterError) -> Interpreter (Either a b) -> Interprete
 catchEither errorMsg m = do
   option <- m
   case option of
-    Right a -> return a
+    Right a  -> return a
     Left err -> throwError $ errorMsg err
 
 -- | Internal use. To create native objects
@@ -82,10 +82,12 @@ showInterpreter obj = case obj of
   ODouble val -> return $ show val
   OBool val -> return $ show val
   ONum val -> return $ show val
+  ODic vals -> return $ show vals -- TODO: Show innervalue
+  OVector vec -> return $ show vec -- TODO: Show Innervalue
   ORef rfs -> do
     mObj <- liftWorld (follow rfs)
     case mObj of
       Just obj' -> showInterpreter obj' <&> ("*-> " ++)
-      Nothing  -> return ""
+      Nothing   -> return ""
   ONone -> return "None"
   object -> return $ show object -- TODO: __print__

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
@@ -131,7 +132,18 @@ scopingThroughtAST expr = case expr of
     addrRef <- getIdentifier accSimple
     return $ Identifier (Identity addrRef) info
 
-  Factor atom info -> return $ Factor atom info
+  Factor atom info -> (\a -> Factor a info) <$> scopeFactor atom
+
+scopeFactor :: Show a => Atom a -> ScopeM (AtomG Identity a AddressRef)
+scopeFactor atom = case atom of
+  ANum val -> return $ ANum val
+  ADecimal val -> return $ ADecimal val
+  ARegex val -> return $ ARegex val
+  AShellCommand val -> return $ AShellCommand val
+  AStr str -> return $ AStr str
+  ABool bool -> return $ ABool bool
+  AVector vals -> mapM scopingThroughtAST vals >>= return . AVector
+  ADic vals -> mapM (\(key, val) -> scopingThroughtAST val >>= return . (key,)) vals >>= return . ADic
 
 simplifiedAccessor
   :: Show a => Accessor a -> [T.Text]
