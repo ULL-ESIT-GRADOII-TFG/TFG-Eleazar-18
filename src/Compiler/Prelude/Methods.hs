@@ -20,7 +20,6 @@ import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
 import           Compiler.Scope.Types
 import           Compiler.Scope.Methods
-import           Compiler.World.Methods
 import           Compiler.World.Types
 
 
@@ -49,34 +48,16 @@ operatorsPrecedence = M.fromList
 -- | Prelude load action
 -- TODO: Create a class to interact with http connections
 loadPrelude :: Interpreter ()
-loadPrelude = do
+loadPrelude =
   mapM_ (uncurry newVar) baseBasicFunctions
-  idClass <- newClass "MetaClass" $
-    -- TODO: Add basic operators, change operators name to method specific name. (Really neccesary do it?)
-    map internalMethod
-    [ "__brace__"
-    , "__init__"
-    , "__call__"
-    , "print"
-    , "**"
-    , "*"
-    , "/"
-    , "%"
-    , "+"
-    , "-"
-    , "++"
-    , "=="
-    , "!="
-    , "/="
-    , ">"
-    , "<"
-    , "<="
-    , ">="
-    , "&&"
-    , "||"
-    , "??"
-    ]
-  void $ instanceClass idClass "self"
+  -- idClass <- newClass "MetaClass" $
+  --   -- TODO: Add basic operators, change operators name to method specific name. (Really neccesary do it?)
+  --   map internalMethod
+  --   [ "__brace__"
+  --   , "__init__"
+  --   , "__call__"
+  --   ]
+  -- void $ instanceClass idClass "self"
 
 -- | Build a method for metaclass (Specific use)
 -- TODO: Revise error paths
@@ -96,7 +77,13 @@ getMethods obj name = case obj of
     case name of
       "++" -> Just $ \_objs -> return ONone
       _    -> Nothing
-  OBool _val              -> Nothing
+  OBool _val              ->
+    case name of
+      "!"  -> Just $ normalizePure not
+      "||" -> Just $ normalizePure' (||)
+      "&&" -> Just $ normalizePure' (&&)
+      _ -> Nothing
+  -- TODO: Add negate operator
   ODouble _val            ->
     case name of
       "*" -> Just $ normalizePure' ((*) :: Double -> Double -> Double)
@@ -125,9 +112,30 @@ baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
   [ ("print", ONative (normalize printObj))
   , ("not"  , ONative (normalizePure not))
-  , ("!"  , ONative (normalizePure not)) -- TODO: Check unary operators in the parser
-  , ("||"  , ONative (normalizePure' (||)))
-  , ("&&"  , ONative (normalizePure' (&&)))
+  ] ++
+  map internalMethod
+  [ "__brace__"
+  , "__init__"
+  , "__call__"
+  , "print"
+  , "**"
+  , "*"
+  , "/"
+  , "%"
+  , "+"
+  , "-"
+  , "++"
+  , "=="
+  , "!="
+  , "/="
+  , ">"
+  , "<"
+  , "<="
+  , ">="
+  , "&&"
+  , "||"
+  , "??"
+  , "!"
   ]
 
 -- | Generate a new class, with name and methods/properties given

@@ -14,7 +14,7 @@ import Compiler.Token.Types
 $digit = 0-9
 $alpha = [_a-zA-Z]
 $alphaDigit = [_a-zA-Z0-9]
-$operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^]
+$operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^\|]
 
 @nameId = $alpha $alphaDigit*
 @classId = [A-Z] @nameId?
