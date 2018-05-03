@@ -25,7 +25,11 @@ data World = World
   deriving Show
 
 data WorldError
-  = NoFoundVar
+  = NotFoundObject
+  | NotIterable
+  | NotCallable
+  | NumArgsMissmatch
+  | NotImplicitConversion
   deriving Show
 
 -- | Note: `ExceptT` wraps monad state, in case of fail discard memory. That it is the predicate to follow.

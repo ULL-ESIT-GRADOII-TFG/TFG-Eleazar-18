@@ -1,7 +1,6 @@
 module Compiler.Token.Types where
 
-import Data.Text
-
+import           Data.Text
 
 -- type Parser = Parsec Void String
 

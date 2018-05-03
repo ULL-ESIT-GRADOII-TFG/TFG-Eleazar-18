@@ -1,11 +1,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Compiler.Prelude.Types where
 
+import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 
-import Compiler.Object.Types
-import Compiler.World.Types
-import Compiler.Instruction.Types
+import           Compiler.Instruction.Types
+import           Compiler.Object.Types
+import           Compiler.World.Types
 
 
 data Assoc = LeftAssoc | RightAssoc deriving (Show, Eq)
@@ -17,15 +18,16 @@ instance Normalize (FreeT Instruction StWorld Object)  where
   normalize f ls =
     case ls of
       [] -> f
-      _ -> return ONone -- TODO: Add Error
+      _  -> throwError NumArgsMissmatch
 
 instance Normalize Object where
   normalize f ls =
     case ls of
       [] -> return f
-      _ -> return ONone -- TODO: Add Error
+      _  -> throwError NumArgsMissmatch
 
--- TODO: cambiar object por algo convertible a el -> normalize (+)
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
-  normalize _   []     = return ONone -- TODO: Add Error
-  normalize fun (a:xs) = normalize (fun (fromObject a)) xs
+  normalize _   []     = throwError NumArgsMissmatch
+  normalize fun (a:xs) = do
+    obj <- lift $ fromObject a
+    normalize (fun obj) xs

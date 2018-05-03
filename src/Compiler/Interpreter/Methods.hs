@@ -21,7 +21,7 @@ import           Compiler.Scope.Methods
 import           Compiler.Token.Lexer                 (Tokenizer (..),
                                                        getTokens, scanner)
 import           Compiler.World.Types
-
+import           Text.Groom
 
 -- | Initial State of interpreter
 initialState :: IState
@@ -59,8 +59,8 @@ repl = do
 -- | Handle possible errors during execution of interpreter
 handleError :: InterpreterError -> Interpreter ()
 handleError err = case err of
-  Compiling err -> liftIO $ T.putStrLn err
-  Internal err -> liftIO $ T.putStrLn err
+  Compiling err' -> liftIO $ T.putStrLn err'
+  Internal err'  -> liftIO $ T.putStrLn err'
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
@@ -76,13 +76,13 @@ compileSource :: T.Text -> String -> Interpreter ()
 compileSource rawFile nameFile = do
   tokenizer' <- catchEither (Compiling . T.pack) . return . scanner True $ T.unpack rawFile
   ast <- catchEither (Compiling . T.pack . show) . return . parserLexer nameFile $ getTokens tokenizer'
-  liftIO $ print ast
+  liftIO $ putStrLn $ groom ast
   case ast of
     Command cmd args -> executeCommand cmd args
     Code statements -> do
       expr      <- computeStatements statements
       astScoped <- catchEither (Compiling . T.pack . show) . liftScope $ scopingThroughtAST expr
-      liftIO $ print astScoped
+      liftIO $ putStrLn $ groom  astScoped
       evaluateScopedProgram astScoped
 
 -- | Evaluate program with AST already scoped

@@ -54,16 +54,14 @@ parseBodyClass = choice $ map try [parseFunDecl, parseAssign, parseIdentifier]
 parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map
   try
-  [ parseOperators
-  , parseUnaryOperators
+  [ parseUnaryOperators
   , parseFunDecl
   , parseLam
-  , parseAssign
   , parseApply
   , parseIf
   , parseIfElse
-  , parseIdentifier
-  , parseFactor
+  , parseAssign
+  , parseOperators
   ]
 
 parseSeqExpr :: TokenParser (Expression TokenInfo)
@@ -186,6 +184,13 @@ parseIdentifier = do
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
 
+-- parseFactorMethod :: TokenParser (FreeT Instruction StWorld Object)
+-- parseFactorMethod =
+--   factor <- parseFactor  -- Object
+--   accessor <- parseAccessor -- Accessor
+--   idFun <- findMethod factor accesor  -- ObjectFunc
+--   callCommand idFun [factor]
+
 parseFactor :: TokenParser (Expression TokenInfo)
 parseFactor = choice $ map try
   [ (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
@@ -197,6 +202,7 @@ parseFactor = choice $ map try
   , parseVector
   , parseDic
   , parensExp
+  , parseIdentifier
   ]
 
 parseVector :: TokenParser (Expression TokenInfo)

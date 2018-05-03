@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Object.Methods where
 
-import qualified Data.Text as T
+import           Control.Monad.Except
+import qualified Data.Text                    as T
 
-import           Compiler.Ast
 import {-# SOURCE #-} Compiler.Instruction.Methods
 import           Compiler.Instruction.Types
 import           Compiler.Object.Types
@@ -20,11 +20,12 @@ callObject address args = do
   case lookupObj of
     Just (obj, accessors) -> do
       mObj <- through obj accessors
+      let args' = if null accessors then args else obj:args
       case mObj of
-        Just (OFunc _ ids prog) -> runProgram (undefined ids args >> prog) -- TODO:
-        Just (ONative native)   -> runProgram (native args)
-        _t                      -> return ONone
-    Nothing               -> return ONone
+        Just (OFunc _ ids prog) -> runProgram (sequence_ (zipWith (=:) (map simple ids) args') >> prog)
+        Just (ONative native)   -> runProgram $ native args'
+        _t                      -> throwError NotCallable
+    Nothing               -> throwError NotFoundObject
 
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
 mapObj obj func = case obj of
@@ -34,10 +35,10 @@ mapObj obj func = case obj of
       mapM_ (\chr -> func $ OStr $ T.singleton chr) (T.unpack str)
       return ONone
     OVector vec -> mapM_ func vec >> return ONone
-    ODic{}      -> undefined
+    ODic{}      -> error "implement"
     ORef word   -> follow word >>= flip mapObj func
     OObject{}   -> error "Implement"
-    _           -> error "No Iterable object"
+    _           -> throwError NotIterable
 
 -- | Check truthfulness of an object
 checkBool :: Object -> StWorld Bool

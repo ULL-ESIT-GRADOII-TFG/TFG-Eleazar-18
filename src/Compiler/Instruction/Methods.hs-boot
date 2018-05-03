@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Compiler.Instruction.Methods where
 
 import           Control.Monad.Trans.Free
@@ -7,3 +8,5 @@ import Compiler.World.Types
 import Compiler.Object.Types
 
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object
+
+(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m ()

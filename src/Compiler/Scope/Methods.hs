@@ -6,9 +6,7 @@ import           Control.Monad.Except
 import           Control.Monad.Identity
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
---import           Data.Monoid
 import qualified Data.Text                  as T
---import           Debug.Trace
 import           Lens.Micro.Platform
 
 import           Compiler.Ast

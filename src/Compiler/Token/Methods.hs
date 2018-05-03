@@ -1,17 +1,17 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Compiler.Token.Methods where
 
-import           Data.Vector (Vector)
-import qualified Data.Vector as V
-import           Data.Text (Text)
+import           Data.Text            (Text)
+import           Data.Vector          (Vector)
+import qualified Data.Vector          as V
 import           Text.Parsec
 import           Text.Parsec.Pos
 
-import Compiler.Token.Types
 import qualified Compiler.Token.Lexer as L
+import           Compiler.Token.Types
 
 
 instance (Monad m) => Stream (Vector tok) m tok where

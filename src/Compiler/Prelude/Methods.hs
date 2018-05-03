@@ -3,13 +3,13 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Compiler.Prelude.Methods where
 
-import           Control.Monad
-import           Control.Monad.IO.Class
+import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
 import           Data.Maybe
 import qualified Data.Text                  as T
+import qualified Data.Vector                as V
 import           Lens.Micro.Platform
 
 import           Compiler.Instruction.Types
@@ -18,8 +18,8 @@ import           Compiler.Interpreter.Utils
 import           Compiler.Object.Types
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
-import           Compiler.Scope.Types
 import           Compiler.Scope.Methods
+import           Compiler.Scope.Types
 import           Compiler.World.Types
 
 
@@ -51,7 +51,6 @@ loadPrelude :: Interpreter ()
 loadPrelude =
   mapM_ (uncurry newVar) baseBasicFunctions
   -- idClass <- newClass "MetaClass" $
-  --   -- TODO: Add basic operators, change operators name to method specific name. (Really neccesary do it?)
   --   map internalMethod
   --   [ "__brace__"
   --   , "__init__"
@@ -65,11 +64,11 @@ internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
   , ONative $ \case
-      []           -> return ONone --
+      []           -> throwError NumArgsMissmatch
       objs@(obj:_) ->
         case getMethods obj name of
           Just func -> func objs
-          Nothing   -> return ONone) --
+          Nothing   -> throwError NotFoundObject)
 
 getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
@@ -82,7 +81,7 @@ getMethods obj name = case obj of
       "!"  -> Just $ normalizePure not
       "||" -> Just $ normalizePure' (||)
       "&&" -> Just $ normalizePure' (&&)
-      _ -> Nothing
+      _    -> Nothing
   -- TODO: Add negate operator
   ODouble _val            ->
     case name of
@@ -90,13 +89,21 @@ getMethods obj name = case obj of
       "/" -> Just $ normalizePure' ((/) :: Double -> Double -> Double)
       "+" -> Just $ normalizePure' ((+) :: Double -> Double -> Double)
       "-" -> Just $ normalizePure' ((-) :: Double -> Double -> Double)
-      _ -> Nothing
+      _   -> Nothing
   ONum _val               ->
     case name of
       "*" -> Just $ normalizePure' ((*) :: Int -> Int -> Int)
       "/" -> Just $ normalizePure' (div :: Int -> Int -> Int)
       "+" -> Just $ normalizePure' ((+) :: Int -> Int -> Int)
       "-" -> Just $ normalizePure' ((-) :: Int -> Int -> Int)
+      _   -> Nothing
+  OVector _val ->
+    case name of
+      "len" -> Just $ normalizePure (V.length :: V.Vector Object -> Int)
+      "++" -> Just $ normalizePure' (mappend :: V.Vector Object -> V.Vector Object -> V.Vector Object)
+      _ -> Nothing
+  ODic _val ->
+    case name of
       _ -> Nothing
   ORegex _str             -> Nothing
   OShellCommand _str      -> Nothing

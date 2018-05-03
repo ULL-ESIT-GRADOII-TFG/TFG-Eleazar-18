@@ -1,7 +1,7 @@
 module Compiler.Core where
 
+import           Control.Monad.Except
 import           Control.Monad.State.Strict
-import Control.Monad.Except
 import           System.Console.Haskeline
 
 import           Compiler.Interpreter.Methods
@@ -14,6 +14,6 @@ start :: IO ()
 start = do
   err <- runInputT defaultSettings . flip evalStateT initialState $ runExceptT (loadPrelude >> repl)
   case err of
-    Right _ -> return ()
-    Left err -> print err
+    Right _   -> return ()
+    Left err' -> print err'
 
