@@ -14,7 +14,7 @@ import Compiler.Token.Types
 $digit = 0-9
 $alpha = [_a-zA-Z]
 $alphaDigit = [_a-zA-Z0-9]
-$operators = [\>\<\!\@\=\/\$\%\&\?\+\-\*\.\^\|]
+$operators = [\\\/\>\<\!\@\=\$\%\&\?\+\-\*\.\^\|]
 
 @nameId = $alpha $alphaDigit*
 @classId = [A-Z] @nameId?
@@ -62,7 +62,8 @@ tokens :-
     "false"       { mkL (BoolT False) }
     \"            { begin string }
     "$"           { begin shell }
-    "/"           { begin regex }
+    \$\"           { begin shell_alternative }
+    r\"           { begin regex }
     $operators+   { mkL' OperatorT }
     @number       { mkL' (NumT . read . T.unpack) }
     @decimal      { mkL' (DecimalT . read . T.unpack) }
@@ -89,12 +90,20 @@ tokens :-
     "$"            { generateLexerFromInner ShellCommandT `andBegin` code_st }
   }
 
-  <regex> {
-    "\/"           { skipJustAdd "/" }
+  <shell_alternative> {
+    \\\"           { skipJustAdd "/" }
     \\n            { skipJustAdd "\n" }
     \\t            { skipJustAdd "\t" }
-    [^\/]          { addToInnerString }
-    "/"            { generateLexerFromInner RegexExprT `andBegin` code_st }
+    [^\"]          { addToInnerString }
+    \"             { generateLexerFromInner ShellCommandT `andBegin` code_st }
+  }
+
+  <regex> {
+    \\\"           { skipJustAdd "/" }
+    \\n            { skipJustAdd "\n" }
+    \\t            { skipJustAdd "\t" }
+    [^\"]          { addToInnerString }
+    \"             { generateLexerFromInner RegexExprT `andBegin` code_st }
   }
 {
 

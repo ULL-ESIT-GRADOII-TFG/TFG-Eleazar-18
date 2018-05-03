@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Lexer where
 
-import Test.Hspec
-import Text.Parsec
-import qualified Data.Vector as V
+import qualified Data.Vector            as V
+import           Test.Hspec
+import           Text.Parsec
 
-import Compiler.Token.Types
-import Compiler.Token.Lexer
-import Compiler.Token.Methods
+import           Compiler.Token.Lexer
+import           Compiler.Token.Methods
+import           Compiler.Token.Types
 
 tokenParse :: String -> Either String Token
 tokenParse val = do
@@ -27,32 +27,52 @@ tokenFlow val = do
 lexerTest :: SpecWith ()
 lexerTest =
   describe "Lexer Test" $ do
+    it "It parse a variable names" $ do
+      tokenParse "__test" `shouldBe` Right (NameIdT "__test")
+      tokenParse "t1e2s3t4" `shouldBe` Right (NameIdT "t1e2s3t4")
+
     it "It parse a simple number" $
       tokenParse "1234567890" `shouldBe` Right (NumT 1234567890)
 
-    it "It parse a negative number" $
-      tokenParse "-1" `shouldBe` Right (NumT (-1))
-
-    it "It parse a positive number" $
-      tokenParse "0" `shouldBe` Right (NumT 0)
+    it "It parse a decimal number" $
+      tokenParse "1234567890.0123456789" `shouldBe` Right (DecimalT 1234567890.0123456789)
 
     it "It parse a bools token" $ do
       tokenParse "true" `shouldBe` Right (BoolT True)
       tokenParse "false" `shouldBe` Right (BoolT False)
 
-    it "It parse an operators token" $ do
+    it "It parse token operators" $ do
+      -- Current used operators or going to be used
+      tokenParse "!" `shouldBe` Right (OperatorT "!")
+      tokenParse "**" `shouldBe` Right (OperatorT "**")
+      tokenParse "/" `shouldBe` Right (OperatorT "/")
+      tokenParse "%" `shouldBe` Right (OperatorT "%")
+      tokenParse "*" `shouldBe` Right (OperatorT "*")
       tokenParse "+" `shouldBe` Right (OperatorT "+")
+      tokenParse "-" `shouldBe` Right (OperatorT "-")
       tokenParse "++" `shouldBe` Right (OperatorT "++")
-      tokenParse "=&" `shouldBe` Right (OperatorT "=&")
+      tokenParse "&&" `shouldBe` Right (OperatorT "&&")
+      tokenParse "||" `shouldBe` Right (OperatorT "||")
+      tokenParse "==" `shouldBe` Right (OperatorT "==")
+      tokenParse ">" `shouldBe` Right (OperatorT ">")
+      tokenParse "<" `shouldBe` Right (OperatorT "<")
+      tokenParse ">=" `shouldBe` Right (OperatorT ">=")
+      tokenParse "<=" `shouldBe` Right (OperatorT "<=")
+      tokenParse "!=" `shouldBe` Right (OperatorT "!=")
+      tokenParse "/=" `shouldBe` Right (OperatorT "/=")
+      tokenParse "??" `shouldBe` Right (OperatorT "??")
 
     it "It parse a literal string" $
       tokenParse "\"Into a string\"" `shouldBe` Right (LitTextT "Into a string")
 
-    it "It parse a literal string" $
-      tokenParse "/Into a string/" `shouldBe` Right (RegexExprT "Into a string")
+    it "It parse a literal regex" $
+      tokenParse "r\"Into a string\"" `shouldBe` Right (RegexExprT "Into a string")
 
-    it "It parse a literal string" $
+    it "It parse a literal command" $
       tokenParse "$Into a string$" `shouldBe` Right (ShellCommandT "Into a string")
+
+    it "It parse a literal command alternative sintax" $
+      tokenParse "$\"Into a string\"" `shouldBe` Right (ShellCommandT "Into a string")
 
     it "Identation rules" $ do
       tokenFlow "test:\n  hi\n" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "hi",CBraceT]
