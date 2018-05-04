@@ -3,6 +3,7 @@ module Compiler.Ast where
 import qualified Data.Text             as T
 import           Compiler.Parser.Types
 
+
 data Repl
   = Command T.Text [T.Text]
   | Code [Statement TokenInfo]
@@ -51,4 +52,5 @@ data AtomG acc a id
   | ABool Bool
   | AVector [ExpressionG acc a id]
   | ADic [(T.Text, ExpressionG acc a id)]
+  | ANone
   deriving Show

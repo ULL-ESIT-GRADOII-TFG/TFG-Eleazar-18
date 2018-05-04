@@ -58,11 +58,12 @@ tokens :-
     ")"           { mkL CParenT }
     ","           { mkL CommaT }
     "="           { mkL AssignT }
+    "none"        { mkL NoneT }
     "true"        { mkL (BoolT True) }
     "false"       { mkL (BoolT False) }
     \"            { begin string }
     "$"           { begin shell }
-    \$\"           { begin shell_alternative }
+    \$\"          { begin shell_alternative }
     r\"           { begin regex }
     $operators+   { mkL' OperatorT }
     @number       { mkL' (NumT . read . T.unpack) }

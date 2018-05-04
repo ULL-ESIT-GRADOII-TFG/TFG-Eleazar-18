@@ -15,7 +15,7 @@ import Compiler.Token.Lexer (Lexeme)
 
 {-
   TODO: Generate an useful `TokenInfo`
-  TODO: Parse Vector
+  TODO: Fail on use reserved words
  -}
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
@@ -199,6 +199,7 @@ parseFactor = choice $ map try
   , (\reg -> Factor (ARegex reg) TokenInfo) <$> regexT
   , (\cmd -> Factor (AShellCommand cmd) TokenInfo) <$> shellCommandT
   , (\bool -> Factor (ABool bool) TokenInfo) <$> boolT
+  , Factor ANone TokenInfo <$ noneT
   , parseVector
   , parseDic
   , parensExp

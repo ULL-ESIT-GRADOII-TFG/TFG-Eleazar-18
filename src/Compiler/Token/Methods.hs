@@ -88,6 +88,9 @@ commaT = match CommaT
 assignT :: TokenParser ()
 assignT = match AssignT
 
+noneT :: TokenParser ()
+noneT = match NoneT
+
 boolT :: TokenParser Bool
 boolT = match' $
   \case

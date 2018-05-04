@@ -74,7 +74,7 @@ getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
   OStr _str               ->
     case name of
-      "++" -> Just $ \_objs -> return ONone
+      "++" -> Just $ normalizePure' (T.append)
       _    -> Nothing
   OBool _val              ->
     case name of

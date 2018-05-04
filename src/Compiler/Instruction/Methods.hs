@@ -64,6 +64,7 @@ astToInstructions expr = case expr of
 fromAST :: (Monad m) => AtomG Identity a AddressRef -> FreeT Instruction m Object
 fromAST atom =
   case atom of
+    ANone             -> return ONone
     ANum num          -> return $ ONum num
     AStr str          -> return $ OStr str
     ADecimal double   -> return $ ODouble double

@@ -134,6 +134,7 @@ scopingThroughtAST expr = case expr of
 
 scopeFactor :: Show a => Atom a -> ScopeM (AtomG Identity a AddressRef)
 scopeFactor atom = case atom of
+  ANone -> return ANone
   ANum val -> return $ ANum val
   ADecimal val -> return $ ADecimal val
   ARegex val -> return $ ARegex val

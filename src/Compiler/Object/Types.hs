@@ -91,4 +91,11 @@ instance FromObject a => FromObject (M.Map T.Text a) where
   fromObject (ODic dic) = mapM fromObject dic
   fromObject _          = throwError NotImplicitConversion
 
+instance ToObject T.Text where
+  toObject = OStr
+
+instance FromObject T.Text where
+  fromObject (OStr text) = return text
+  fromObject _             = throwError NotImplicitConversion
+
 newtype ObjectError = ObjectError { info :: T.Text }

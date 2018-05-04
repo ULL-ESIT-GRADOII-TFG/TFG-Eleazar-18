@@ -65,6 +65,8 @@ data Token
   -- ^ Represents a decimal
   | BoolT Bool
   -- ^ "true" or "false"
+  | NoneT
+  -- ^ None action
   | OperatorT Text
   -- ^ Operators are symbols like +,-,*,/,++....
   | ICommandT Text [Text]
