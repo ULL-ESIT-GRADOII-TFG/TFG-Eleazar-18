@@ -1,0 +1,80 @@
+
+# Needs rest manipulation
+
+
+# Github base class
+class Github:
+  url_base = "https://api.github.com/"
+  auth = none
+  user = none
+
+  fun __load__(self) {}
+
+  fun __init__(self):
+    self.check_config():
+
+  fun get_auth(self):
+    credentials = self.get_credentials()
+
+    data = fetch(
+      { header: {
+          type: "Basic",
+          token: credentials
+        },
+        body: {
+          "scopes": ["user", "repo", "notifications", "gist"],
+          "note": "Access to scripting language"
+        }
+      }
+      "https://api.github.com/authorizations"
+    )
+
+    if data != none:
+      self.auth = data.token
+      self.user
+
+
+
+#   rest:
+#     # Método de autenticación
+#     auth:
+#       url: https://api.github.com/authorizations
+#       type: Basic
+#       body: |
+#         {
+#           "scopes": ["user", "repo", "notifications", "gist"],
+#           "note": "lang Rust"
+#         }
+#       retrieve: token
+
+
+#     template_request:
+#       header:
+#         user_agent: GHScript
+#       url_base: https://api.github.com/
+
+#     /user:
+#       /repos:
+#         comment: |
+#           Get repos of current user logged
+#         method: GET
+#         params:
+#           - visibility
+#           - affiliation
+#           - type
+#           - sort
+#           - direction
+
+#     /users:
+#       /:username:
+#         extend: /user
+
+#     /repos:
+#       /:owner/:repo:
+#         /projects:
+#           method: GET
+#         /topics:
+#           method:
+#             - GET
+#             - PUT
+

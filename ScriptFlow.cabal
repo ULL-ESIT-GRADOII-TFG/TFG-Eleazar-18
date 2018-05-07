@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9f5653c5876881d3b1ba6098a963d7b71c0981e0e334858d299f4d0140d28cbd
+-- hash: ecf51ec91cbef1c955200275cf53f08da1230c741dd019bab74f68dc1d6a4603
 
 name:           ScriptFlow
 version:        0.0.1
@@ -13,12 +13,13 @@ homepage:       https://github.com/none#readme
 bug-reports:    https://github.com/none/issues
 author:         Eleazar Díaz Delgado
 maintainer:     eleazardzdo@gmail.com
-copyright:      2017 Eleazar Díaz Delgado
+copyright:      2018 Eleazar Díaz Delgado
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
+    defaultConfig.yaml
     README.md
 
 source-repository head
@@ -35,12 +36,15 @@ library
     , base
     , bytestring
     , containers
+    , directory
+    , filepath
     , formatting
     , free
     , groom
     , haskeline
     , http-client
     , http-client-tls
+    , include-file
     , microlens-aeson
     , microlens-platform
     , mtl
@@ -48,7 +52,6 @@ library
     , template-haskell
     , text
     , transformers
-    , unix
     , unordered-containers
     , vector
     , yaml
@@ -56,26 +59,29 @@ library
       alex
   exposed-modules:
       Compiler.Ast
-      Compiler.Core
-      Compiler.Interpreter.Types
-      Compiler.Interpreter.Methods
-      Compiler.Interpreter.Utils
-      Compiler.Interpreter.Command.Methods
-      Compiler.Scope.Types
-      Compiler.Scope.Methods
-      Compiler.Object.Types
-      Compiler.Object.Methods
-      Compiler.Instruction.Types
+      Compiler.Config.Methods
+      Compiler.Config.Types
+      Compiler.Core.Methods
+      Compiler.Core.Types
       Compiler.Instruction.Methods
-      Compiler.World.Types
-      Compiler.World.Methods
-      Compiler.Token.Types
-      Compiler.Token.Methods
-      Compiler.Token.Lexer
-      Compiler.Parser.Types
+      Compiler.Instruction.Types
+      Compiler.Interpreter.Command.Methods
+      Compiler.Interpreter.Methods
+      Compiler.Interpreter.Types
+      Compiler.Interpreter.Utils
+      Compiler.Object.Methods
+      Compiler.Object.Types
       Compiler.Parser.Methods
-      Compiler.Prelude.Types
+      Compiler.Parser.Types
       Compiler.Prelude.Methods
+      Compiler.Prelude.Types
+      Compiler.Scope.Methods
+      Compiler.Scope.Types
+      Compiler.Token.Lexer
+      Compiler.Token.Methods
+      Compiler.Token.Types
+      Compiler.World.Methods
+      Compiler.World.Types
   other-modules:
       Compiler.Desugar.Methods
       Compiler.Desugar.Types
@@ -83,8 +89,10 @@ library
       Paths_ScriptFlow
   default-language: Haskell2010
 
-executable Compiler
+executable scriptflow
   main-is: Main.hs
+  other-modules:
+      Paths_ScriptFlow
   hs-source-dirs:
       app
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
@@ -92,8 +100,6 @@ executable Compiler
       ScriptFlow
     , base
     , optparse-applicative
-  other-modules:
-      Paths_ScriptFlow
   default-language: Haskell2010
 
 test-suite Compiler-test

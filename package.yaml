@@ -5,64 +5,70 @@ description: Please see README.org
 category: Development
 author: Eleazar Díaz Delgado
 maintainer: eleazardzdo@gmail.com
-copyright: 2017 Eleazar Díaz Delgado
+copyright: 2018 Eleazar Díaz Delgado
 license: BSD3
 github: none
 extra-source-files:
   - README.md
+  - defaultConfig.yaml
 
 library:
   source-dirs: src
   build-tools: alex
   ghc-options: -Wall -Wno-orphans
   dependencies:
-    - base
+    - aeson
     - array
-    - mtl
-    - text
+    - base
+    - bytestring
+    - containers
+    - directory
+    - filepath
+    - formatting
     - free
     - groom
-    - formatting
-    - transformers
-    - containers
-    - unordered-containers
-    - unix
-    - bytestring
-    - microlens-platform
-    - microlens-aeson
-    - parsec
-    - vector
-    - template-haskell
     - haskeline
+    - include-file
     - http-client
     - http-client-tls
-    - aeson
+    - microlens-aeson
+    - microlens-platform
+    - mtl
+    - parsec
+    - template-haskell
+    - text
+    - transformers
+    - unordered-containers
+    - vector
     - yaml
   exposed-modules:
     - Compiler.Ast
-    - Compiler.Core
-    - Compiler.Interpreter.Types
-    - Compiler.Interpreter.Methods
-    - Compiler.Interpreter.Utils
-    - Compiler.Interpreter.Command.Methods
-    - Compiler.Scope.Types
-    - Compiler.Scope.Methods
-    - Compiler.Object.Types
-    - Compiler.Object.Methods
-    - Compiler.Instruction.Types
+    - Compiler.Config.Methods
+    - Compiler.Config.Types
+    - Compiler.Core.Methods
+    - Compiler.Core.Types
     - Compiler.Instruction.Methods
-    - Compiler.World.Types
-    - Compiler.World.Methods
-    - Compiler.Token.Types
-    - Compiler.Token.Methods
-    - Compiler.Token.Lexer
-    - Compiler.Parser.Types
+    - Compiler.Instruction.Types
+    - Compiler.Interpreter.Command.Methods
+    - Compiler.Interpreter.Methods
+    - Compiler.Interpreter.Types
+    - Compiler.Interpreter.Utils
+    - Compiler.Object.Methods
+    - Compiler.Object.Types
     - Compiler.Parser.Methods
-    - Compiler.Prelude.Types
+    - Compiler.Parser.Types
     - Compiler.Prelude.Methods
+    - Compiler.Prelude.Types
+    - Compiler.Scope.Methods
+    - Compiler.Scope.Types
+    - Compiler.Token.Lexer
+    - Compiler.Token.Methods
+    - Compiler.Token.Types
+    - Compiler.World.Methods
+    - Compiler.World.Types
 
 executables:
-  Compiler:
+  scriptflow:
     main: Main.hs
     source-dirs: app
     ghc-options:

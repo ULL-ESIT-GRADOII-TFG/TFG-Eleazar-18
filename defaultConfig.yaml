@@ -1,0 +1,11 @@
+command_shell: /usr/bin/sh
+
+repl:
+  # Define this path to automatically change on boot the repl (Default: null)
+  default_path: null
+  # A portion of code to define repl prompt (Default: "{$pwd} >>>")
+  prompt: "{$pwd} >>> "
+
+  # Specifies api definitions to use into interpreter
+modules:
+  - "./github.yaml"

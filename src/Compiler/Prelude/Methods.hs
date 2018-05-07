@@ -70,6 +70,7 @@ internalMethod name =
           Just func -> func objs
           Nothing   -> throwError NotFoundObject)
 
+-- TODO Reorganize to add internal docs
 getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
   OStr _str               ->
