@@ -38,6 +38,9 @@ astToInstructions expr = case expr of
   SeqExpr exprs _info ->
     foldM (\_ expr' -> astToInstructions expr') ONone exprs
 
+  MkScope exprs ->
+    foldM (\_ expr' -> astToInstructions expr') ONone exprs
+
   If condExpr prog _info -> do
     value <- astToInstructions condExpr
     cond value (astToInstructions prog) (return ONone)

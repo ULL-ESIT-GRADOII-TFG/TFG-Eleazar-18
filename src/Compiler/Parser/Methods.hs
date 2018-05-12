@@ -1,21 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Parser.Methods where
 
+import qualified Data.Map                 as M
+import qualified Data.Text                as T
+import qualified Data.Vector              as V
 import           Text.Parsec
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import qualified Data.Map as M
 
-import Compiler.Ast
-import Compiler.Prelude.Methods (operatorsPrecedence)
-import Compiler.Prelude.Types (Assoc(..))
-import Compiler.Parser.Types
-import Compiler.Token.Methods
-import Compiler.Token.Lexer (Lexeme)
+import           Compiler.Ast
+import           Compiler.Parser.Types
+import           Compiler.Prelude.Methods (operatorsPrecedence)
+import           Compiler.Prelude.Types   (Assoc (..))
+import           Compiler.Token.Lexer     (Lexeme)
+import           Compiler.Token.Methods
 
 {-
   TODO: Generate an useful `TokenInfo`
   TODO: Fail on use reserved words
+  TODO: Allow "5.neg()" factor followed of accessor
  -}
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
@@ -57,7 +58,6 @@ parseExp = choice $ map
   [ parseUnaryOperators
   , parseFunDecl
   , parseLam
-  , parseApply
   , parseIf
   , parseIfElse
   , parseAssign
@@ -139,7 +139,7 @@ checkOperator level = do
     Nothing -> parserFail "No valid operator"
 
 levels :: [Int] -> TokenParser (Expression TokenInfo)
-levels = foldl level parseFactor
+levels = foldl level parseFactorMethod
   where
     level nextLevel leveln = do
       expr <- nextLevel
@@ -184,12 +184,19 @@ parseIdentifier = do
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
 
--- parseFactorMethod :: TokenParser (FreeT Instruction StWorld Object)
--- parseFactorMethod =
---   factor <- parseFactor  -- Object
---   accessor <- parseAccessor -- Accessor
---   idFun <- findMethod factor accesor  -- ObjectFunc
---   callCommand idFun [factor]
+-- This allows apply methods or get properties from an object without needing
+-- declare an explicit variable
+parseFactorMethod :: TokenParser (Expression TokenInfo)
+parseFactorMethod = do
+  factor <- parseFactor
+  maybe factor id `fmap` (optionMaybe $ do
+    operatorT' "."
+    acc <- parseAccessor
+    params <- maybe [] id `fmap` (optionMaybe $ between oParenT cParenT (parseSeqExpr `sepBy` commaT))
+    return $ MkScope
+      [ VarDecl (Simple "aux" TokenInfo) factor TokenInfo
+      , Apply (Dot "aux" acc TokenInfo) params TokenInfo
+      ])
 
 parseFactor :: TokenParser (Expression TokenInfo)
 parseFactor = choice $ map try
@@ -203,6 +210,7 @@ parseFactor = choice $ map try
   , parseVector
   , parseDic
   , parensExp
+  , parseApply
   , parseIdentifier
   ]
 

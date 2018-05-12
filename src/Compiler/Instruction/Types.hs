@@ -30,12 +30,16 @@ data Instruction next
   | Assign !AddressRef !Object next
   -- ^ Assign an object to local variable
   | DropVar !AddressRef next
+  -- ^ Remove a var from memory
   | GetVal !AddressRef (Object -> next)
+  -- ^ Retrieve a object from a memory reference
   | Loop !Object (Object -> Prog) next
+  -- ^ Loop over a object
   | Cond !Object
       Prog
       Prog
       (Object -> next)
+  -- ^ If sentence given a object
   | End
   -- ^ End program, ignore all after that
   deriving Functor

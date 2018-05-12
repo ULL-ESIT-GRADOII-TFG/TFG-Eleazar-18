@@ -10,10 +10,8 @@ import           Compiler.Object.Types
 import           Compiler.World.Methods
 import           Compiler.World.Types
 
-isNone :: Object -> Bool
-isNone ONone = True
-isNone _     = False
 
+-- | From memory address, check if object callable and call it with given arguments
 callObject :: AddressRef -> [Object] -> StWorld Object
 callObject address args = do
   lookupObj <- lookupInMemory address
@@ -27,6 +25,7 @@ callObject address args = do
         _t                      -> throwError NotCallable
     Nothing               -> throwError NotFoundObject
 
+-- | Iterate over a object if it is iterable
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
 mapObj obj func = case obj of
     OStr str    -> do
@@ -35,12 +34,14 @@ mapObj obj func = case obj of
       mapM_ (\chr -> func $ OStr $ T.singleton chr) (T.unpack str)
       return ONone
     OVector vec -> mapM_ func vec >> return ONone
-    ODic{}      -> error "implement"
+    ODic{}      -> error "implement" -- TODO:
     ORef word   -> follow word >>= flip mapObj func
-    OObject{}   -> error "Implement"
+    OObject{}   -> error "Implement" -- TODO: __iter__ or __map__
     _           -> throwError NotIterable
 
 -- | Check truthfulness of an object
 checkBool :: Object -> StWorld Bool
-checkBool (OBool bool) = return bool
-checkBool _            = return False
+checkBool (OBool bool)  = return bool
+checkBool obj@OObject{} = error "Implement"  -- TODO: __bool__
+checkBool _             = return False
+

@@ -4,6 +4,7 @@ module Compiler.Interpreter.Methods where
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import           Data.Maybe
+import           Text.Groom
 import qualified Data.Text                            as T
 import qualified Data.Text.IO                         as T
 import           Lens.Micro.Platform
@@ -21,7 +22,6 @@ import           Compiler.Scope.Methods
 import           Compiler.Token.Lexer                 (Tokenizer (..),
                                                        getTokens, scanner)
 import           Compiler.World.Types
-import           Text.Groom
 
 -- | Initial State of interpreter
 initialState :: IState
@@ -31,11 +31,10 @@ initialState = IState
   }
 
 -- | Start an repl without prelude
---
--- TODO: Se tiene que declarar variables propias del interprete
 repl :: Interpreter ()
 repl = do
   inMultiline <- isJust <$> use multiline
+  -- TODO: prompt is defined in configuration its behavior
   let prompt = if inMultiline then "... " else ">>> "
   minput <- lift . lift $ getInputLine prompt
   case minput of
@@ -57,6 +56,7 @@ repl = do
   repl
 
 -- | Handle possible errors during execution of interpreter
+-- TODO: Improve
 handleError :: InterpreterError -> Interpreter ()
 handleError err = case err of
   Compiling err' -> liftIO $ T.putStrLn err'
@@ -100,8 +100,10 @@ computeStatements :: [Statement TokenInfo] -> Interpreter (Expression TokenInfo)
 computeStatements =
   flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st ->
     case st of
+      -- TODO
       Import _path _ -> error "No implemented yet import functionality"
       cls@Class{}    -> do
+        -- TODO
         expr <- catchEither undefined . liftScope $ scopingClassAST cls
         evaluateScopedProgram expr
         return $ SeqExpr [] TokenInfo

@@ -27,6 +27,8 @@ data ExpressionG acc a id
   | If (ExpressionG acc a id) (ExpressionG acc a id) a
   | IfElse (ExpressionG acc a id) (ExpressionG acc a id) (ExpressionG acc a id) a
   | For id (ExpressionG acc a id) (ExpressionG acc a id) a
+  | MkScope [ExpressionG acc a id]
+  -- ^ Explicit scope
   | Apply (acc id) [ExpressionG acc a id] a
   | Identifier (acc id) a
   | Factor (AtomG acc a id) a

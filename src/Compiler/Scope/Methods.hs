@@ -70,13 +70,18 @@ getIdentifier (name:names) = do
 
 -- | Class renaming scope
 -- TODO: Add syntax to build a class __init__
+-- TODO: Add a constructor to scope
+-- TODO:
 scopingClassAST :: Show a => Statement a -> ScopeM (ExpressionG Identity a AddressRef)
 scopingClassAST (Class name expression _) = do
   AddressRef ref' _ <- addNewIdentifier [name]
+
   (classDef, codeScope) <- withNewScope $ do
     codeScoped <- scopingThroughtAST expression
     currScope <- use $ currentScope.renameInfo
     return (M.map _ref currScope, codeScoped)
+
+  -- TODO: Add Constructor function. Peek for possible __init__ method
   typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
   return codeScope
 scopingClassAST _                         = undefined
@@ -101,6 +106,10 @@ scopingThroughtAST expr = case expr of
   SeqExpr exprs info -> do
     expr' <- mapM scopingThroughtAST exprs
     return $ SeqExpr expr' info
+
+  MkScope exprs -> do
+    expr' <- withNewScope $ mapM scopingThroughtAST exprs
+    return $ MkScope expr'
 
   If condExpr trueExpr info -> do
     condExpr' <- withNewScope $ scopingThroughtAST condExpr
