@@ -132,7 +132,7 @@ parseUnaryOperators :: TokenParser (Expression TokenInfo)
 parseUnaryOperators = do
   operator <- operatorT
   expr     <- parseExp
-  return $ Apply (Operator operator TokenInfo) [expr] TokenInfo
+  return $ Apply (Simple operator TokenInfo) [expr] TokenInfo
 
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = do
@@ -151,15 +151,42 @@ parseMethod :: Expression TokenInfo -> TokenParser (Expression TokenInfo)
 parseMethod expr = do
   operatorT' "."
   acc    <- parseAccessor
+
+  -- Apply
   params <- optionMaybe $ between
               oParenT
               cParenT
               (parseSeqExpr `sepBy` commaT)
+
+  -- Braces
+  param <- optionMaybe $ do
+    between oBraceT cBraceT parseExp
+
   return $ MkScope
-    [ VarDecl (Simple "aux" TokenInfo)  expr TokenInfo
-    , case params of
-        Just params' -> Apply (Dot "aux" acc TokenInfo) params' TokenInfo
-        Nothing      -> Identifier (Dot "aux" acc TokenInfo) TokenInfo
+    [ VarDecl (Simple "aux" TokenInfo) expr TokenInfo
+    , case (params, param) of
+        (Just params', Just param') -> MkScope
+          [ VarDecl
+              (Simple "aux2" TokenInfo)
+              (Apply (Dot "aux" acc TokenInfo) params' TokenInfo) TokenInfo
+          , Apply
+              (Dot "aux2" (Simple "__bracket__" TokenInfo) TokenInfo)
+              [param'] TokenInfo
+          ]
+
+        (Just params', Nothing)     ->
+          Apply (Dot "aux" acc TokenInfo) params' TokenInfo
+
+        (Nothing, Just param')      -> MkScope
+          [ VarDecl
+              (Simple "aux2" TokenInfo)
+              (Identifier (Dot "aux" acc TokenInfo) TokenInfo) TokenInfo
+          , Apply
+              (Dot "aux2" (Simple "__bracket__" TokenInfo) TokenInfo)
+              [param'] TokenInfo
+          ]
+
+        (Nothing, Nothing)          -> Identifier (Dot "aux" acc TokenInfo) TokenInfo
     ]
 
 checkOperator :: Int -> TokenParser T.Text
@@ -186,11 +213,11 @@ treeOperators
 treeOperators expr []               = expr
 treeOperators expr list@((op, _):_) = case M.lookup op operatorsPrecedence of
   Just (_, LeftAssoc) -> foldl
-    (\acc (_, expr') -> Apply (Operator op TokenInfo) [acc, expr'] TokenInfo)
+    (\acc (_, expr') -> Apply (Simple op TokenInfo) [acc, expr'] TokenInfo)
     expr
     list
   Just (_, RightAssoc) -> foldr1
-    (\expr' acc -> Apply (Operator op TokenInfo) [expr', acc] TokenInfo)
+    (\expr' acc -> Apply (Simple op TokenInfo) [expr', acc] TokenInfo)
     (expr : map snd list)
   Nothing -> error "Operator not found. Internal error"
 
@@ -205,11 +232,6 @@ parseAccessor = choice $ map
     operatorT' "."
     rest <- parseAccessor
     return $ Dot name rest TokenInfo
-  , do
-    name  <- nameIdT
-    expr  <- between oBraceT cBraceT parseExp
-    mRest <- optionMaybe parseAccessor
-    return $ Bracket name expr mRest TokenInfo
   , (`Simple` TokenInfo) <$> nameIdT
   ]
 
@@ -220,28 +242,6 @@ parseIdentifier = do
 
 parensExp :: TokenParser (Expression TokenInfo)
 parensExp = between oParenT cParenT parseSeqExpr
-
--- This allows apply methods or get properties from an object without needing
--- declare an explicit variable
--- parseFactorMethod :: TokenParser (Expression TokenInfo)
--- parseFactorMethod = do
---   factor <- parseFactor
---   maybe factor id
---     `fmap` ( optionMaybe $ do
---              operatorT' "."
---              acc    <- parseAccessor
---              params <-
---                maybe [] id
---                  `fmap` ( optionMaybe $ between
---                           oParenT
---                           cParenT
---                           (parseSeqExpr `sepBy` commaT)
---                         )
---              return $ MkScope
---                [ VarDecl (Simple "aux" TokenInfo)  factor TokenInfo
---                , Apply   (Dot "aux" acc TokenInfo) params TokenInfo
---                ]
---            )
 
 parseFactor :: TokenParser (Expression TokenInfo)
 parseFactor = choice $ map

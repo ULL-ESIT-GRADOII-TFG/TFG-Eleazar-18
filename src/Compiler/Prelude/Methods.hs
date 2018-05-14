@@ -73,9 +73,11 @@ internalMethod name =
 getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
   OStr _str -> case name of
-    "++"    -> Just $ normalizePure' (T.append)
-    "strip" -> Just $ normalizePure (T.strip)
-    _       -> Nothing
+    "++"          -> Just $ normalizePure' (T.append)
+    "strip"       -> Just $ normalizePure (T.strip)
+    "strip_end"   -> Just $ normalizePure (T.stripEnd)
+    "strip_start" -> Just $ normalizePure (T.stripStart)
+    _             -> Nothing
   OBool _val -> case name of
     "!"  -> Just $ normalizePure not
     "||" -> Just $ normalizePure' (||)

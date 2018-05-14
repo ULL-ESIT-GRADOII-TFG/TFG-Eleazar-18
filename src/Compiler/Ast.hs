@@ -1,7 +1,7 @@
 module Compiler.Ast where
 
-import qualified Data.Text             as T
 import           Compiler.Parser.Types
+import qualified Data.Text             as T
 
 
 data Repl
@@ -38,9 +38,7 @@ type Accessor a = AccessorG a T.Text
 
 data AccessorG a id
   = Dot id (AccessorG a id) a
-  | Bracket id (ExpressionG (AccessorG a) a id) (Maybe (AccessorG a id)) a
   | Simple id a
-  | Operator id a
   deriving Show
 
 type Atom a = AtomG (AccessorG a) a T.Text

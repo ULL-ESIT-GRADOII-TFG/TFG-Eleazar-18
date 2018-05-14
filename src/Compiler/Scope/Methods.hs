@@ -153,52 +153,5 @@ scopeFactor atom = case atom of
 simplifiedAccessor
   :: Show a => Accessor a -> [T.Text]
 simplifiedAccessor acc = case acc of
-  Simple id' _tok               -> [id']
-  Operator id' _tok             -> [id']
-  Bracket _id' _expr _mAcc _tok -> error "Not Implemented"
-  Dot id' acc' _                -> id' : simplifiedAccessor acc'
-
--- |
--- simplifiedAccessor
---   :: Show a => Accessor a -> [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
--- simplifiedAccessor acc = case acc of
---   Simple id' tok            -> [(return $ \_ lastAddress -> Identifier (Identity lastAddress) tok, [id'])]
---   Bracket id' expr mAcc tok ->
---     let
---       expr' = do
---         expr'' <- scopingThroughtAST expr
---         return $ \braceOP lastAddress ->
---           Apply (Identity braceOP) [Identifier (Identity lastAddress) tok, expr''] tok
---     in case mAcc of
---       Just acc' ->
---         (expr', [id']) : simplifiedAccessor acc'
---       Nothing -> [(expr', [id'])]
---   Dot id' acc' _ -> simplifiedAccessor acc' & _head._2 %~ (id':)
-
--- -- TODO: Add test
--- generateCode :: Show a => [(ScopeM (AddressRef -> AddressRef -> ExpressionG Identity a AddressRef), [T.Text])]
---   -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
--- generateCode [] = error "Internal Error transform Accessor"
--- generateCode values = do
---   braceOp <- traceShow (map snd values) $ getIdentifier ["self", "__brace__"]
---   (exprs, lastRef) <- foldM (\(ret, lastRef) (scope, path) -> do
---     expr <- scope
---     id' <- use nextId
---     lastAddress <-
---       case lastRef of
---         Just (AddressRef word _) -> return $ AddressRef word path
---         Nothing                  -> addNewIdentifier path
-
---     ref' <- addNewIdentifier ["$" <> T.pack (show id') :: T.Text]
-
---     return (ret ++ [VarDecl (Identity ref') (traceShowId $ expr braceOp lastAddress) undefined], Just ref')
---     )
---     ([], Nothing) values
-
---   case lastRef of
---     Just lastRef' -> return (SeqExpr exprs undefined, lastRef')
---     Nothing       -> error "Internal Error"
-
--- desugarAccessor :: Show a => Accessor a
---   -> ScopeM (ExpressionG Identity a AddressRef, AddressRef)
--- desugarAccessor =  generateCode . simplifiedAccessor
+  Simple id' _tok -> [id']
+  Dot id' acc' _  -> id' : simplifiedAccessor acc'
