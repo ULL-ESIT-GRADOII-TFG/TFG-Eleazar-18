@@ -5,13 +5,9 @@ import           Control.Monad.State.Strict
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
-import           Compiler.Instruction.Types
-import           Compiler.Interpreter.Types
-import           Compiler.Object.Types
 import           Compiler.Scope.Methods
-import           Compiler.Scope.Types
+import           Compiler.Types
 import           Compiler.World.Methods
-import           Compiler.World.Types
 
 
 -- | Allow execute actions from ScopeM into Interpreter

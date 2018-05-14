@@ -3,13 +3,13 @@ module Compiler.Interpreter.Command.Methods where
 
 import           Control.Monad.IO.Class
 import           Data.List
-import qualified Data.Map                   as M
-import qualified Data.Text                  as T
+import qualified Data.Map               as M
+import qualified Data.Text              as T
 import           Lens.Micro.Platform
 import           System.Exit
 import           Text.Groom
 
-import           Compiler.Interpreter.Types
+import           Compiler.Types
 
 
 -- | Manage available commnads into interpreter
@@ -22,6 +22,7 @@ executeCommand name args =
 commands :: M.Map T.Text ([T.Text] -> Interpreter ())
 commands = M.fromList
   [ ("mem", \_ -> use memory >>= liftIO . putStrLn . groom)
+  , ("instr", showInstructions)
   , ("help", help)
   , ("quit", \_ -> liftIO exitSuccess)
   ]
@@ -31,7 +32,12 @@ commands = M.fromList
 help :: [T.Text] -> Interpreter ()
 help _ = liftIO . putStrLn $ intercalate "\n"
   [ "HELP:"
-  , "   :help   -- print this help itself"
-  , "   :mem    -- Show current memory used"
-  , "   :quit   -- Exits immediately form REPl"
+  , "   :help                -- print this help itself"
+  , "   :mem                 -- Show current memory used"
+  , "   :instr function_name -- Shows sequence of instruction a defined function"
+  , "   :quit                -- Exits immediately form REPl"
   ]
+
+showInstructions :: [T.Text] -> Interpreter ()
+showInstructions = do
+  undefined

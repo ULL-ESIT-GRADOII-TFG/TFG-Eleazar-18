@@ -2,16 +2,13 @@
 module Compiler.World.Methods where
 
 import           Control.Monad
-import qualified Data.IntMap                as IM
-import qualified Data.Map                   as M
-import qualified Data.Text                  as T
+import qualified Data.IntMap              as IM
+import qualified Data.Map                 as M
+import qualified Data.Text                as T
 import           Lens.Micro.Platform
 
 import {-# SOURCE #-} Compiler.Prelude.Methods
-import           Compiler.Instruction.Types
-import           Compiler.Object.Types
-import           Compiler.Scope.Types
-import           Compiler.World.Types
+import           Compiler.Types
 
 
 -- | Add and object to memory. Address specify route to put Object
@@ -44,7 +41,7 @@ on obj acc = case obj of
                 mObj <- lookupInMemory $ simple word
                 case mObj of
                   Just (obj', _) -> return $ Just obj'
-                  Nothing -> return Nothing
+                  Nothing        -> return Nothing
               Nothing -> return Nothing
           Nothing -> return Nothing
       Nothing -> return Nothing

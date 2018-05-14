@@ -4,9 +4,8 @@ module Compiler.Prelude.Types where
 import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 
-import           Compiler.Instruction.Types
 import           Compiler.Object.Types
-import           Compiler.World.Types
+import           Compiler.Types
 
 
 data Assoc = LeftAssoc | RightAssoc deriving (Show, Eq)

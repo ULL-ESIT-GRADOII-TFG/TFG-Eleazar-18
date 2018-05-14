@@ -9,6 +9,7 @@ import           Compiler.Config.Methods
 import           Compiler.Core.Types
 import           Compiler.Interpreter.Methods
 import           Compiler.Prelude.Methods
+import           Compiler.Types
 
 import           Paths_ScriptFlow
 
@@ -19,7 +20,7 @@ import           Paths_ScriptFlow
 start :: ArgsConfig -> IO ()
 start Version = putStrLn $ "ScriptFlow v." ++ showVersion version
 start _ = do
-  err <- runInputT defaultSettings . flip evalStateT initialState $ runExceptT $ do
+  err <- runInputT defaultSettings . flip evalStateT def $ runExceptT $ do
     loadPrelude
     setupConfig
     repl

@@ -3,6 +3,7 @@ module Compiler.Scope.Types where
 
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
+import           Data.Default
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
@@ -24,6 +25,14 @@ data Scope = Scope
   , _stackScope      :: [ScopeInfo]
   , _typeDefinitions :: IM.IntMap ClassDefinition
   } deriving Show
+
+instance Default Scope where
+  def = Scope
+    { _nextId       = 0
+    , _currentScope = ScopeInfo {_renameInfo = mempty}
+    , _stackScope   = []
+    , _typeDefinitions = mempty
+    }
 
 newtype ScopeInfo = ScopeInfo
   { _renameInfo :: M.Map T.Text AddressRef

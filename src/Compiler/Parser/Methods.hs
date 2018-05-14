@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Parser.Methods where
 
+import           Data.Bifunctor
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Vector              as V
@@ -10,31 +11,39 @@ import           Compiler.Ast
 import           Compiler.Parser.Types
 import           Compiler.Prelude.Methods (operatorsPrecedence)
 import           Compiler.Prelude.Types   (Assoc (..))
-import           Compiler.Token.Lexer     (Lexeme)
+import           Compiler.Token.Lexer     (Lexeme, getTokens, scanner)
 import           Compiler.Token.Methods
+import           Compiler.Types
 
 {-
   TODO: Generate an useful `TokenInfo`
   TODO: Fail on use reserved words
-  TODO: Allow "5.neg()" factor followed of accessor
  -}
+generateAST :: T.Text -> String -> Either InterpreterError Repl
+generateAST rawFile nameFile = do
+  tokenizer' <- first (Compiling . T.pack) . scanner True $ T.unpack rawFile
+  first (Compiling . T.pack . show) . parserLexer nameFile $ getTokens
+    tokenizer'
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
 parserLexer = parse parseInterpreter
 
 parseInterpreter :: TokenParser Repl
-parseInterpreter = choice
-  [ uncurry Command <$> try iCommandT
-  , Code <$> try parseStatements
-  ] <* eof
+parseInterpreter =
+  choice [uncurry Command <$> try iCommandT, Code <$> try parseStatements]
+    <* eof
 
 parseStatements :: TokenParser [Statement TokenInfo]
-parseStatements = many (choice $ map
-  try
-  [ parseClassStatement
-  , parseImportStatement
-  , (`Expr` TokenInfo) <$> parseSeqExpr
-  ]) <* eof
+parseStatements =
+  many
+      ( choice $ map
+        try
+        [ parseClassStatement
+        , parseImportStatement
+        , (`Expr` TokenInfo) <$> parseSeqExpr
+        ]
+      )
+    <* eof
 
 parseImportStatement :: TokenParser (Statement TokenInfo)
 parseImportStatement = do
@@ -75,7 +84,10 @@ parseFunDecl = do
   funName <- nameIdT
   params  <- many nameIdT
   prog    <- between oBraceT cBraceT parseSeqExpr
-  return $ VarDecl (Simple funName TokenInfo) (FunDecl params prog TokenInfo) TokenInfo
+  return $ VarDecl
+    (Simple funName TokenInfo)
+    (FunDecl params prog TokenInfo)
+    TokenInfo
 
 parseLam :: TokenParser (Expression TokenInfo)
 parseLam = do
@@ -119,7 +131,7 @@ parseFor = do
 parseUnaryOperators :: TokenParser (Expression TokenInfo)
 parseUnaryOperators = do
   operator <- operatorT
-  expr <- parseExp
+  expr     <- parseExp
   return $ Apply (Operator operator TokenInfo) [expr] TokenInfo
 
 parseApply :: TokenParser (Expression TokenInfo)
@@ -128,49 +140,74 @@ parseApply = do
   params <- between oParenT cParenT (parseSeqExpr `sepBy` commaT)
   return $ Apply name params TokenInfo
 
+parseMethodChain :: TokenParser (Expression TokenInfo)
+  -> TokenParser (Expression TokenInfo)
+parseMethodChain parser = do
+  expr <- parser
+  expr' <- optionMaybe $ parseMethod expr
+  maybe (return expr) (parseMethodChain . return) expr'
+
+parseMethod :: Expression TokenInfo -> TokenParser (Expression TokenInfo)
+parseMethod expr = do
+  operatorT' "."
+  acc    <- parseAccessor
+  params <- optionMaybe $ between
+              oParenT
+              cParenT
+              (parseSeqExpr `sepBy` commaT)
+  return $ MkScope
+    [ VarDecl (Simple "aux" TokenInfo)  expr TokenInfo
+    , case params of
+        Just params' -> Apply (Dot "aux" acc TokenInfo) params' TokenInfo
+        Nothing      -> Identifier (Dot "aux" acc TokenInfo) TokenInfo
+    ]
+
 checkOperator :: Int -> TokenParser T.Text
 checkOperator level = do
   op <- operatorT
   case M.lookup op operatorsPrecedence of
-    Just (levelOP, _assoc) ->
-      if levelOP == level
-        then return op
-        else parserFail ("Operator in wrong level "++ show level)
+    Just (levelOP, _assoc) -> if levelOP == level
+      then return op
+      else parserFail ("Operator in wrong level " ++ show level)
     Nothing -> parserFail "No valid operator"
 
 levels :: [Int] -> TokenParser (Expression TokenInfo)
-levels = foldl level parseFactorMethod
-  where
-    level nextLevel leveln = do
-      expr <- nextLevel
-      listLevel <- many $ try ((,) <$> checkOperator leveln <*> nextLevel)
-      return $ treeOperators expr listLevel
+levels = foldl level (parseMethodChain parseFactor)
+ where
+  level nextLevel leveln = do
+    expr      <- nextLevel
+    listLevel <- many $ try ((,) <$> checkOperator leveln <*> nextLevel)
+    return $ treeOperators expr listLevel
 
-treeOperators :: Expression TokenInfo -> [(T.Text, Expression TokenInfo)] -> Expression TokenInfo
-treeOperators expr [] = expr
-treeOperators expr list@((op, _):_) =
-  case M.lookup op operatorsPrecedence of
-    Just (_, LeftAssoc) ->
-      foldl (\acc (_, expr') ->
-        Apply (Operator op TokenInfo) [acc, expr'] TokenInfo) expr list
-    Just (_, RightAssoc) ->
-      foldr1 (\expr' acc ->
-        Apply (Operator op TokenInfo)  [expr', acc] TokenInfo) (expr: map snd list)
-    Nothing -> error "Operator not found. Internal error"
+treeOperators
+  :: Expression TokenInfo
+  -> [(T.Text, Expression TokenInfo)]
+  -> Expression TokenInfo
+treeOperators expr []               = expr
+treeOperators expr list@((op, _):_) = case M.lookup op operatorsPrecedence of
+  Just (_, LeftAssoc) -> foldl
+    (\acc (_, expr') -> Apply (Operator op TokenInfo) [acc, expr'] TokenInfo)
+    expr
+    list
+  Just (_, RightAssoc) -> foldr1
+    (\expr' acc -> Apply (Operator op TokenInfo) [expr', acc] TokenInfo)
+    (expr : map snd list)
+  Nothing -> error "Operator not found. Internal error"
 
 parseOperators :: TokenParser (Expression TokenInfo)
-parseOperators = levels [10,9..1]
+parseOperators = levels [10, 9 .. 1]
 
 parseAccessor :: TokenParser (Accessor TokenInfo)
-parseAccessor = choice $ map try
+parseAccessor = choice $ map
+  try
   [ do
     name <- nameIdT
     operatorT' "."
     rest <- parseAccessor
     return $ Dot name rest TokenInfo
   , do
-    name <- nameIdT
-    expr <- between oBraceT cBraceT parseExp
+    name  <- nameIdT
+    expr  <- between oBraceT cBraceT parseExp
     mRest <- optionMaybe parseAccessor
     return $ Bracket name expr mRest TokenInfo
   , (`Simple` TokenInfo) <$> nameIdT
@@ -186,20 +223,29 @@ parensExp = between oParenT cParenT parseSeqExpr
 
 -- This allows apply methods or get properties from an object without needing
 -- declare an explicit variable
-parseFactorMethod :: TokenParser (Expression TokenInfo)
-parseFactorMethod = do
-  factor <- parseFactor
-  maybe factor id `fmap` (optionMaybe $ do
-    operatorT' "."
-    acc <- parseAccessor
-    params <- maybe [] id `fmap` (optionMaybe $ between oParenT cParenT (parseSeqExpr `sepBy` commaT))
-    return $ MkScope
-      [ VarDecl (Simple "aux" TokenInfo) factor TokenInfo
-      , Apply (Dot "aux" acc TokenInfo) params TokenInfo
-      ])
+-- parseFactorMethod :: TokenParser (Expression TokenInfo)
+-- parseFactorMethod = do
+--   factor <- parseFactor
+--   maybe factor id
+--     `fmap` ( optionMaybe $ do
+--              operatorT' "."
+--              acc    <- parseAccessor
+--              params <-
+--                maybe [] id
+--                  `fmap` ( optionMaybe $ between
+--                           oParenT
+--                           cParenT
+--                           (parseSeqExpr `sepBy` commaT)
+--                         )
+--              return $ MkScope
+--                [ VarDecl (Simple "aux" TokenInfo)  factor TokenInfo
+--                , Apply   (Dot "aux" acc TokenInfo) params TokenInfo
+--                ]
+--            )
 
 parseFactor :: TokenParser (Expression TokenInfo)
-parseFactor = choice $ map try
+parseFactor = choice $ map
+  try
   [ (\txt -> Factor (AStr txt) TokenInfo) <$> litTextT
   , (\num -> Factor (ANum num) TokenInfo) <$> numberT
   , (\num -> Factor (ADecimal num) TokenInfo) <$> decimalT
@@ -221,10 +267,11 @@ parseVector = do
 
 parseDic :: TokenParser (Expression TokenInfo)
 parseDic = do
-  let item = do
-        key <- litTextT <|> nameIdT
-        operatorT' ":"
-        body <- parseExp
-        return (key, body)
+  let
+    item = do
+      key <- litTextT <|> nameIdT
+      operatorT' ":"
+      body <- parseExp
+      return (key, body)
   items <- between oBraceT cBraceT (item `sepBy` commaT)
   return $ Factor (ADic items) TokenInfo

@@ -5,10 +5,8 @@ import           Control.Monad.Except
 import qualified Data.Text                    as T
 
 import {-# SOURCE #-} Compiler.Instruction.Methods
-import           Compiler.Instruction.Types
-import           Compiler.Object.Types
+import           Compiler.Types
 import           Compiler.World.Methods
-import           Compiler.World.Types
 
 
 -- | From memory address, check if object callable and call it with given arguments
@@ -44,4 +42,3 @@ checkBool :: Object -> StWorld Bool
 checkBool (OBool bool)  = return bool
 checkBool obj@OObject{} = error "Implement"  -- TODO: __bool__
 checkBool _             = return False
-

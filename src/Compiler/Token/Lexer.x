@@ -182,7 +182,7 @@ checkDecrement :: AlexInput -> Int -> Alex Lexeme
 checkDecrement input len = do
   userState <- alexGetUserState
   case indentStack userState of
-    []            -> alexError "No hay indentacion anterior" -- mkL SkipT input len
+    []            -> mkL SkipT input len -- alexError "No hay indentacion anterior"
     stack@(x:_)
       | x == len  -> mkL SkipT input len
       | x < len   -> mkL SkipT input len

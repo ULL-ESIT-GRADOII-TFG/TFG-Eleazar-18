@@ -22,6 +22,7 @@ library:
     - base
     - bytestring
     - containers
+    - data-default
     - directory
     - filepath
     - formatting
@@ -35,6 +36,7 @@ library:
     - microlens-platform
     - mtl
     - parsec
+    - process
     - template-haskell
     - text
     - transformers
@@ -43,6 +45,7 @@ library:
     - yaml
   exposed-modules:
     - Compiler.Ast
+    - Compiler.Types
     - Compiler.Config.Methods
     - Compiler.Config.Types
     - Compiler.Core.Methods

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ecf51ec91cbef1c955200275cf53f08da1230c741dd019bab74f68dc1d6a4603
+-- hash: 9587f79c4af0314b579b805b620b0ad7d681b84bcc5d63b8408a38ea618f6bb8
 
 name:           ScriptFlow
 version:        0.0.1
@@ -36,6 +36,7 @@ library
     , base
     , bytestring
     , containers
+    , data-default
     , directory
     , filepath
     , formatting
@@ -49,6 +50,7 @@ library
     , microlens-platform
     , mtl
     , parsec
+    , process
     , template-haskell
     , text
     , transformers
@@ -59,6 +61,7 @@ library
       alex
   exposed-modules:
       Compiler.Ast
+      Compiler.Types
       Compiler.Config.Methods
       Compiler.Config.Types
       Compiler.Core.Methods

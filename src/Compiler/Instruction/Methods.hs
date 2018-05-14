@@ -1,25 +1,22 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module Compiler.Instruction.Methods where
 
 import           Control.Monad
 import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
-import           Control.Monad.Trans.State.Strict
-import qualified Data.Text.Lazy                   as LT
-import qualified Data.Vector                      as V
-import qualified Data.Map                         as M
+import qualified Data.Map                 as M
+import qualified Data.Text.Lazy           as LT
+import qualified Data.Vector              as V
 import           Formatting
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
-import           Compiler.Instruction.Types
 import           Compiler.Object.Methods
-import           Compiler.Object.Types
+import           Compiler.Types
 import           Compiler.World.Methods
-import           Compiler.World.Types
 
 
 -- | Transform AST to a simplified intermediate language, more related to
@@ -82,7 +79,6 @@ runProgram :: FreeT Instruction StWorld Object -> StWorld Object
 runProgram = iterT $ \case
   -- Find into world function and correspondent objects
   CallCommand idFun args next -> do
-    -- TODO:Es necesario unir estos dos para poder hacer la llamada a un metodo del objeto
     retObj  <- callObject idFun args
     next retObj
 
@@ -118,20 +114,18 @@ newFakeRef = do
   use fakeId
 
 linePP :: LT.Text -> StPrint ()
-linePP txt =
-  -- Fix Indentation
-  generate %= (`LT.append` txt)
+linePP txt = do
+  level <- use currentIndentLevel
+  generate %= \t -> (t `mappend` (LT.replicate (fromIntegral level) "  ") `mappend` txt `mappend` "\n")
 
-newLevel :: StPrint PPrint
-newLevel = do
-  level += 1
-  get
-
-unnestLevel :: PPrint -> StPrint ()
-unnestLevel = undefined
+withLevel :: StPrint a -> StPrint ()
+withLevel action = do
+  currentIndentLevel += 1
+  _ <- action
+  currentIndentLevel -= 1
 
 -- TODO: Make pretty printer
-pprint :: FreeT Instruction StPrint () -> StPrint ()
+pprint :: FreeT (InstructionG StPrint) StPrint () -> StPrint ()
 pprint = iterT $ \case
   CallCommand idFun args next -> do
     linePP (format ("Call #" % shown % " With: " % shown) idFun args)
@@ -146,21 +140,24 @@ pprint = iterT $ \case
     linePP (format ("Drop #" % shown) idObj)
     next
 
-  Loop accObject _prog next -> do
+  Loop accObject prog next -> do
     linePP (format ("Loop " % shown) accObject)
-    _level <- newLevel
-    --pprint prog
+    withLevel . pprint $ prog ONone >> return ()
     next
 
-  Cond objectCond _trueNext _falseNext next -> do
+  Cond objectCond trueNext falseNext next -> do
     linePP (format ("Cond " % shown) objectCond)
-    _level <- newLevel
-    --pprint prog
+    withLevel $ do
+      linePP "True Case:"
+      withLevel $ pprint $ trueNext >> return ()
+      linePP "False Case:"
+      withLevel $ pprint $ falseNext >> return ()
+
     refId  <- newFakeRef -- show id where is generate
     next $ ORef refId
 
   GetVal idObj next -> do
-    linePP (format ("Loop " % shown) idObj)
+    linePP (format ("GetVal " % shown) idObj)
     refId <- newFakeRef -- show id where is generate
     next $ ORef refId
 

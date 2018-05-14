@@ -2,53 +2,17 @@
 module Compiler.Object.Types where
 
 import           Control.Monad.Except
-import qualified Data.Map                   as M
-import qualified Data.Vector                as V
-import qualified Data.Text                  as T
+import qualified Data.Map             as M
+import qualified Data.Text            as T
+import qualified Data.Vector          as V
 
-import {-# SOURCE #-} Compiler.Instruction.Types
-import {-# SOURCE #-} Compiler.World.Types
-
+import           Compiler.Types
 
 class ToObject o where
   toObject :: o -> Object
 
 class FromObject o where
   fromObject :: Object -> StWorld o
-
-data Object
-  = OStr T.Text
-  | OBool Bool
-  | ODouble Double
-  | ONum Int
-  | ORegex T.Text -- TODO: search precompiled type
-  | OShellCommand T.Text
-  | OVector (V.Vector Object)
-  | ODic (M.Map T.Text Object)
-  | OFunc (M.Map T.Text Object) [Word] Prog
-  | OObject (Maybe Word) (M.Map T.Text Word)
-  -- ^ Object instance from class Word
-  | ONative ([Object] -> Prog)
-  -- ^ Native object
-  | ORef Word
-  -- ^ Pointer reference
-  | ONone
-
-instance Show Object where
-  show obj = case obj of
-    OStr{}          -> "[String]"
-    OBool{}         -> "[Bool]"
-    ODouble{}       -> "[Double]"
-    ORegex{}        -> "[Regex]"
-    OShellCommand{} -> "[ShellCmd]"
-    ONum{}          -> "[Int]"
-    OFunc{}         -> "[Function]"
-    ONative{}       -> "[Native Function]"
-    ORef{}          -> "[Reference]"
-    OObject{}       -> "[Object]"
-    OVector{}       -> "[Vector]"
-    ODic{}          -> "[Dictionary]"
-    ONone           -> "[None]"
 
 instance ToObject Object where
   toObject = id
@@ -96,6 +60,4 @@ instance ToObject T.Text where
 
 instance FromObject T.Text where
   fromObject (OStr text) = return text
-  fromObject _             = throwError NotImplicitConversion
-
-newtype ObjectError = ObjectError { info :: T.Text }
+  fromObject _           = throwError NotImplicitConversion

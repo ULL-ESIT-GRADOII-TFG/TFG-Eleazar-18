@@ -14,15 +14,6 @@ import           Compiler.Instruction.Types
 import           Compiler.Scope.Types
 
 
--- | Initial scope
-initialScope :: Scope
-initialScope = Scope
-  { _nextId       = 0
-  , _currentScope = ScopeInfo {_renameInfo = mempty}
-  , _stackScope   = []
-  , _typeDefinitions = mempty
-  }
-
 -- | Create a temporal scope with a info
 withNewScope :: ScopeM b -> ScopeM b
 withNewScope body = do
@@ -79,7 +70,11 @@ scopingClassAST (Class name expression _) = do
   (classDef, codeScope) <- withNewScope $ do
     codeScoped <- scopingThroughtAST expression
     currScope <- use $ currentScope.renameInfo
+    -- Generate Free Program
+    -- [(Ref, Free)]
+    -- scopeInfo
     return (M.map _ref currScope, codeScoped)
+
 
   -- TODO: Add Constructor function. Peek for possible __init__ method
   typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
@@ -129,7 +124,7 @@ scopingThroughtAST expr = case expr of
     return $ For nameId iterExpr' body' info
 
   Apply name args info -> do
-    args'             <- withNewScope $ mapM scopingThroughtAST args
+    args' <- withNewScope $ mapM scopingThroughtAST args
     let accSimple = simplifiedAccessor name
     addrRef <- getIdentifier accSimple
     return $ Apply (Identity addrRef) args' info
@@ -151,7 +146,9 @@ scopeFactor atom = case atom of
   AStr str -> return $ AStr str
   ABool bool -> return $ ABool bool
   AVector vals -> mapM scopingThroughtAST vals >>= return . AVector
-  ADic vals -> mapM (\(key, val) -> scopingThroughtAST val >>= return . (key,)) vals >>= return . ADic
+  ADic vals -> do
+    val <- mapM (\(key, val) -> scopingThroughtAST val >>= return . (key,)) vals
+    return $ ADic val
 
 simplifiedAccessor
   :: Show a => Accessor a -> [T.Text]
