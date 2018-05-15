@@ -54,9 +54,9 @@ parseImportStatement = do
 parseClassStatement :: TokenParser (Statement TokenInfo)
 parseClassStatement = do
   classT
-  nameClass <- classIdT
+  nameCls <- classIdT
   bodyClass <- between oBraceT cBraceT parseBodyClass
-  return $ Class nameClass bodyClass TokenInfo
+  return $ Class nameCls bodyClass TokenInfo
 
 parseBodyClass :: TokenParser (Expression TokenInfo)
 parseBodyClass = choice $ map try [parseFunDecl, parseAssign, parseIdentifier]

@@ -18,18 +18,20 @@ argsConfig :: Parser ArgsConfig
 argsConfig = Interpreter
   <$> (Just <$> (strArgument
     ( metavar "INPUT_SCRIPT"
-    <> help "Interpret script given" ))
+    <> help "File to be interpreted" ))
     <|> pure Nothing)
   <*> (Just <$> (strOption
     ( long "config"
     <> short 'c'
     <> metavar "CONFIG_FILE"
-    <> help "Specific a different path to config" ))
+    <> help "Specific a different path to config file" ))
     <|> pure Nothing)
   <*> switch
     ( short 'e'
     <> long "repl"
     <> help "Start repl after load script file" )
+  <*> (length <$>
+    many (flag' () (short 'v' <> help "Indicates verbosity level -v -vv -vvv")))
 
 version :: Parser ArgsConfig
-version = Version <$ switch (long "version" <> short 'v' <> help "Show version used")
+version = Version <$ switch (long "version" <> help "Show version used")

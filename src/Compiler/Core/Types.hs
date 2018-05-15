@@ -3,9 +3,9 @@ module Compiler.Core.Types where
 
 data ArgsConfig
   = Interpreter
-    { inputFile :: Maybe String
+    { inputFile  :: Maybe String
     , configPath :: Maybe String
-    , startREPL :: Bool
+    , startREPL  :: Bool
+    , verbose    :: Int
     }
   | Version
-

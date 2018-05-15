@@ -26,44 +26,71 @@ configPath = getXdgDirectory XdgConfig "scriptflow"
 configFile :: IO FilePath
 configFile = (</> "scriptflow.yaml") <$> configPath
 
-setupConfig :: Interpreter ()
-setupConfig = do
-  loaded <- loadConfigFile
+setupConfig :: Maybe FilePath -> Interpreter ()
+setupConfig mCfgFile = do
+  mCfgFile' <- getConfigFilePath mCfgFile
+  loaded <- loadConfigFile mCfgFile'
   when (not loaded) $ do
     liftIO $ putStrLn "Creating a default configuration"
     createDefaultConfig
-    _ <- loadConfigFile
+    configFile' <- liftIO $ configFile
+    _ <- loadConfigFile $ Just configFile'
     return ()
+
+getConfigFilePath :: Maybe FilePath -> Interpreter (Maybe FilePath)
+getConfigFilePath mCfgFile = do
+  case mCfgFile of
+    Just cfgFile -> do
+      exist <- liftIO $ doesFileExist cfgFile
+      if exist
+        then do
+          return $ Just cfgFile
+        else do
+          liftIO $ putStrLn
+            "Specified config file doesn't exist or it can't be accessed"
+          liftIO $ putStrLn "Using XDG File"
+          findConfigXDG
+    Nothing -> findConfigXDG
+  where
+    findConfigXDG = do
+      configFile' <- liftIO configFile
+      exist       <- liftIO $ doesFileExist configFile'
+      if exist then
+        return $ Just configFile'
+      else do
+        liftIO $ putStrLn "XDG config file doesn't exist or it can't be accessed"
+        return Nothing
+
 
 -- | Try get configuration from default XDG directory. It get a file named
 -- "scriptflow.yaml" in yaml format if file isn't found it returns False, True
 -- in otherwise
-loadConfigFile :: Interpreter Bool
-loadConfigFile = do
-  configFile' <- liftIO configFile
-  exist <- liftIO $ doesFileExist configFile'
-  if exist then do
-    contents <- liftIO
-      (Y.decodeFileEither configFile' :: IO (Either Y.ParseException Config))
-    case contents of
-      Right cFile -> do
-        config .= cFile
-        return True
-      Left parserError -> do
-        liftIO $ putStrLn (Y.prettyPrintParseException parserError)
-        return False
-  else
-    return False
+loadConfigFile :: Maybe FilePath -> Interpreter Bool
+loadConfigFile mCfgFile = do
+  case mCfgFile of
+    Just cfgFile -> do
+      contents <- liftIO
+        (Y.decodeFileEither cfgFile :: IO (Either Y.ParseException Config))
+      case contents of
+        Right cFile -> do
+          config .= cFile
+          return True
+        Left parserError -> do
+          liftIO $ putStrLn (Y.prettyPrintParseException parserError)
+          return False
+    Nothing -> return False
 
 createDefaultConfig :: Interpreter ()
 createDefaultConfig = do
   configPath' <- liftIO configPath
   liftIO $ createDirectoryIfMissing False configPath'
   configFile' <- liftIO configFile
-  exist <- liftIO $ doesFileExist configFile'
-  if exist then do
-    response <- lift . lift $
-      getInputLine "Are you sure of overwrite your configuration? (Y/n) "
-    when (response == Just "Y") $ liftIO $ BS.writeFile configFile' defaultConfig
-  else
-    liftIO $ BS.writeFile configFile' defaultConfig
+  exist       <- liftIO $ doesFileExist configFile'
+  if exist
+    then do
+      response <- lift . lift $ getInputLine
+        "Are you sure of overwrite your configuration? (Y/n) "
+      when (response == Just "Y") $ liftIO $ BS.writeFile
+        configFile'
+        defaultConfig
+    else liftIO $ BS.writeFile configFile' defaultConfig
