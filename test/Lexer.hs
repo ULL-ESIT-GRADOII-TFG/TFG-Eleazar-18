@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Lexer where
 
-import qualified Data.Vector            as V
+import qualified Data.Vector          as V
 import           Test.Hspec
-import           Text.Parsec
+-- import           Text.Parsec
 
 import           Compiler.Token.Lexer
-import           Compiler.Token.Methods
+-- import           Compiler.Token.Methods
 import           Compiler.Token.Types
 
 tokenParse :: String -> Either String Token
@@ -78,6 +78,9 @@ lexerTest =
       tokenFlow "test:\n  hi\n" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "hi",CBraceT]
       tokenFlow "test:\n  h1\n  h2\n" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",NameIdT "h2",CBraceT]
 
+      tokenFlow "test:\n  h1\n  h2\nh3" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",NameIdT "h2",CBraceT, NameIdT "h3"]
+
+      tokenFlow "test:\n  h1\n   \n\nh3" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",CBraceT, NameIdT "h3"]
   -- describe "Parse several Tokens" $ do
   --   it "In the same line" $ do
   --     parse parseTokens "TEST" "hello 4556 hi" `shouldBe` Right [NameIdT "hello", NumT 4556, NameIdT "hi"]

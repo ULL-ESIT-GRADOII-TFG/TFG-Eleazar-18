@@ -41,7 +41,6 @@ tokens :-
     [\ \t]+       ;
     ":"           { mkL OBraceT `andBegin` inc_indent }
     \n            { begin dec_indent }
-    @emptyLines   ;
     fun           { mkL FunT }
     lam           { mkL LamT }
     in            { mkL InT }
@@ -72,8 +71,10 @@ tokens :-
     @nameId       { mkL' NameIdT }
   }
 
-
-  <dec_indent> [\ \t]* { checkDecrement `andBegin` code_st }
+  <dec_indent> {
+    -- @emptyLines   ;
+    [\ \t]*       { checkDecrement `andBegin` code_st }
+  }
 
   <string> {
     \\\"           { skipJustAdd "\"" }
@@ -130,7 +131,7 @@ data Lexeme = L
 data AlexUserState = AlexUserState
   { indentStack :: [Int]
   , generatedString :: String
-  }
+  } deriving Show
 
 -- | Internal use.
 alexInitUserState :: AlexUserState
@@ -193,10 +194,14 @@ checkDecrement input len = do
       if currIndent == 0 then do
         alexSetUserState alexInitUserState
         mkL CBraceT input len
-      else mkL SkipT input len
+      else do
+        userState <- alexGetUserState
+        alexSetUserState (userState { indentStack = [] })
+        mkL SkipT input len
     getDedent currIndent xs = do
-      let (removes, rest) = break (<= currIndent) xs
-      alexSetUserState alexInitUserState
+      let (removes, rest) = break (< currIndent) xs
+      userState <- alexGetUserState
+      alexSetUserState (userState { indentStack = rest })
       mkL (DedentT $ length removes) input len
 
 -- | Run tokenizer over string
