@@ -91,14 +91,14 @@ compileSource rawFile nameFile = do
     Code statements  -> do
       astScoped <- catchEither (Compiling . T.pack . show) . liftScope $ do
         computeStatements statements >>= scopingThroughtAST
-      -- liftIO $ putStrLn $ groom astScoped
+      liftIO $ putStrLn $ groom astScoped
       evaluateScopedProgram astScoped
 
 compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)
 compileSourcePure rawFile nameFile = do
   ast <- generateAST rawFile nameFile
   case ast of
-    Command _cmd _args -> Left $ Compiling "You cant use command"
+    Command _cmd _args -> Left $ Compiling "You can't use command"
     Code statements    -> Right $ do
       expr      <- computeStatements statements
       astScoped <- scopingThroughtAST expr

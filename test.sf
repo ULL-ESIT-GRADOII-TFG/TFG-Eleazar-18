@@ -1,0 +1,8 @@
+
+fun test name:
+  "Hola, " ++ name
+
+
+
+if false:
+  test("Eleazar")

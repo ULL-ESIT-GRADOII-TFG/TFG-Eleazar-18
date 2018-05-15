@@ -62,6 +62,15 @@ library:
     - Compiler.Parser.Types
     - Compiler.Prelude.Methods
     - Compiler.Prelude.Types
+    - Compiler.Prelude.Utils
+    - Compiler.Prelude.OStr
+    - Compiler.Prelude.OBool
+    - Compiler.Prelude.ODouble
+    - Compiler.Prelude.ONum
+    - Compiler.Prelude.OVector
+    - Compiler.Prelude.ODic
+    - Compiler.Prelude.ORegex
+    - Compiler.Prelude.OShellCommand
     - Compiler.Scope.Methods
     - Compiler.Scope.Types
     - Compiler.Token.Lexer
