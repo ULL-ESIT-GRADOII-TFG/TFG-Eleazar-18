@@ -77,25 +77,31 @@ tokens :-
   }
 
   <string> {
-    \\\"           { skipJustAdd "\"" }
-    \\n            { skipJustAdd "\n" }
-    \\t            { skipJustAdd "\t" }
-    [^\"]          { addToInnerString }
-    \"             { generateLexerFromInner LitTextT `andBegin` code_st }
+    \\\"          { skipJustAdd "\"" }
+    \\n           { skipJustAdd "\n" }
+    \\t           { skipJustAdd "\t" }
+    \n            { skipJustAdd "\n" }
+    \t            { skipJustAdd "\t" }
+    [^\"]         { addToInnerString }
+    \"            { generateLexerFromInner LitTextT `andBegin` code_st }
   }
 
   <shell> {
     "\$"           { skipJustAdd "$" }
-    \\n            { skipJustAdd "\n" }
-    \\t            { skipJustAdd "\t" }
+    \\n           { skipJustAdd "\n" }
+    \\t           { skipJustAdd "\t" }
+    \n            { skipJustAdd "\n" }
+    \t            { skipJustAdd "\t" }
     [^\$]          { addToInnerString }
     "$"            { generateLexerFromInner ShellCommandT `andBegin` code_st }
   }
 
   <shell_alternative> {
     \\\"           { skipJustAdd "/" }
-    \\n            { skipJustAdd "\n" }
-    \\t            { skipJustAdd "\t" }
+    \\n           { skipJustAdd "\n" }
+    \\t           { skipJustAdd "\t" }
+    \n            { skipJustAdd "\n" }
+    \t            { skipJustAdd "\t" }
     [^\"]          { addToInnerString }
     \"             { generateLexerFromInner ShellCommandT `andBegin` code_st }
   }

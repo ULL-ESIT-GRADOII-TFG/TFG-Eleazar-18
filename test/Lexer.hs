@@ -62,8 +62,9 @@ lexerTest =
       tokenParse "/=" `shouldBe` Right (OperatorT "/=")
       tokenParse "??" `shouldBe` Right (OperatorT "??")
 
-    it "It parse a literal string" $
+    it "It parse a literal string" $ do
       tokenParse "\"Into a string\"" `shouldBe` Right (LitTextT "Into a string")
+      tokenParse "\"Into \\nhere \na string\"" `shouldBe` Right (LitTextT "Into \nhere \na string")
 
     it "It parse a literal regex" $
       tokenParse "r\"Into a string\"" `shouldBe` Right (RegexExprT "Into a string")
