@@ -85,13 +85,13 @@ tokenizer input = case scanner False $ T.unpack input of
 compileSource :: T.Text -> String -> Interpreter ()
 compileSource rawFile nameFile = do
   ast <- catchEither id . return $ generateAST rawFile nameFile
-  -- liftIO $ putStrLn $ groom ast
+  liftIO $ putStrLn $ groom ast
   case ast of
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
       astScoped <- catchEither (Compiling . T.pack . show) . liftScope $ do
         computeStatements statements >>= scopingThroughtAST
-      liftIO $ putStrLn $ groom astScoped
+      --liftIO $ putStrLn $ groom astScoped
       evaluateScopedProgram astScoped
 
 compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)

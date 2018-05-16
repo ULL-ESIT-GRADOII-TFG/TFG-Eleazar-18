@@ -81,7 +81,19 @@ lexerTest =
       tokenFlow "test:\n  h1\n  h2\nh3" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",NameIdT "h2",CBraceT, NameIdT "h3"]
 
       tokenFlow "test:\n  h1\n   \n\nh3" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",CBraceT, NameIdT "h3"]
+
+    it "TEST" $ do
+      tokenFlow "for h in []:\n  hi\n" `shouldBe` Right [ForT,NameIdT "h", InT, OBracketT,CBracketT,OBraceT,NameIdT "hi",CBraceT]
+
+    it "TEST2" $ do
+      tokenFlow "for h in [] {}" `shouldBe` Right [ForT,NameIdT "h", InT, OBracketT,CBracketT,OBraceT,CBraceT]
+
+    it "TEST3" $ do
+      tokenFlow "if true {false} else {true}" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
+
+
   -- describe "Parse several Tokens" $ do
+  --
   --   it "In the same line" $ do
   --     parse parseTokens "TEST" "hello 4556 hi" `shouldBe` Right [NameIdT "hello", NumT 4556, NameIdT "hi"]
   --

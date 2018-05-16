@@ -1,8 +1,17 @@
 
-fun test name:
-  "Hola, " ++ name
+# fun test name:
+#  "Hola, " ++ name
 
 
 
-if false:
-  test("Eleazar")
+#if false:
+#  test("Eleazar")
+
+sums = ""
+uju = ""
+
+for val in ["hola", "hey"] {
+  sums = sums ++ val
+}
+
+# for val in [] {}

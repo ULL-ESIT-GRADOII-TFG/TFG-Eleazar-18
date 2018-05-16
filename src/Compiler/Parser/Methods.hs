@@ -67,8 +67,9 @@ parseExp = choice $ map
   [ parseUnaryOperators
   , parseFunDecl
   , parseLam
-  , parseIf
   , parseIfElse
+  , parseIf
+  , parseFor
   , parseAssign
   , parseOperators
   ]
@@ -78,12 +79,17 @@ parseSeqExpr = do
   exprs <- many1 parseExp
   return $ SeqExpr exprs TokenInfo
 
+parseBody :: TokenParser (Expression TokenInfo)
+parseBody = (try $ do
+  oBraceT >> cBraceT
+  return $ SeqExpr [] TokenInfo) <|> between oBraceT cBraceT parseSeqExpr
+
 parseFunDecl :: TokenParser (Expression TokenInfo)
 parseFunDecl = do
   funT
   funName <- nameIdT
   params  <- many nameIdT
-  prog    <- between oBraceT cBraceT parseSeqExpr
+  prog    <- parseBody
   return $ VarDecl
     (Simple funName TokenInfo)
     (FunDecl params prog TokenInfo)
@@ -93,39 +99,39 @@ parseLam :: TokenParser (Expression TokenInfo)
 parseLam = do
   lamT
   params <- many nameIdT
-  prog   <- between oBraceT cBraceT parseSeqExpr
+  prog   <- parseBody
   return $ FunDecl params prog TokenInfo
 
 parseAssign :: TokenParser (Expression TokenInfo)
 parseAssign = do
   varName <- parseAccessor
   assignT
-  expr <- parseSeqExpr
+  expr <- parseExp
   return $ VarDecl varName expr TokenInfo
 
 parseIf :: TokenParser (Expression TokenInfo)
 parseIf = do
   ifT
-  expr <- parseSeqExpr
-  prog <- between oBraceT cBraceT parseSeqExpr
+  expr <- parseExp
+  prog <- parseBody
   return $ If expr prog TokenInfo
 
 parseIfElse :: TokenParser (Expression TokenInfo)
 parseIfElse = do
   ifT
-  expr     <- parseSeqExpr
-  progTrue <- between oBraceT cBraceT parseSeqExpr
+  expr     <- parseExp
+  progTrue <- parseBody
   elseT
-  progFalse <- between oBraceT cBraceT parseSeqExpr
+  progFalse <- parseBody
   return $ IfElse expr progTrue progFalse TokenInfo
 
 parseFor :: TokenParser (Expression TokenInfo)
 parseFor = do
   forT
-  expr <- parseSeqExpr
-  inT
   nameVar <- nameIdT
-  prog    <- between oBraceT cBraceT parseSeqExpr
+  inT
+  expr <- parseExp
+  prog    <- parseBody
   return $ For nameVar expr prog TokenInfo
 
 parseUnaryOperators :: TokenParser (Expression TokenInfo)
