@@ -3,12 +3,15 @@ module Compiler.Interpreter.Command.Methods where
 
 import           Control.Monad.IO.Class
 import           Data.List
-import qualified Data.Map               as M
-import qualified Data.Text              as T
+import qualified Data.Map                     as M
+import qualified Data.Text                    as T
+import qualified Data.Text.Lazy.IO            as LT
 import           Lens.Micro.Platform
 import           System.Exit
 import           Text.Groom
 
+import           Compiler.Instruction.Methods
+import           Compiler.Interpreter.Utils
 import           Compiler.Types
 
 
@@ -39,5 +42,16 @@ help _ = liftIO . putStrLn $ intercalate "\n"
   ]
 
 showInstructions :: [T.Text] -> Interpreter ()
-showInstructions = do
-  undefined
+-- showInstructions [] = throwError $ Internal "Command just allow 1 arg"
+showInstructions (name:_) = do
+  -- Find into scope the ref -> search into world -> apply
+  object <- getVar name
+  case object of
+    OFunc _ _ prog -> do
+      instrs <- catchMaybe (Internal "")$ liftWorld $ do
+        pprint prog
+        instrs <- use $ debugProgram._1
+        debugProgram .= ("", 0)
+        return instrs
+      liftIO $ LT.putStrLn instrs
+    _  -> return ()

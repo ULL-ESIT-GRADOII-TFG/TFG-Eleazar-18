@@ -27,7 +27,7 @@ $operators = [\\\/\>\<\!\@\=\$\%\&\?\+\-\*\.\^\|]
 tokens :-
 
   <0> {
-    :.+           { mkL' (\text -> ICommandT (T.drop 1 text) []) }
+    :.+           { mkL' (\text -> let (command:args) = T.words $ T.drop 1 text in ICommandT command args) }
     $white*       { begin code_st }
   }
 

@@ -8,6 +8,7 @@ import           Control.Monad
 import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
 import qualified Data.Map                 as M
+import qualified Data.Text                as T
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Formatting
@@ -108,60 +109,57 @@ runProgram = iterT $ \case
 
   End               -> return ONone
 
-newFakeRef :: StPrint Word
-newFakeRef = do
-  fakeId += 1
-  use fakeId
-
-linePP :: LT.Text -> StPrint ()
+linePP :: LT.Text -> StWorld ()
 linePP txt = do
-  level <- use currentIndentLevel
-  generate %= \t -> (t `mappend` (LT.replicate (fromIntegral level) "  ") `mappend` txt `mappend` "\n")
+  level <- use $ debugProgram._2
+  debugProgram._1 %= \t -> (t `mappend` (LT.replicate (fromIntegral level) "  ") `mappend` txt `mappend` "\n")
 
-withLevel :: StPrint a -> StPrint ()
+withLevel :: StWorld a -> StWorld ()
 withLevel action = do
-  currentIndentLevel += 1
+  (debugProgram._2) += 1
   _ <- action
-  currentIndentLevel -= 1
+  (debugProgram._2) -= 1
+
+pAddr :: AddressRef -> String
+pAddr (AddressRef ref vals) =
+  let path = if not $ null vals then "-" ++ (T.unpack $ T.intercalate "." vals) else ""
+  in "#" ++ show ref ++ path
 
 -- TODO: Make pretty printer
-pprint :: FreeT (InstructionG StPrint) StPrint () -> StPrint ()
+pprint :: FreeT (InstructionG StWorld) StWorld Object -> StWorld Object
 pprint = iterT $ \case
   CallCommand idFun args next -> do
-    linePP (format ("Call #" % shown % " With: " % shown) idFun args)
-    refId <- newFakeRef -- show id where is generate
-    next $ ORef refId
+    linePP (format ("Call " % string % " With: " % shown) (pAddr idFun) args)
+    next $ ONone
 
   Assign idObj accObject next -> do
-    linePP (format ("#" % shown % " = " % shown) idObj accObject)
+    linePP (format ("Assign " % string % " " % shown) (pAddr idObj) accObject)
     next
 
   DropVar idObj next -> do
-    linePP (format ("Drop #" % shown) idObj)
+    linePP (format ("Drop " % string) (pAddr idObj))
     next
 
   Loop accObject prog next -> do
     linePP (format ("Loop " % shown) accObject)
-    withLevel . pprint $ prog ONone >> return ()
+    withLevel . pprint $ prog ONone
     next
 
   Cond objectCond trueNext falseNext next -> do
     linePP (format ("Cond " % shown) objectCond)
     withLevel $ do
       linePP "True Case:"
-      withLevel $ pprint $ trueNext >> return ()
+      withLevel $ pprint $ trueNext
       linePP "False Case:"
-      withLevel $ pprint $ falseNext >> return ()
+      withLevel $ pprint $ falseNext
 
-    refId  <- newFakeRef -- show id where is generate
-    next $ ORef refId
+    next $ ONone
 
   GetVal idObj next -> do
-    linePP (format ("GetVal " % shown) idObj)
-    refId <- newFakeRef -- show id where is generate
-    next $ ORef refId
+    linePP (format ("GetVal " % string) (pAddr idObj))
+    next $ ONone
 
-  End -> linePP "End"
+  End -> linePP "End" >> return ONone
 
 -------------------------------------------------------------------------------
 -- * Utils

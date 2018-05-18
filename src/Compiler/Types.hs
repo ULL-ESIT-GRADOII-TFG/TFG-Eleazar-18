@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE KindSignatures    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -20,6 +21,7 @@ import           Data.Default
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
+import qualified Data.Text.Lazy             as LT
 import qualified Data.Vector                as V
 import           Lens.Micro.Platform
 import           System.Console.Haskeline   (InputT)
@@ -83,13 +85,14 @@ data Var = Var
   deriving Show
 
 data World = World
-  { _table :: IM.IntMap Var
-  , _scope :: Scope
+  { _table        :: IM.IntMap Var
+  , _scope        :: Scope
+  , _debugProgram :: (LT.Text, Int)
   }
   deriving Show
 
 instance Default World where
-  def = World {_table = mempty, _scope = def}
+  def = World {_table = mempty, _scope = def, _debugProgram = ("", 0)}
 
 -- | Note: `ExceptT` wraps monad state, in case of fail discard memory. That it
 -- is the predicate to follow.

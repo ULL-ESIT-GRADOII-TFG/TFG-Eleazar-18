@@ -92,6 +92,7 @@ lexerTest =
     it "TEST3" $ do
       tokenFlow "if true {false} else {true}" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
 
+      tokenFlow "fun say_hi name {\"Hola, \" ++ name} say_hi(\"Mundo\")" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
 
   -- describe "Parse several Tokens" $ do
   --

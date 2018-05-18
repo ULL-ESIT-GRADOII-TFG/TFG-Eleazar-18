@@ -18,7 +18,8 @@ callObject address args = do
       mObj <- through obj accessors
       let args' = if null accessors then args else obj:args
       case mObj of
-        Just (OFunc _ ids prog) -> runProgram (sequence_ (zipWith (=:) (map simple ids) args') >> prog)
+        Just (OFunc _ ids prog) ->
+          runProgram (sequence_ (zipWith (=:) (map simple ids) args') >> prog)
         Just (ONative native)   -> runProgram $ native args'
         _t                      -> throwError NotCallable
     Nothing               -> throwError NotFoundObject

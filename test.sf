@@ -1,17 +1,14 @@
-
-# fun test name:
-#  "Hola, " ++ name
-
-
-
-#if false:
-#  test("Eleazar")
-
 sums = ""
-uju = ""
 
-for val in ["hola", "hey"] {
-  sums = sums ++ val
-}
+# Probando un for.
+# Y comentado
 
 # for val in [] {}
+
+fun say_hi name:
+  for val in ["hola", "hey"] {
+    name = name ++ val
+  }
+  name
+
+say_hi("Mundo")
