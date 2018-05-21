@@ -1,0 +1,288 @@
+#+MACRO: lang_name ScriptFlow
+#TODO: resaltado de code source lang
+
+* {{{lang_name}}} Manual
+
+** Introducción
+
+** Lenguaje {{{lang_name}}}
+
+   {{{lang_name}}} es un lenguaje de tipado dinámico para el desarrollo de /scripts/ para la automatización de tareas
+   con servicios /webs/. La automatización de esta tareas se plantea mediante el uso de las propias API del servicio web, ya sea REST, o GraphQL.
+
+*** Sintáxis
+
+    {{{lang_name}}} se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
+    /python/ o /c++/.
+
+    Los comentarios se comienzan con /#/ hasta el final de linea.
+    Posiblemente se añada un comentario multilínea.
+
+**** Identación
+
+    El lenguaje puede ser sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando "{}":
+
+#+BEGIN_SRC haskell
+fun saludar_a nombre:
+  print("Saludos, " ++ nombre)
+#+END_SRC
+
+    O la sintáxis equivalente al estilo de la familia de /C/:
+#+BEGIN_SRC haskell
+fun saludar_a nombre {
+  print("Saludos, " ++ nombre)
+}
+#+END_SRC
+
+
+**** Literales
+
+    El lenguaje cuenta con diversas primitivas integradas por defecto, como
+    booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
+    shell.
+
+#+BEGIN_SRC plain
+# none
+none
+
+# Booleanos
+true
+false
+
+# Enteros
+12 + 4 # ...
+
+# Decimales (Se utiliza un double para su representanción actualmente)
+45.5
+
+# Las cadenas pueden ser multilineas se crean con "
+"Un\nejemplo
+de cadena"
+
+# Las regex se construyen con r" y terminan con ". Usan la sintaxis de PCRE.
+r"a*"  # Sin implementar aún
+
+# Los comandos shell se crean con
+$cd #HOME/repos; nvim .$
+Ó mutltilinea
+$
+  cd #HOME/repos
+  nvim .
+$
+
+O la sintaxis alternativa
+$"pwd"
+#+end_src
+
+    A su vez también existen tipos contenedores tales como los vectores y los
+    diccionarios o tablas hash.
+
+#+BEGIN_SRC plain
+# Vectores
+[45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
+
+# Diccionarios
+{ test: [1,2,3,47,5]
+, author:
+      { name: "Flynn"
+      , "vive en": "tal sitio"
+      }
+}
+
+#+end_src
+
+
+*** Orientado a objetos
+
+    El lenguaje tiene un básico soporte a la programación orientada a objetos.
+
+#+BEGIN_SRC plain
+class Repository {
+    name = "None"
+    url
+    local_repo
+
+    fun __init__ new_name {
+        self.name = name
+    }
+}
+#+end_src
+
+    Métodos estándar para la realización de tareas comunes.
+        - print
+        - TODO: Completar según value.rs
+
+** Configuración
+
+   <<file_config>>El fichero de configuración se localiza mediante el
+   estándar XDG. Normalmente localizado en */home/username/.config/{{{lang}}}*
+   La configuración es un fichero tipo YAML. El cual permite especificar
+   parámetros de configuración, tales como el prompt, shell. O parametros
+   específicos con la API Web; tales como la autenticación o posibles
+   preferencias.
+
+** Intérprete
+*** Prompt
+
+    En el modo interactivo del intérprete (repl) permite la personalización del *prompt*. Tales como el color del texto,
+    salida de la ejecución de comandos shell, y diversos comandos propios del intérprete. La configuración del prompt se
+    puede realizar desde el fichero de configuración (véase: [[file_config]]) en la sección *repl*.
+
+    Por defecto, la sección del /prompt/ contiene la siguiente configuración:
+
+#+BEGIN_SRC yaml
+repl:
+  # ...
+  # A portion of code to define repl prompt (Default: "{$pwd} >>>")
+  prompt: "{$pwd} >>> "
+  # ...
+#+end_src
+
+    El prompt permite diferentes añadir texto al mismo desde distintas fuentes. Y realizar un minimo de personalizaciones
+    visuales en el color de texto que conforma el prompt.
+
+    - {#.....}
+    - {clear_color}
+    - {$date YY}
+    - {list_modules}
+
+** Arquitectura del proyecto
+
+    El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
+    requiere diferentes enfoques al realizar el diseño del interprete. Ya que
+    no posée interfaz orientada a objectos. Dado esta diferencia voy a
+    detallar en cierta medida peculiariades del desrrollo.
+
+    Para ello empezemos por el principio, dada una fichero de entrada con el
+    código en "ScriptFlow".
+
+#+BEGIN_SRC plain
+fun say_hi name:
+  "Hola, " ++ name
+
+say_hi("Mundo")
+#+end_src
+
+
+    Se procede al parseo: el cual se realiza a dos
+    fases. La primera el tokenizador.
+
+#+BEGIN_SRC haskell
+[FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
+      LitTextT "Hola, ", OperatorT "++", NameIdT "name",
+CBraceT,
+NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
+#+end_src
+
+    Como se puede observar el tokenizador unicamente transforma el texto en
+    un flujo de tokens que indican que representa cada elemento dentro del
+    programa. Si se trata de una keyword, un literal, un nombre de varible...
+
+    También a su vez el tokenizador se encarga de identificar los niveles de
+    identación y añadir las correspondientes llaves: "OBraceT" y "CBraceT".
+
+    Una vez realizado la fase de tokenización se realiza la construcción del
+    Árbol Asbtracto Sintáctico (AST).
+
+#+BEGIN_SRC haskell
+SeqExpr [
+      VarDecl (Simple "say_hi")
+                 (FunDecl ["name"]
+                    (SeqExpr
+                       [Apply (Simple "++")
+                          [Factor (AStr "Hola, "),
+                           Identifier (Simple "name")]
+                       ]
+                    )
+                  )
+      ,
+      Apply (Simple "say_hi")
+            [SeqExpr [Factor (AStr "Mundo")]]
+]
+#+end_src
+
+    La salida del AST está simplificada, ya que se tiene que guardar
+    información de la posición dentro del fichero (columna, fila, y offset)
+    de cada elemento del AST.
+
+    El cual se realiza mediante un parser combinador, el cual se comporta de
+    forma muy parecida a los PEGs. Un ejemplo simplificado es la definción de
+    una función:
+
+#+BEGIN_SRC haskell
+parseFunDecl :: TokenParser Expression
+parseFunDecl = do
+  funT
+  funName <- nameIdT
+  params  <- many nameIdT
+  prog    <- parseBody
+  return (VarDecl
+    (Simple funName)
+    (FunDecl params prog))
+#+end_src
+
+    Una vez generado se realiza un checkeo del Scope del AST. En esta fase
+    comprueban si están usando variables que no existen, o si sobreescriben
+    otra. Y se procede al renombrado de las variables.
+
+#+BEGIN_SRC haskell
+SeqExpr [
+      VarDecl var_0        -- say_hi
+                 (FunDecl [param_0] -- name
+                    (SeqExpr
+                       [Apply op_0   -- "++"
+                          [Factor (AStr "Hola, "),
+                           Identifier param_0]
+                       ]
+                    )
+                  )
+      ,
+      Apply var_0     -- say_hi
+            [SeqExpr [Factor (AStr "Mundo")]]
+]
+#+end_src
+
+    Una de la últimas fases es la conversion del AST a un conjunto de
+    instrucciones simplificado.
+
+#+BEGIN_SRC haskell
+  Assign var_0
+      OFunc [param_0]
+            CallCommand op_0 ["Hola, ", GetVal param_0]
+
+  CallCommand var_0 ["Mundo"]
+#+end_src
+
+    Y de esta foma es como se representa el código guardado en memoria. Es decir, las
+    funciones que se definan su contenido es guardado en este formato.
+
+    Y como se puede observar "OFunc" no es una instrucción si no, un objeto.
+
+    El conjunto de instrucciones definidas es el siguiente.
+
+#+BEGIN_SRC haskell
+data InstructionG (st :: * -> *) next
+  = CallCommand !AddressRef ![Object] (Object -> next)
+  | Assign !AddressRef !Object next
+  | DropVar !AddressRef next
+  | GetVal !AddressRef (Object -> next)
+  | Loop !Object (Object -> (FreeT (InstructionG st) st Object)) next
+  | Cond !Object
+      (FreeT (InstructionG st) st Object)
+      (FreeT (InstructionG st) st Object)
+      (Object -> next)
+  | End
+  deriving Functor
+#+end_src
+
+    La estructura de datos puede intimidar, pero su uso simplifica manejo de
+    este conjunto de instrucciones. La Free Monad permite trabajar esta
+    estructura como una lista con peculiaridades.
+
+    Ejecución
+
+    En lo relativo a la ejecución principalmente se trata de ejecutar las
+    instrucciones una tras otra. En cuanto a la memoria, actualmente se
+    encuentra en proceso de desarrollo. Se tiene implementado de tal forma
+    que el scope indique que variables pueden ser descartadas. O quizás se
+    realize otro módulo específico para tal tarea.
