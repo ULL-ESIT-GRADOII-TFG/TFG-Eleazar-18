@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Prelude.OShellCommand where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as T
 import           System.Process
 
 import           Compiler.Prelude.Types
-import           Compiler.Prelude.Utils
 import           Compiler.Types
+
 
 methods :: T.Text -> Maybe ([Object] -> Prog)
 methods name = case name of
@@ -21,6 +21,7 @@ methods name = case name of
 execProcess :: Object -> FreeT Instruction StWorld Object
 execProcess (OShellCommand text) = do
   value <- liftIO $ do
-    (_, hout, _, h) <- createProcess ((shell $ T.unpack text) { std_out = CreatePipe })
+    (_, hout, _, _h) <- createProcess ((shell $ T.unpack text) { std_out = CreatePipe })
     maybe (return "") T.hGetContents hout
   return $ OStr value
+execProcess _ = lift $ throwError $ WorldError "execProcess: Not called with OShellCommnad Object"

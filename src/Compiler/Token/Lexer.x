@@ -233,7 +233,7 @@ scanner autoClose str = runAlex str $ do
   tokens <- loop mempty
   if V.null tokens then
     return $ Complete tokens
-  else if tokn (V.last tokens) == OBraceT then
+  else if tokn (V.last tokens) == OBraceT then -- TODO: Add more Partial cases strings, apply...
     return $ Partial tokens
   else
     return $ Complete tokens

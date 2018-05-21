@@ -1,6 +1,6 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Compiler.World.Types where
 
+import qualified Data.Text as T
 
 data WorldError
   = NotFoundObject
@@ -8,4 +8,5 @@ data WorldError
   | NotCallable
   | NumArgsMissmatch
   | NotImplicitConversion
+  | WorldError T.Text
   deriving Show

@@ -85,13 +85,16 @@ tokenizer input = case scanner False $ T.unpack input of
 compileSource :: T.Text -> String -> Interpreter ()
 compileSource rawFile nameFile = do
   ast <- catchEither id . return $ generateAST rawFile nameFile
-  liftIO $ putStrLn $ groom ast
+  verbosity <- use verboseLevel
+  when (verbosity >= 2) $
+    liftIO $ putStrLn $ groom ast
   case ast of
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
-      astScoped <- catchEither (Compiling . T.pack . show) . liftScope $ do
+      astScoped <- catchEither (Compiling . T.pack . show) . liftScope $
         computeStatements statements >>= scopingThroughtAST
-      --liftIO $ putStrLn $ groom astScoped
+      when (verbosity >= 1) $
+        liftIO $ putStrLn $ groom astScoped
       evaluateScopedProgram astScoped
 
 compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)
@@ -118,10 +121,10 @@ evaluateScopedProgram astScoped = do
 -- Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> ScopeM (Expression TokenInfo)
 computeStatements =
-  flip foldM (SeqExpr [] TokenInfo) $ \(SeqExpr exprs t) st -> case st of
+  flip foldM (SeqExpr [] dummyTokenInfo) $ \(SeqExpr exprs t) st -> case st of
       -- TODO
     Import _path _ -> error "No implemented yet import functionality"
     cls@Class{}    -> do
-      scopingClassAST cls -- TODO
-      return $ SeqExpr [] TokenInfo
+      _ <- scopingClassAST cls -- TODO
+      return $ SeqExpr [] dummyTokenInfo
     Expr expr _ -> return $ SeqExpr (expr : exprs) t

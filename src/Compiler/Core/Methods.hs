@@ -21,8 +21,9 @@ import           Paths_ScriptFlow
 --   or request to user to log in
 start :: ArgsConfig -> IO ()
 start Version = putStrLn $ "ScriptFlow v." ++ showVersion version
-start (Interpreter inFile cfgFile initREPL _verbose) = do
-  err <- runInputT defaultSettings . flip evalStateT def . runExceptT $ do
+start (Interpreter inFile cfgFile initREPL verbosity) = do
+  let iState = def { _verboseLevel = verbosity }
+  err <- runInputT defaultSettings . flip evalStateT iState . runExceptT $ do
     loadPrelude
     setupConfig cfgFile
     case inFile of

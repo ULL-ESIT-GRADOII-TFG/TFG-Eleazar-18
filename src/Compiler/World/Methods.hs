@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Compiler.World.Methods where
 
 import           Control.Monad
@@ -50,11 +49,11 @@ on obj acc = case obj of
 
 -- | Access through a path accessors
 through :: Object -> [T.Text] -> StWorld (Maybe Object)
-through obj accessor = foldM (\obj' acc ->
+through obj = foldM (\obj' acc ->
     case obj' of
       Just obj'' -> obj'' `on` acc
       Nothing    -> return Nothing
-  ) (Just obj) accessor
+  ) (Just obj)
 
 lookupInMemory :: AddressRef -> StWorld (Maybe (Object, [T.Text]))
 lookupInMemory (AddressRef word accessors) = do

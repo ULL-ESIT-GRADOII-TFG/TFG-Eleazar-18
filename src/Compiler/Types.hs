@@ -59,12 +59,13 @@ type Interpreter = ExceptT InterpreterError (StateT IState (InputT IO))
 
 -- | Represent internal state of compiler
 data IState = IState
-  { _multiline :: !(Maybe T.Text)
+  { _multiline    :: !(Maybe T.Text)
    -- ^ When multiline mode is enable the interpreter storage all code
    --   until found a multiline close token. Then load text to compiler.
-  , _memory    :: !World
+  , _memory       :: !World
   -- , _docs :: Docs -- Map Text DocFormatted
-  , _config    :: !Config
+  , _config       :: !Config
+  , _verboseLevel :: !Int
   }
 
 instance Default IState where
@@ -72,6 +73,7 @@ instance Default IState where
     { _multiline = Nothing
     , _memory    = def
     , _config    = def
+    , _verboseLevel = 0
     }
 
 
@@ -152,7 +154,7 @@ data InstructionG (st :: * -> *) next
   -- ^ Remove a var from memory
   | GetVal !AddressRef (Object -> next)
   -- ^ Retrieve a object from a memory reference
-  | Loop !Object (Object -> (FreeT (InstructionG st) st Object)) next
+  | Loop !Object (Object -> FreeT (InstructionG st) st Object) next
   -- ^ Loop over a object
   | Cond !Object
       (FreeT (InstructionG st) st Object)
