@@ -1,5 +1,5 @@
 #+MACRO: lang_name ScriptFlow
-#TODO: resaltado de code source lang
+#+MACRO: lang scriptflow
 
 * {{{lang_name}}} Manual
 
@@ -20,7 +20,7 @@
 
 **** Identación
 
-    El lenguaje puede ser sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando "{}":
+     El lenguaje puede ser sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando "{}":
 
 #+BEGIN_SRC haskell
 fun saludar_a nombre:
@@ -37,11 +37,11 @@ fun saludar_a nombre {
 
 **** Literales
 
-    El lenguaje cuenta con diversas primitivas integradas por defecto, como
-    booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
-    shell.
+     El lenguaje cuenta con diversas primitivas integradas por defecto, como
+     booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
+     shell.
 
-#+BEGIN_SRC plain
+#+BEGIN_SRC python
 # none
 none
 
@@ -77,7 +77,7 @@ $"pwd"
     A su vez también existen tipos contenedores tales como los vectores y los
     diccionarios o tablas hash.
 
-#+BEGIN_SRC plain
+#+BEGIN_SRC python
 # Vectores
 [45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
 
@@ -91,12 +91,11 @@ $"pwd"
 
 #+end_src
 
-
 *** Orientado a objetos
 
     El lenguaje tiene un básico soporte a la programación orientada a objetos.
 
-#+BEGIN_SRC plain
+#+BEGIN_SRC python
 class Repository {
     name = "None"
     url
@@ -114,19 +113,22 @@ class Repository {
 
 ** Configuración
 
-   <<file_config>>El fichero de configuración se localiza mediante el
+   <<file_config>>
+   El fichero de configuración se localiza mediante el
    estándar XDG. Normalmente localizado en */home/username/.config/{{{lang}}}*
    La configuración es un fichero tipo YAML. El cual permite especificar
    parámetros de configuración, tales como el prompt, shell. O parametros
    específicos con la API Web; tales como la autenticación o posibles
    preferencias.
 
-** Intérprete
 *** Prompt
 
-    En el modo interactivo del intérprete (repl) permite la personalización del *prompt*. Tales como el color del texto,
-    salida de la ejecución de comandos shell, y diversos comandos propios del intérprete. La configuración del prompt se
-    puede realizar desde el fichero de configuración (véase: [[file_config]]) en la sección *repl*.
+    <<config_prompt>>
+    En el modo interactivo del intérprete (repl) permite la personalización del
+    *prompt*. Tales como el color del texto, salida de la ejecución de comandos
+    shell, y diversos comandos propios del intérprete. La configuración del
+    prompt se puede realizar desde el fichero de configuración (véase:
+    [[file_config]]) en la sección *repl*.
 
     Por defecto, la sección del /prompt/ contiene la siguiente configuración:
 
@@ -138,25 +140,43 @@ repl:
   # ...
 #+end_src
 
-    El prompt permite diferentes añadir texto al mismo desde distintas fuentes. Y realizar un minimo de personalizaciones
-    visuales en el color de texto que conforma el prompt.
+    El prompt permite diferentes añadir texto al mismo desde distintas fuentes.
+    Y realizar un minimo de personalizaciones visuales en el color de texto que
+    conforma el prompt.
 
     - {#.....}
     - {clear_color}
     - {$date YY}
     - {list_modules}
 
+** REPL
+   El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~ o con la
+   finalización de ejecución de un *script* con la opción ~-e~. Una vez,
+   iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado
+   (configuración véase: [[config_prompt]]).
+
+   Desde el *REPL* se puede escribir cualquier tipo de expresión definida por el
+   lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
+   puede ver una lista de los comandos con ~:help~
+
+*** :instr
+    Permite visualizar, a que instrucciones se traduce el código. Estas
+    instrucciones (vease: [[intermediate_lang]])
+
 ** Arquitectura del proyecto
+
+*** Introducción
 
     El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
     requiere diferentes enfoques al realizar el diseño del interprete. Ya que
-    no posée interfaz orientada a objectos. Dado esta diferencia voy a
-    detallar en cierta medida peculiariades del desrrollo.
+    no posée una interfaz orientada a objetos. Dada esta diferencia voy a
+    detallar en cierta medida peculiaridades del desarrollo, en las siguientes
+    secciones. Antes de ello empezaremos con un pequeño análisis de como
+    funciona el intérprete.
 
-    Para ello empezemos por el principio, dada una fichero de entrada con el
-    código en "ScriptFlow".
+    Dado un fichero de entrada con el código escrito en {{{lang_name}}}.
 
-#+BEGIN_SRC plain
+#+BEGIN_SRC python
 fun say_hi name:
   "Hola, " ++ name
 
@@ -164,8 +184,11 @@ say_hi("Mundo")
 #+end_src
 
 
-    Se procede al parseo: el cual se realiza a dos
-    fases. La primera el tokenizador.
+    Se procede al "parseo" del código, el cual, se realiza a dos fases. La primera el
+    "tokenizador". Se encarga de transformar, el texto en de entrada en una
+    secuencia de /tokens/. Estos tokens representan los elementos importantes
+    que se usarán para generar el *AST*. Cada token contiene la información
+    necesaria para reconstruir el código.
 
 #+BEGIN_SRC haskell
 [FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
@@ -174,15 +197,14 @@ CBraceT,
 NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
 #+end_src
 
-    Como se puede observar el tokenizador unicamente transforma el texto en
-    un flujo de tokens que indican que representa cada elemento dentro del
-    programa. Si se trata de una keyword, un literal, un nombre de varible...
+    En esta fase de "tokenización", se procede a identificar los niveles de
+    indentación en el código en el caso de que se este usando la sintáxis sin
+    llaves. El proceso que realiza el "tokenizador" simplemente añade las
+    correspondientes llaves en la secuencia. Estos /tokens/ se identifican con
+    ~OBraceT~ y ~CBraceT~.
 
-    También a su vez el tokenizador se encarga de identificar los niveles de
-    identación y añadir las correspondientes llaves: "OBraceT" y "CBraceT".
-
-    Una vez realizado la fase de tokenización se realiza la construcción del
-    Árbol Asbtracto Sintáctico (AST).
+    La segunda fase del "parseo" se encarga de generar el árbol sintáctico
+    abstracto o sus siglas en inglés *AST*.
 
 #+BEGIN_SRC haskell
 SeqExpr [
@@ -201,12 +223,12 @@ SeqExpr [
 ]
 #+end_src
 
-    La salida del AST está simplificada, ya que se tiene que guardar
+    La salida del *AST* está simplificada, ya que se tiene que guardar
     información de la posición dentro del fichero (columna, fila, y offset)
-    de cada elemento del AST.
+    de cada elemento del *AST*.
 
-    El cual se realiza mediante un parser combinador, el cual se comporta de
-    forma muy parecida a los PEGs. Un ejemplo simplificado es la definción de
+    Este proceso se realiza mediante un *parser combinador*, el cual se comporta de
+    forma parecida a los *PEGs*. Un ejemplo simplificado es la definción de
     una función:
 
 #+BEGIN_SRC haskell
@@ -221,7 +243,7 @@ parseFunDecl = do
     (FunDecl params prog))
 #+end_src
 
-    Una vez generado se realiza un checkeo del Scope del AST. En esta fase
+    Una vez generado se realiza la comprobación del *scope* del AST. En esta fase
     comprueban si están usando variables que no existen, o si sobreescriben
     otra. Y se procede al renombrado de las variables.
 
@@ -286,3 +308,8 @@ data InstructionG (st :: * -> *) next
     encuentra en proceso de desarrollo. Se tiene implementado de tal forma
     que el scope indique que variables pueden ser descartadas. O quizás se
     realize otro módulo específico para tal tarea.
+
+
+*** Lenguaje intermedio
+
+    <<intermediate_lang>>
