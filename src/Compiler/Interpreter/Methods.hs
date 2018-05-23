@@ -45,6 +45,8 @@ repl = do
                 `catchError` handleError
   repl
 
+-- | Get prompt from configuration try execute prompt code else show a
+-- default prompt with error flag
 getPrompt :: Interpreter String
 getPrompt = do
   isMultiline <- isJust <$> use multiline
@@ -56,11 +58,11 @@ getPrompt = do
     $ do
       mkPrompt    <-
         catchEither (Compiling . T.pack .show) $
-          (use $ config . prompt . unPrompt) >>= liftScope -- TODO: WithScope
+          use (config . prompt . unPrompt) >>= liftScope . withNewScope
       value       <- catchMaybe (Internal "No value returned") . liftWorld $ runProgram mkPrompt
       case value of
         OStr text ->
-          if isMultiline then return "... " else return $ T.unpack text
+          if isMultiline then return $ replicate (T.length text - 4) ' ' ++ "... " else return $ T.unpack text
         _ ->
           -- TODO: Maybe cast object to string object
           throwError $ Internal "Not a string value"
@@ -123,8 +125,8 @@ computeStatements :: [Statement TokenInfo] -> ScopeM (Expression TokenInfo)
 computeStatements =
   flip foldM (SeqExpr [] dummyTokenInfo) $ \(SeqExpr exprs t) st -> case st of
       -- TODO
-    Import _path _ -> error "No implemented yet import functionality"
-    cls@Class{}    -> do
-      _ <- scopingClassAST cls -- TODO
+    Import _path _ -> error "No implemented yet. Import functionality"
+    Class name attrs methds _ -> do
+      _ <- scopingClassAST name attrs methds
       return $ SeqExpr [] dummyTokenInfo
     Expr expr _ -> return $ SeqExpr (expr : exprs) t

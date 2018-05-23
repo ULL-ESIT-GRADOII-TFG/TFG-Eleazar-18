@@ -13,7 +13,7 @@ type Statement a = StatementG a T.Text
 
 data StatementG a id
   = Import T.Text a
-  | Class id (ExpressionG (AccessorG a) a id) a
+  | Class id (ExpressionG (AccessorG a) a id) (ExpressionG (AccessorG a) a id) a
   | Expr (ExpressionG (AccessorG a) a id) a
   deriving Show
 

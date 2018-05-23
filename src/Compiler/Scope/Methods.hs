@@ -5,6 +5,7 @@ module Compiler.Scope.Methods where
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import qualified Data.IntMap                as IM
+import qualified Data.List.NonEmpty         as NL
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
@@ -34,18 +35,16 @@ getNewId = do
   return newId
 
 -- | Add new variable name to scope and return its ID
-addNewIdentifier :: [T.Text] -> ScopeM AddressRef
-addNewIdentifier []     = throwError InternalFail
-addNewIdentifier (name:names) = do
+addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
+addNewIdentifier (name NL.:| names) = do
   newId <- getNewId
   let addr = AddressRef newId names
   currentScope . renameInfo %= M.insert name addr
   return addr
 
 -- | Get a specific ID from variable name
-getIdentifier :: [T.Text] -> ScopeM AddressRef
-getIdentifier []     = throwError InternalFail
-getIdentifier (name:names) = do
+getIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
+getIdentifier (name NL.:|names) = do
   renamer <- use $ currentScope . renameInfo
   case M.lookup name renamer of
     Just ref' -> return $ AddressRef (ref'^.ref) names
@@ -63,30 +62,36 @@ getIdentifier (name:names) = do
 -- TODO: Add syntax to build a class __init__
 -- TODO: Add a constructor to scope
 -- TODO:
-scopingClassAST :: Show a => Statement a -> ScopeM (ExpressionG Identity a AddressRef)
-scopingClassAST (Class name expression _) = do
-  AddressRef ref' _ <- addNewIdentifier [name]
+scopingClassAST :: Show a =>
+  T.Text ->
+  -- ^ Class name
+  Expression a ->
+  -- ^ class attributtes
+  Expression a ->
+  -- ^ class methods
+  ScopeM (ExpressionG Identity a AddressRef)
+scopingClassAST _name _attrs _methods = undefined
+  -- AddressRef ref' _ <- addNewIdentifier [name]
 
-  (classDef, codeScope) <- withNewScope $ do
-    codeScoped <- scopingThroughtAST expression
-    currScope <- use $ currentScope.renameInfo
-    -- Generate Free Program
-    -- [(Ref, Free)]
-    -- scopeInfo
-    return (M.map _ref currScope, codeScoped)
+  -- (classDef, codeScope) <- withNewScope $ do
+  --   codeScoped <- scopingThroughtAST expression
+  --   currScope <- use $ currentScope.renameInfo
+  --   -- Generate Free Program
+  --   -- [(Ref, Free)]
+  --   -- scopeInfo
+  --   return (M.map _ref currScope, codeScoped)
 
 
-  -- TODO: Add Constructor function. Peek for possible __init__ method
-  typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
-  return codeScope
-scopingClassAST _                         = undefined
+  -- -- TODO: Add Constructor function. Peek for possible __init__ method
+  -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
+  -- return codeScope
 
 -- | Make a translation of variable names from AST, convert all to IDs and check rules
 -- of scoping
 scopingThroughtAST :: Show a => Expression a -> ScopeM (ExpressionG Identity a AddressRef)
 scopingThroughtAST expr = case expr of
   FunDecl args body info -> withNewScope $ do
-    argsId    <- mapM (addNewIdentifier . (: [])) args
+    argsId    <- mapM (addNewIdentifier . return) args
     scopeBody <- scopingThroughtAST body
     return $ FunDecl argsId scopeBody info
 
@@ -119,7 +124,7 @@ scopingThroughtAST expr = case expr of
 
   For name iterExpr body info -> do
     iterExpr' <- withNewScope $ scopingThroughtAST iterExpr
-    nameId    <- addNewIdentifier [name]
+    nameId    <- addNewIdentifier $ return name
     body'     <- withNewScope $ scopingThroughtAST body
     return $ For nameId iterExpr' body' info
 
@@ -134,7 +139,7 @@ scopingThroughtAST expr = case expr of
     addrRef <- getIdentifier accSimple
     return $ Identifier (Identity addrRef) info
 
-  Factor atom info -> (\a -> Factor a info) <$> scopeFactor atom
+  Factor atom info -> (`Factor` info) <$> scopeFactor atom
 
 scopeFactor :: Show a => Atom a -> ScopeM (AtomG Identity a AddressRef)
 scopeFactor atom = case atom of
@@ -145,13 +150,11 @@ scopeFactor atom = case atom of
   AShellCommand val -> return $ AShellCommand val
   AStr str -> return $ AStr str
   ABool bool -> return $ ABool bool
-  AVector vals -> mapM scopingThroughtAST vals >>= return . AVector
-  ADic vals -> do
-    val <- mapM (\(key, val) -> scopingThroughtAST val >>= return . (key,)) vals
-    return $ ADic val
+  AVector vals -> AVector <$> mapM scopingThroughtAST vals
+  ADic vals -> ADic <$> mapM (\(key, val) -> (key,) <$> scopingThroughtAST val) vals
 
 simplifiedAccessor
-  :: Show a => Accessor a -> [T.Text]
+  :: Show a => Accessor a -> NL.NonEmpty T.Text
 simplifiedAccessor acc = case acc of
-  Simple id' _tok -> [id']
-  Dot id' acc' _  -> id' : simplifiedAccessor acc'
+  Simple id' _tok -> return id'
+  Dot id' acc' _  -> id' NL.<| simplifiedAccessor acc'

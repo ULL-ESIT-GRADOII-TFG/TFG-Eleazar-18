@@ -65,11 +65,16 @@ parseClassStatement :: TokenParser (Statement TokenInfo)
 parseClassStatement = mkTokenInfo $ do
   classT
   nameCls <- classIdT
-  bodyClass <- between oBraceT cBraceT parseBodyClass
-  return $ Class nameCls bodyClass
+  (attributes, methods) <- between oBraceT cBraceT $
+    (,) <$> parseAttributesClass <*> parseMethodsClass
+  return $ Class nameCls attributes methods
 
-parseBodyClass :: TokenParser (Expression TokenInfo)
-parseBodyClass = choice $ map try [parseFunDecl, parseAssign, parseIdentifier]
+parseAttributesClass :: TokenParser (Expression TokenInfo)
+parseAttributesClass = mkTokenInfo $ SeqExpr <$> (many . choice $ map try [parseAssign, parseIdentifier])
+
+
+parseMethodsClass :: TokenParser (Expression TokenInfo)
+parseMethodsClass = mkTokenInfo $ SeqExpr <$> many parseFunDecl
 
 parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Interpreter.Command.Methods where
 
+import           Control.Monad.Except
 import           Control.Monad.IO.Class
 import           Data.List
 import qualified Data.Map                     as M
@@ -42,7 +43,7 @@ help _ = liftIO . putStrLn $ intercalate "\n"
   ]
 
 showInstructions :: [T.Text] -> Interpreter ()
--- showInstructions [] = throwError $ Internal "Command just allow 1 arg"
+showInstructions [] = throwError $ Internal "Command just allow 1 arg"
 showInstructions (name:_) = do
   -- Find into scope the ref -> search into world -> apply
   object <- getVar name
