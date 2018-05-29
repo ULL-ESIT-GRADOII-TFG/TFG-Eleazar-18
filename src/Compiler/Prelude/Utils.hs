@@ -11,7 +11,7 @@ import           Compiler.Interpreter.Utils
 import           Compiler.Object.Types
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
-import           Compiler.Scope.Methods
+import           Compiler.Scope.Utils
 import           Compiler.Types
 
 

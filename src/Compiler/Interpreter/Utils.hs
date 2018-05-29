@@ -5,7 +5,7 @@ import           Control.Monad.State.Strict
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
-import           Compiler.Scope.Methods
+import           Compiler.Scope.Utils
 import           Compiler.Types
 import           Compiler.World.Methods
 
@@ -48,7 +48,7 @@ catchEither errorMsg m = do
 -- | Internal use. To create native objects
 newVar :: T.Text -> Object -> Interpreter (Maybe AddressRef)
 newVar idName obj = do
-  eRef <- liftScope $ addNewIdentifier [idName]
+  eRef <- liftScope . addNewIdentifier $ return idName
   case eRef of
     Right ref' -> do
       _ <- liftWorld $ addObject ref' obj
@@ -60,7 +60,7 @@ newVar idName obj = do
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
 getVar idName = do
-  eRef <- liftScope $ getIdentifier [idName]
+  eRef <- liftScope . getIdentifier $ return idName
   case eRef of
     Right ref' -> do
       mObj <- liftWorld $ findObject ref'

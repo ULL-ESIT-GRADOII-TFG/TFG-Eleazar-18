@@ -10,6 +10,7 @@ import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
 import           Compiler.Instruction.Types
+import Compiler.Parser.Types
 
 
 data ScopeError
@@ -38,13 +39,25 @@ newtype ScopeInfo = ScopeInfo
   { _renameInfo :: M.Map T.Text AddressRef
   } deriving Show
 
+instance Default ScopeInfo where
+  def = ScopeInfo mempty
+
 data ClassDefinition = ClassDefinition
   { _nameClass       :: T.Text
   , _attributesClass :: M.Map T.Text Word
   }
   deriving Show
 
+data ScopeInfoAST = ScopeInfoAST
+  { _tokenInfo :: TokenInfo
+  , _scopeInfo :: ScopeInfo
+  } deriving Show
+
+instance Default ScopeInfoAST where
+  def = ScopeInfoAST def def
+
 
 makeLenses ''Scope
 makeLenses ''ScopeInfo
+makeLenses ''ScopeInfoAST
 makeLenses ''ClassDefinition

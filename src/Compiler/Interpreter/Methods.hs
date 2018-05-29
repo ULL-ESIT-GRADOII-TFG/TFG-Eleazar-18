@@ -2,7 +2,6 @@
 module Compiler.Interpreter.Methods where
 
 import           Control.Monad.Except
-import           Control.Monad.Identity
 import           Data.Maybe
 import qualified Data.Text                            as T
 import qualified Data.Text.IO                         as T
@@ -11,11 +10,13 @@ import           System.Console.Haskeline
 import           Text.Groom
 
 import           Compiler.Ast
+import           Compiler.Desugar.Types
 import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
 import           Compiler.Parser.Methods
-import           Compiler.Scope.Methods
+import           Compiler.Scope.Methods  ()
+import           Compiler.Scope.Utils
 import           Compiler.Token.Lexer                 (Tokenizer (..), scanner)
 import           Compiler.Types
 
@@ -94,7 +95,7 @@ compileSource rawFile nameFile = do
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
       astScoped <- catchEither (Compiling . T.pack . show) . liftScope $
-        computeStatements statements >>= scopingThroughtAST
+        computeStatements statements >>= transform
       when (verbosity >= 1) $
         liftIO $ putStrLn $ groom astScoped
       evaluateScopedProgram astScoped
@@ -106,12 +107,11 @@ compileSourcePure rawFile nameFile = do
     Command _cmd _args -> Left $ Compiling "You can't use command"
     Code statements    -> Right $ do
       expr      <- computeStatements statements
-      astScoped <- scopingThroughtAST expr
+      astScoped <- transform expr
       return $ astToInstructions astScoped
 
 -- | Evaluate program with AST already scoped
-evaluateScopedProgram
-  :: ExpressionG Identity TokenInfo AddressRef -> Interpreter ()
+evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
 evaluateScopedProgram astScoped = do
   value <- liftWorld (runProgram (astToInstructions astScoped))
   case value of
@@ -126,7 +126,8 @@ computeStatements =
   flip foldM (SeqExpr [] dummyTokenInfo) $ \(SeqExpr exprs t) st -> case st of
       -- TODO
     Import _path _ -> error "No implemented yet. Import functionality"
-    Class name attrs methds _ -> do
-      _ <- scopingClassAST name attrs methds
+    FunSt _ -> error "not implemented"
+    ClassSt _cls ->
+      --_ <- transform cls
       return $ SeqExpr [] dummyTokenInfo
-    Expr expr _ -> return $ SeqExpr (expr : exprs) t
+    Expr expr -> return $ SeqExpr (expr : exprs) t

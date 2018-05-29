@@ -48,9 +48,9 @@ parseStatements =
   many
       ( choice $ map
         try
-        [ parseClassStatement
+        [ ClassSt <$> parseClassStatement
         , parseImportStatement
-        , mkTokenInfo $ Expr <$> parseSeqExpr
+        , Expr <$> parseSeqExpr
         ]
       )
     <* eof
@@ -61,26 +61,25 @@ parseImportStatement = mkTokenInfo $ do
   text <- litTextT
   return $ Import text
 
-parseClassStatement :: TokenParser (Statement TokenInfo)
+parseClassStatement :: TokenParser (ClassDecl TokenInfo)
 parseClassStatement = mkTokenInfo $ do
   classT
   nameCls <- classIdT
   (attributes, methods) <- between oBraceT cBraceT $
     (,) <$> parseAttributesClass <*> parseMethodsClass
-  return $ Class nameCls attributes methods
+  return $ ClassDecl nameCls attributes methods
 
-parseAttributesClass :: TokenParser (Expression TokenInfo)
-parseAttributesClass = mkTokenInfo $ SeqExpr <$> (many . choice $ map try [parseAssign, parseIdentifier])
+parseAttributesClass :: TokenParser [Expression TokenInfo]
+parseAttributesClass = many . choice $ map try [parseAssign, parseIdentifier]
 
-
-parseMethodsClass :: TokenParser (Expression TokenInfo)
-parseMethodsClass = mkTokenInfo $ SeqExpr <$> many parseFunDecl
+parseMethodsClass :: TokenParser [FunDecl TokenInfo]
+parseMethodsClass = many parseFunDecl
 
 parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map
   try
   [ parseUnaryOperators
-  , parseFunDecl
+  -- , parseFunDecl
   , parseLam
   , parseIfElse
   , parseIf
@@ -97,15 +96,16 @@ parseBody = try (mkTokenInfo $ do
   oBraceT >> cBraceT
   return $ SeqExpr []) <|> between oBraceT cBraceT parseSeqExpr
 
-parseFunDecl :: TokenParser (Expression TokenInfo)
+parseFunDecl :: TokenParser (FunDecl TokenInfo)
 parseFunDecl = mkTokenInfo $ do
   funT
-  funName <- mkTokenInfo $ Simple <$> nameIdT
+  funName <- nameIdT
   params  <- many nameIdT
   prog    <- parseBody
-  return $ \info -> VarDecl
+  return $ \info -> FunDecl
     funName
-    (FunDecl params prog info)
+    params
+    prog
     info
 
 parseLam :: TokenParser (Expression TokenInfo)
@@ -113,14 +113,14 @@ parseLam = mkTokenInfo $ do
   lamT
   params <- many nameIdT
   prog   <- parseBody
-  return $ FunDecl params prog
+  return $ FunExpr params prog
 
 parseAssign :: TokenParser (Expression TokenInfo)
 parseAssign = mkTokenInfo $ do
   varName <- parseAccessor
   assignT
   expr <- parseExp
-  return $ VarDecl varName expr
+  return $ VarExpr varName expr
 
 parseIf :: TokenParser (Expression TokenInfo)
 parseIf = mkTokenInfo $ do
@@ -182,10 +182,10 @@ parseMethod expr = do
     between oBraceT cBraceT parseExp
 
   return $ MkScope
-    [ VarDecl (Simple "aux" dummyTokenInfo) expr dummyTokenInfo
+    [ VarExpr (Simple "aux" dummyTokenInfo) expr dummyTokenInfo
     , case (params, param) of
         (Just params', Just param') -> MkScope
-          [ VarDecl
+          [ VarExpr
               (Simple "aux2" dummyTokenInfo)
               (Apply (Dot "aux" acc dummyTokenInfo) params' dummyTokenInfo) dummyTokenInfo
           , Apply
@@ -197,7 +197,7 @@ parseMethod expr = do
           Apply (Dot "aux" acc dummyTokenInfo) params' dummyTokenInfo
 
         (Nothing, Just param')      -> MkScope
-          [ VarDecl
+          [ VarExpr
               (Simple "aux2" dummyTokenInfo)
               (Identifier (Dot "aux" acc dummyTokenInfo) dummyTokenInfo) dummyTokenInfo
           , Apply
@@ -254,6 +254,7 @@ parseAccessor = choice $ map
     operatorT' "."
     rest <- parseAccessor
     return $ Dot name rest
+  , mkTokenInfo $ Simple <$> classIdT -- Class constructor
   , mkTokenInfo $ Simple <$> nameIdT
   ]
 

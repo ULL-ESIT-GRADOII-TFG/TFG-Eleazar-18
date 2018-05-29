@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Compiler.Parser.Types where
 
+import Data.Default
 import           Lens.Micro.Platform
 
 data TokenInfo = TokenInfo
@@ -16,18 +17,13 @@ data SrcPos = SrcPos
   }
   deriving Show
 
+instance Default SrcPos where
+  def = SrcPos 0 0 0
+
+instance Default TokenInfo where
+  def = TokenInfo def def
+
 dummyTokenInfo :: TokenInfo
-dummyTokenInfo = TokenInfo
-  { _start = SrcPos
-    { _column = 0
-    , _row    = 0
-    , _offset = 0
-    }
-  , _end   = SrcPos
-    { _column = 0
-    , _row    = 0
-    , _offset = 0
-    }
-  }
+dummyTokenInfo = def
 
 makeLenses ''SrcPos

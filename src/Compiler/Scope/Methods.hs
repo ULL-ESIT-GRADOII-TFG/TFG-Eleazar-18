@@ -1,160 +1,154 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TupleSections         #-}
 module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
-import           Control.Monad.Identity
-import qualified Data.IntMap                as IM
-import qualified Data.List.NonEmpty         as NL
-import qualified Data.Map                   as M
-import qualified Data.Text                  as T
-import           Lens.Micro.Platform
+
+import           Data.Default
+--import qualified Data.IntMap                as IM
+import qualified Data.List.NonEmpty     as NL
+--import qualified Data.Map                   as M
+import qualified Data.Text              as T
 
 import           Compiler.Ast
-import           Compiler.Instruction.Types
+import           Compiler.Desugar.Types
+--import           Compiler.Instruction.Types
+import           Compiler.Parser.Types
 import           Compiler.Scope.Types
+import           Compiler.Scope.Utils
 
 
--- | Create a temporal scope with a info
-withNewScope :: ScopeM b -> ScopeM b
-withNewScope body = do
-  lastScope <- use currentScope
-  stackScope %= (lastScope :)
-  currentScope .= ScopeInfo mempty
-  value <- body
-  (curScope:rest) <- use stackScope
-  currentScope .= curScope
-  stackScope .= rest
-  return value
+instance Desugar Statement TokenInfo ScopeM Statement ScopeInfoAST where
+  -- transform :: Statement a -> ScopeM (Statement a)
+  transform ast = case ast of
+    Import _ _  -> undefined
+    ClassSt cls -> ClassSt <$> transform cls
+    FunSt fun   -> FunSt <$> transform fun
+    Expr expr   -> Expr <$>transform expr
 
--- | Generates a new ID
-getNewId :: ScopeM Word
-getNewId = do
-  newId <- use nextId
-  nextId .= newId + 1
-  return newId
+instance Desugar ClassDecl TokenInfo ScopeM ClassDecl ScopeInfoAST where
+  -- transform :: ClassDecl a -> ScopeM (ClassDecl a)
+  -- TODO: Add syntax to build a class __init__
+  -- TODO: Add a constructor to scope
+  -- TODO:
+  -- | Class renaming scope
+  transform (ClassDecl name vars methds info) =
+    -- AddressRef ref' _ <- addNewIdentifier $ return name
 
--- | Add new variable name to scope and return its ID
-addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
-addNewIdentifier (name NL.:| names) = do
-  newId <- getNewId
-  let addr = AddressRef newId names
-  currentScope . renameInfo %= M.insert name addr
-  return addr
+    -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
+    undefined
 
--- | Get a specific ID from variable name
-getIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
-getIdentifier (name NL.:|names) = do
-  renamer <- use $ currentScope . renameInfo
-  case M.lookup name renamer of
-    Just ref' -> return $ AddressRef (ref'^.ref) names
-    Nothing  -> do
-      stack <- use stackScope
-      maybe (throwError $ NoIdFound name) return (findInStack stack)
- where
-  findInStack :: [ScopeInfo] -> Maybe AddressRef
-  findInStack []         = Nothing
-  findInStack (scope:xs) = case scope ^. renameInfo & M.lookup name of
-    Just (AddressRef word _) -> Just $ AddressRef word names
-    Nothing                  -> findInStack xs
-
--- | Class renaming scope
--- TODO: Add syntax to build a class __init__
--- TODO: Add a constructor to scope
--- TODO:
-scopingClassAST :: Show a =>
-  T.Text ->
-  -- ^ Class name
-  Expression a ->
-  -- ^ class attributtes
-  Expression a ->
-  -- ^ class methods
-  ScopeM (ExpressionG Identity a AddressRef)
-scopingClassAST _name _attrs _methods = undefined
-  -- AddressRef ref' _ <- addNewIdentifier [name]
-
-  -- (classDef, codeScope) <- withNewScope $ do
-  --   codeScoped <- scopingThroughtAST expression
-  --   currScope <- use $ currentScope.renameInfo
-  --   -- Generate Free Program
-  --   -- [(Ref, Free)]
-  --   -- scopeInfo
-  --   return (M.map _ref currScope, codeScoped)
+    -- (classDef, codeScope) <- withNewScope $ do
+    --   codeScoped <- scopingThroughtAST expression
+    --   currScope <- use $ currentScope.renameInfo
+    --   -- Generate Free Program
+    --   -- [(Ref, Free)]
+    --   -- scopeInfo
+    --   return (M.map _ref currScope, codeScoped)
 
 
-  -- -- TODO: Add Constructor function. Peek for possible __init__ method
-  -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
-  -- return codeScope
+    -- -- TODO: Add Constructor function. Peek for possible __init__ method
+    -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
+    -- return codeScope
 
--- | Make a translation of variable names from AST, convert all to IDs and check rules
--- of scoping
-scopingThroughtAST :: Show a => Expression a -> ScopeM (ExpressionG Identity a AddressRef)
-scopingThroughtAST expr = case expr of
-  FunDecl args body info -> withNewScope $ do
-    argsId    <- mapM (addNewIdentifier . return) args
-    scopeBody <- scopingThroughtAST body
-    return $ FunDecl argsId scopeBody info
+funcToMethod :: FunDecl a -> FunDecl a
+funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 
-  VarDecl name expr' info -> do
-    let accSimple = simplifiedAccessor name
-    addrRef <- catchError (getIdentifier accSimple) $
-      \_error -> addNewIdentifier accSimple
-    withNewScope $ do
-      expr'' <- scopingThroughtAST expr'
-      return $ VarDecl (Identity addrRef) expr'' info
+instance Desugar FunDecl TokenInfo ScopeM FunDecl ScopeInfoAST where
+  -- transform :: FunDecl a -> ScopeM (ClassDecl a)
+  transform = undefined
 
-  SeqExpr exprs info -> do
-    expr' <- mapM scopingThroughtAST exprs
-    return $ SeqExpr expr' info
+instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
+  -- transform :: Expression TokenInfo -> ScopeM (Expression ScopeInfoAST)
+  transform ast = case ast of
+    FunExpr args body info -> withNewScope $ do
+      mapM_ (addNewIdentifier . return) args
+      scopeBody <- transform body
+      info' <- getScopeInfoAST info
+      return $ FunExpr args scopeBody info'
 
-  MkScope exprs -> do
-    expr' <- withNewScope $ mapM scopingThroughtAST exprs
-    return $ MkScope expr'
+    VarExpr name expr' info -> do
+      let accSimple = simplifiedAccessor name
+      _ <- catchError (getIdentifier accSimple) $
+           \_ -> addNewIdentifier accSimple
+      withNewScope $ do
+        expr'' <- transform expr'
+        name' <- transform name
+        info' <- getScopeInfoAST info
+        return $ VarExpr name' expr'' info'
 
-  If condExpr trueExpr info -> do
-    condExpr' <- withNewScope $ scopingThroughtAST condExpr
-    trueExpr' <- withNewScope $ scopingThroughtAST trueExpr
-    return $ If condExpr' trueExpr' info
+    SeqExpr exprs info -> do
+      expr' <- mapM transform exprs
+      info' <- getScopeInfoAST info
+      return $ SeqExpr expr' info'
 
-  IfElse condExpr trueExpr falseExpr info -> do
-    condExpr'  <- withNewScope $ scopingThroughtAST condExpr
-    trueExpr'  <- withNewScope $ scopingThroughtAST trueExpr
-    falseExpr' <- withNewScope $ scopingThroughtAST falseExpr
-    return $ IfElse condExpr' trueExpr' falseExpr' info
+    MkScope exprs -> do
+      expr' <- withNewScope $ mapM transform exprs
+      return $ MkScope expr'
 
-  For name iterExpr body info -> do
-    iterExpr' <- withNewScope $ scopingThroughtAST iterExpr
-    nameId    <- addNewIdentifier $ return name
-    body'     <- withNewScope $ scopingThroughtAST body
-    return $ For nameId iterExpr' body' info
+    If condExpr trueExpr info -> do
+      condExpr' <- withNewScope $ transform condExpr
+      trueExpr' <- withNewScope $ transform trueExpr
+      info' <- getScopeInfoAST info
+      return $ If condExpr' trueExpr' info'
 
-  Apply name args info -> do
-    args' <- withNewScope $ mapM scopingThroughtAST args
-    let accSimple = simplifiedAccessor name
-    addrRef <- getIdentifier accSimple
-    return $ Apply (Identity addrRef) args' info
+    IfElse condExpr trueExpr falseExpr info -> do
+      condExpr'  <- withNewScope $ transform condExpr
+      trueExpr'  <- withNewScope $ transform trueExpr
+      falseExpr' <- withNewScope $ transform falseExpr
+      info' <- getScopeInfoAST info
+      return $ IfElse condExpr' trueExpr' falseExpr' info'
 
-  Identifier name info -> do
-    let accSimple = simplifiedAccessor name
-    addrRef <- getIdentifier accSimple
-    return $ Identifier (Identity addrRef) info
+    For name iterExpr body info -> do
+      iterExpr' <- withNewScope $ transform iterExpr
+      _         <- addNewIdentifier $ return name
+      body'     <- withNewScope $ transform body
+      info' <- getScopeInfoAST info
+      return $ For name iterExpr' body' info'
 
-  Factor atom info -> (`Factor` info) <$> scopeFactor atom
+    -- TODO:
+    Apply name args info -> do
+      args' <- withNewScope $ mapM transform args
+      let accSimple = simplifiedAccessor name
+      addrRef <- getIdentifier accSimple
+      info' <- getScopeInfoAST info
+      name' <- transform name
+      return $ Apply name' args' info'
 
-scopeFactor :: Show a => Atom a -> ScopeM (AtomG Identity a AddressRef)
-scopeFactor atom = case atom of
-  ANone -> return ANone
-  ANum val -> return $ ANum val
-  ADecimal val -> return $ ADecimal val
-  ARegex val -> return $ ARegex val
-  AShellCommand val -> return $ AShellCommand val
-  AStr str -> return $ AStr str
-  ABool bool -> return $ ABool bool
-  AVector vals -> AVector <$> mapM scopingThroughtAST vals
-  ADic vals -> ADic <$> mapM (\(key, val) -> (key,) <$> scopingThroughtAST val) vals
+    Identifier name info -> do
+      let accSimple = simplifiedAccessor name
+      addrRef <- getIdentifier accSimple
+      name' <- transform name
+      info' <- getScopeInfoAST info
+      return $ Identifier name' info'
 
-simplifiedAccessor
-  :: Show a => Accessor a -> NL.NonEmpty T.Text
-simplifiedAccessor acc = case acc of
-  Simple id' _tok -> return id'
-  Dot id' acc' _  -> id' NL.<| simplifiedAccessor acc'
+    Factor atom info -> do
+      info' <- getScopeInfoAST info
+      (`Factor` info') <$> transform atom
+
+instance Desugar Atom TokenInfo ScopeM Atom ScopeInfoAST where
+  -- transform :: Expression a -> ScopeM (Expression a)
+  transform atom = case atom of
+    ANone -> return ANone
+    ANum val -> return $ ANum val
+    ADecimal val -> return $ ADecimal val
+    ARegex val -> return $ ARegex val
+    AShellCommand val -> return $ AShellCommand val
+    AStr str -> return $ AStr str
+    ABool bool -> return $ ABool bool
+    AVector vals -> AVector <$> mapM transform vals
+    ADic vals -> ADic <$> mapM (\(key, val) -> (key,) <$> transform val) vals
+
+instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
+  -- transform :: Expression a -> ScopeM (Expression a)
+  transform ast = case ast of
+    Dot text acc info -> do
+      acc' <- transform acc
+      info' <- getScopeInfoAST info
+      return $ Dot text acc' info'
+    Simple text info  -> return $ Simple text (def {_tokenInfo = info})
+
+-- -- | Make a translation of variable names from AST, convert all to IDs and check rules
+-- -- of scoping

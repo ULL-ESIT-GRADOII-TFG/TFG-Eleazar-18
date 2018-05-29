@@ -142,10 +142,8 @@ instance Show Object where
 
 type Prog = FreeT Instruction StWorld Object
 
-type Instruction = InstructionG StWorld
-
 -- | Intermediate set of instructions.
-data InstructionG (st :: * -> *) next
+data Instruction next
   = CallCommand !AddressRef ![Object] (Object -> next)
   -- ^ Make a call to and defined function
   | Assign !AddressRef !Object next
@@ -154,15 +152,13 @@ data InstructionG (st :: * -> *) next
   -- ^ Remove a var from memory
   | GetVal !AddressRef (Object -> next)
   -- ^ Retrieve a object from a memory reference
-  | Loop !Object (Object -> FreeT (InstructionG st) st Object) next
+  | Loop !Object (Object -> Prog) next
   -- ^ Loop over a object
   | Cond !Object
-      (FreeT (InstructionG st) st Object)
-      (FreeT (InstructionG st) st Object)
+      Prog
+      Prog
       (Object -> next)
   -- ^ If sentence given a object
-  | End
-  -- ^ End program, ignore all after that
   deriving Functor
 
 makeLenses ''IState

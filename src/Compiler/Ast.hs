@@ -9,48 +9,45 @@ data Repl
   | Code [Statement TokenInfo]
   deriving Show
 
-type Statement a = StatementG a T.Text
-
-data StatementG a id
+data Statement a
   = Import T.Text a
-  | Class id (ExpressionG (AccessorG a) a id) (ExpressionG (AccessorG a) a id) a
-  | Expr (ExpressionG (AccessorG a) a id) a
+  | ClassSt (ClassDecl a)
+  | FunSt (FunDecl a)
+  | Expr (Expression a)
   deriving Show
 
-type Expression a = ExpressionG (AccessorG a) a T.Text
+data ClassDecl a = ClassDecl T.Text [Expression a] [FunDecl a] a deriving Show
+
+data FunDecl a = FunDecl T.Text [T.Text] (Expression a) a deriving Show
 
 -- | Generic representation of expression
-data ExpressionG acc a id
-  = FunDecl [id] (ExpressionG acc a id) a
-  | VarDecl (acc id) (ExpressionG acc a id) a
-  | SeqExpr [ExpressionG acc a id] a
-  | If (ExpressionG acc a id) (ExpressionG acc a id) a
-  | IfElse (ExpressionG acc a id) (ExpressionG acc a id) (ExpressionG acc a id) a
-  | For id (ExpressionG acc a id) (ExpressionG acc a id) a
-  | MkScope [ExpressionG acc a id]
+data Expression a
+  = FunExpr [T.Text] (Expression a) a
+  | VarExpr (Accessor a) (Expression a) a
+  | SeqExpr [Expression a] a
+  | If (Expression a) (Expression a) a
+  | IfElse (Expression a) (Expression a) (Expression a) a
+  | For T.Text (Expression a) (Expression a) a
+  | MkScope [Expression a]
   -- ^ Explicit scope
-  | Apply (acc id) [ExpressionG acc a id] a
-  | Identifier (acc id) a
-  | Factor (AtomG acc a id) a
+  | Apply (Accessor a) [Expression a] a
+  | Identifier (Accessor a) a
+  | Factor (Atom a) a
   deriving Show
 
-type Accessor a = AccessorG a T.Text
-
-data AccessorG a id
-  = Dot id (AccessorG a id) a
-  | Simple id a
+data Accessor a
+  = Dot T.Text (Accessor a) a
+  | Simple T.Text a
   deriving Show
 
-type Atom a = AtomG (AccessorG a) a T.Text
-
-data AtomG acc a id
+data Atom a
   = ANum Int
   | ADecimal Double
   | ARegex T.Text
   | AShellCommand T.Text
   | AStr T.Text
   | ABool Bool
-  | AVector [ExpressionG acc a id]
-  | ADic [(T.Text, ExpressionG acc a id)]
+  | AVector [Expression a]
+  | ADic [(T.Text, Expression a)]
   | ANone
   deriving Show

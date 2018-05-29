@@ -73,6 +73,7 @@ library:
     - Compiler.Prelude.OShellCommand
     - Compiler.Scope.Methods
     - Compiler.Scope.Types
+    - Compiler.Scope.Utils
     - Compiler.Token.Lexer
     - Compiler.Token.Methods
     - Compiler.Token.Types

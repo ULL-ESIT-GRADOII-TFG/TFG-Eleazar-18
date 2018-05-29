@@ -7,6 +7,7 @@ module Compiler.Instruction.Methods where
 import           Control.Monad
 import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
+import           Control.Monad.Trans.Class
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 import qualified Data.Text.Lazy           as LT
@@ -18,19 +19,25 @@ import           Compiler.Ast
 import           Compiler.Object.Methods
 import           Compiler.Types
 import           Compiler.World.Methods
+import           Compiler.Scope.Utils
 
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
-astToInstructions
-  :: (Monad m) => ExpressionG Identity last AddressRef -> FreeT Instruction m Object
+-- TODO: Add drop variables
+astToInstructions :: Expression ScopeInfoAST -> FreeT Instruction StWorld Object
 astToInstructions expr = case expr of
-  FunDecl args prog _info ->
-    return $ OFunc mempty (map (\(AddressRef ref' _) -> ref') args) (astToInstructions prog)
+  FunExpr args prog info -> do
+    addresses <- mapM (\acc -> do
+                          addr <- lift $ getAddressRef (Simple acc ()) info
+                          return $ addr^.ref
+                      ) args
+    return $ OFunc mempty addresses (astToInstructions prog)
 
-  VarDecl ref' exprValue _info -> do
+  VarExpr acc exprValue info -> do
     value <- astToInstructions exprValue
-    runIdentity ref' =: value
+    addr <- lift $ getAddressRef acc info
+    addr =: value
     return ONone
 
   SeqExpr exprs _info ->
@@ -47,22 +54,25 @@ astToInstructions expr = case expr of
     value <- astToInstructions condExpr
     cond value (astToInstructions trueProg) (astToInstructions falseProg)
 
-  For ref' iterExpr prog _info -> do
+  For acc iterExpr prog info -> do
     value <- astToInstructions iterExpr
-    loop value (\val -> ref' =: val >> astToInstructions prog)
+    addr <- lift $ getAddressRef (Simple acc ()) info
+    loop value (\val -> addr =: val >> astToInstructions prog)
     return ONone
 
-  Apply ref' argsExpr _info -> do
+  Apply acc argsExpr info -> do
     values' <- mapM astToInstructions argsExpr
-    callCommand (runIdentity ref') values'
+    addr <- lift $ getAddressRef acc info
+    callCommand addr values'
 
-  Identifier ref' _info ->
-    getVal (runIdentity ref')
+  Identifier acc info -> do
+    addr <- lift $ getAddressRef acc info
+    getVal addr
 
   Factor atom _info -> fromAST atom
 
 -- | Transform literal data from AST to an object
-fromAST :: (Monad m) => AtomG Identity a AddressRef -> FreeT Instruction m Object
+fromAST :: Atom ScopeInfoAST -> FreeT Instruction StWorld Object
 fromAST atom =
   case atom of
     ANone             -> return ONone
@@ -107,8 +117,6 @@ runProgram = iterT $ \case
     ref' <- findObject idObj
     next ref'
 
-  End               -> return ONone
-
 linePP :: LT.Text -> StWorld ()
 linePP txt = do
   level <- use $ debugProgram._2
@@ -126,7 +134,7 @@ pAddr (AddressRef ref vals) =
   in "#" ++ show ref ++ path
 
 -- TODO: Make pretty printer
-pprint :: FreeT (InstructionG StWorld) StWorld Object -> StWorld Object
+pprint :: FreeT Instruction StWorld Object -> StWorld Object
 pprint = iterT $ \case
   CallCommand idFun args next -> do
     linePP (format ("Call " % string % " With: " % shown) (pAddr idFun) args)
@@ -159,8 +167,6 @@ pprint = iterT $ \case
     linePP (format ("GetVal " % string) (pAddr idObj))
     next $ ONone
 
-  End -> linePP "End" >> return ONone
-
 -------------------------------------------------------------------------------
 -- * Utils
 -------------------------------------------------------------------------------
@@ -191,6 +197,3 @@ cond obj true false = liftF (Cond obj true false id)
 
 getVal :: (MonadFree Instruction m) => AddressRef -> m Object
 getVal obj = liftF (GetVal obj id)
-
-end :: (MonadFree Instruction m) => m a
-end = liftF End
