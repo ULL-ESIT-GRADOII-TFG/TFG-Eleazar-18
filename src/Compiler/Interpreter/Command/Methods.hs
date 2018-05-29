@@ -2,7 +2,6 @@
 module Compiler.Interpreter.Command.Methods where
 
 import           Control.Monad.Except
-import           Control.Monad.IO.Class
 import           Data.List
 import qualified Data.Map                     as M
 import qualified Data.Text                    as T
@@ -49,10 +48,12 @@ showInstructions (name:_) = do
   object <- getVar name
   case object of
     OFunc _ _ prog -> do
-      instrs <- catchMaybe (Internal "")$ liftWorld $ do
-        pprint prog
+      instrsM <- liftWorld $ do
+        _ <- pprint prog
         instrs <- use $ debugProgram._1
         debugProgram .= ("", 0)
         return instrs
-      liftIO $ LT.putStrLn instrs
-    _  -> return ()
+      case instrsM of
+        Just instrs -> liftIO $ LT.putStrLn instrs
+        Nothing -> liftIO $ putStrLn "Something was wrong at get instructions"
+    _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"
