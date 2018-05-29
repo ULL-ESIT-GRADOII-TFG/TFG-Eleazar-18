@@ -5,7 +5,6 @@
 module Compiler.Instruction.Methods where
 
 import           Control.Monad
-import           Control.Monad.Identity
 import           Control.Monad.Trans.Free
 import           Control.Monad.Trans.Class
 import qualified Data.Map                 as M
@@ -82,8 +81,8 @@ fromAST atom =
     ARegex reg        -> return $ ORegex reg
     AShellCommand cmd -> return $ OShellCommand cmd
     ABool bool        -> return $ OBool bool
-    AVector items     -> mapM astToInstructions items >>= return . OVector . V.fromList
-    ADic items        -> mapM (\(key, expr) -> astToInstructions expr >>= return . (key,)) items >>= return . ODic . M.fromList
+    AVector items     -> OVector . V.fromList <$> mapM astToInstructions items
+    ADic items        -> ODic . M.fromList <$> mapM (\(key, expr) -> (key,) <$> astToInstructions expr) items
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object
@@ -120,7 +119,7 @@ runProgram = iterT $ \case
 linePP :: LT.Text -> StWorld ()
 linePP txt = do
   level <- use $ debugProgram._2
-  debugProgram._1 %= \t -> (t `mappend` (LT.replicate (fromIntegral level) "  ") `mappend` txt `mappend` "\n")
+  debugProgram._1 %= \t -> t `mappend` LT.replicate (fromIntegral level) "  " `mappend` txt `mappend` "\n"
 
 withLevel :: StWorld a -> StWorld ()
 withLevel action = do
@@ -129,16 +128,16 @@ withLevel action = do
   (debugProgram._2) -= 1
 
 pAddr :: AddressRef -> String
-pAddr (AddressRef ref vals) =
-  let path = if not $ null vals then "-" ++ (T.unpack $ T.intercalate "." vals) else ""
-  in "#" ++ show ref ++ path
+pAddr (AddressRef addr vals) =
+  let path = if not $ null vals then "-" ++ T.unpack (T.intercalate "." vals) else ""
+  in "#" ++ show addr ++ path
 
 -- TODO: Make pretty printer
 pprint :: FreeT Instruction StWorld Object -> StWorld Object
 pprint = iterT $ \case
   CallCommand idFun args next -> do
     linePP (format ("Call " % string % " With: " % shown) (pAddr idFun) args)
-    next $ ONone
+    next ONone
 
   Assign idObj accObject next -> do
     linePP (format ("Assign " % string % " " % shown) (pAddr idObj) accObject)
@@ -157,15 +156,15 @@ pprint = iterT $ \case
     linePP (format ("Cond " % shown) objectCond)
     withLevel $ do
       linePP "True Case:"
-      withLevel $ pprint $ trueNext
+      withLevel $ pprint trueNext
       linePP "False Case:"
-      withLevel $ pprint $ falseNext
+      withLevel $ pprint falseNext
 
-    next $ ONone
+    next ONone
 
   GetVal idObj next -> do
     linePP (format ("GetVal " % string) (pAddr idObj))
-    next $ ONone
+    next ONone
 
 -------------------------------------------------------------------------------
 -- * Utils

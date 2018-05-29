@@ -126,8 +126,10 @@ computeStatements =
   flip foldM (SeqExpr [] dummyTokenInfo) $ \(SeqExpr exprs t) st -> case st of
       -- TODO
     Import _path _ -> error "No implemented yet. Import functionality"
-    FunSt _ -> error "not implemented"
-    ClassSt _cls ->
-      --_ <- transform cls
+    FunSt fun -> do
+      _ <- transform fun
+      return $ SeqExpr [] dummyTokenInfo
+    ClassSt cls -> do
+      _ <- transform cls
       return $ SeqExpr [] dummyTokenInfo
     Expr expr -> return $ SeqExpr (expr : exprs) t

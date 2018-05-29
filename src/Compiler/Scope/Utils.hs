@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Compiler.Scope.Utils where
 
 import qualified Data.Text as T
@@ -7,7 +8,7 @@ import qualified Data.Map                   as M
 import qualified Data.List.NonEmpty         as NL
 
 import Compiler.Ast
-import Compiler.Types hiding (scopeInfo)
+import Compiler.Types
 
 -- | Create a temporal scope with a info
 withNewScope :: ScopeM a -> ScopeM a
@@ -48,7 +49,7 @@ getIdentifier (name NL.:|names) = do
  where
   findInStack :: [ScopeInfo] -> Maybe AddressRef
   findInStack []         = Nothing
-  findInStack (scopeInfo:xs) = case scopeInfo ^. renameInfo & M.lookup name of
+  findInStack (scopeInfo':xs) = case scopeInfo' ^. renameInfo & M.lookup name of
     Just (AddressRef word _) -> Just $ AddressRef word names
     Nothing                  -> findInStack xs
 
@@ -57,11 +58,26 @@ getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
 getScopeInfoAST info = ScopeInfoAST info <$> use currentScope
 
 getAddressRef :: Accessor a -> ScopeInfoAST -> StWorld AddressRef
-getAddressRef = undefined
+getAddressRef acc scopeInfoAST =
+  case M.lookup (mainName acc) (scopeInfoAST^.scopeInfo.renameInfo) of
+    Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)
+    Nothing -> throwError $ WorldError
+      "Internal Error: Scope phase fail on save AddressRef"
+
+addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
+addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr
 
 -- | Simplies accesor to non empty list
 simplifiedAccessor
-  :: Show a => Accessor a -> NL.NonEmpty T.Text
+  :: Accessor a -> NL.NonEmpty T.Text
 simplifiedAccessor acc = case acc of
   Simple id' _tok -> return id'
   Dot id' acc' _  -> id' NL.<| simplifiedAccessor acc'
+
+mainName :: Accessor a -> T.Text
+mainName acc = case acc of
+  Simple name _ -> name
+  Dot name _ _  -> name
+
+tailName :: Accessor a -> [T.Text]
+tailName = NL.tail . simplifiedAccessor

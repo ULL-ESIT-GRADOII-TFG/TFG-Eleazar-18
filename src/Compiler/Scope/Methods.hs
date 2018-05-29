@@ -8,9 +8,8 @@ import           Control.Monad.Except
 
 import           Data.Default
 --import qualified Data.IntMap                as IM
-import qualified Data.List.NonEmpty     as NL
 --import qualified Data.Map                   as M
-import qualified Data.Text              as T
+--import qualified Data.Text              as T
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
@@ -26,7 +25,7 @@ instance Desugar Statement TokenInfo ScopeM Statement ScopeInfoAST where
     Import _ _  -> undefined
     ClassSt cls -> ClassSt <$> transform cls
     FunSt fun   -> FunSt <$> transform fun
-    Expr expr   -> Expr <$>transform expr
+    Expr expr   -> Expr <$> transform expr
 
 instance Desugar ClassDecl TokenInfo ScopeM ClassDecl ScopeInfoAST where
   -- transform :: ClassDecl a -> ScopeM (ClassDecl a)
@@ -113,7 +112,7 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
       args' <- withNewScope $ mapM transform args
       let accSimple = simplifiedAccessor name
       addrRef <- getIdentifier accSimple
-      info' <- getScopeInfoAST info
+      info' <- addIdentifier name addrRef <$> getScopeInfoAST info
       name' <- transform name
       return $ Apply name' args' info'
 
@@ -121,7 +120,7 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
       let accSimple = simplifiedAccessor name
       addrRef <- getIdentifier accSimple
       name' <- transform name
-      info' <- getScopeInfoAST info
+      info' <- addIdentifier name addrRef <$> getScopeInfoAST info
       return $ Identifier name' info'
 
     Factor atom info -> do
