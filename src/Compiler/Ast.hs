@@ -1,7 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Compiler.Ast where
 
 import           Compiler.Parser.Types
 import qualified Data.Text             as T
+import Lens.Micro.Platform
 
 
 data Repl
@@ -16,9 +18,18 @@ data Statement a
   | Expr (Expression a)
   deriving Show
 
-data ClassDecl a = ClassDecl T.Text [Expression a] [FunDecl a] a deriving Show
+data ClassDecl a = ClassDecl
+  { _clsName :: T.Text
+  , _clsMethods :: [FunDecl a]
+  , _clsToken :: a
+  } deriving Show
 
-data FunDecl a = FunDecl T.Text [T.Text] (Expression a) a deriving Show
+data FunDecl a = FunDecl
+  { _funName :: T.Text
+  , _funArgs :: [T.Text]
+  , _funBody :: Expression a
+  , _funToken :: a
+  } deriving Show
 
 -- | Generic representation of expression
 data Expression a
@@ -51,3 +62,6 @@ data Atom a
   | ADic [(T.Text, Expression a)]
   | ANone
   deriving Show
+
+makeLenses ''FunDecl
+makeLenses ''ClassDecl

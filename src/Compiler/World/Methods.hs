@@ -35,13 +35,7 @@ on obj acc = case obj of
         classDefs <- use $ scope.typeDefinitions
         case IM.lookup (fromIntegral classId) classDefs of
           Just classDef ->
-            case M.lookup acc (classDef ^. attributesClass) of
-              Just word -> do
-                mObj <- lookupInMemory $ simple word
-                case mObj of
-                  Just (obj', _) -> return $ Just obj'
-                  Nothing        -> return Nothing
-              Nothing -> return Nothing
+            return $ M.lookup acc (classDef ^. attributesClass)
           Nothing -> return Nothing
       Nothing -> return Nothing
   ORef _rfs               -> return Nothing
@@ -86,11 +80,12 @@ getLastRef (OObject mClassId dic) (x:xs) =
 
       case mRef of
         Just ref' ->
-          if null xs then
-            return $ Just ref'
-          else do
-            obj <- follow ref'
-            getLastRef obj xs
+          return Nothing
+          -- if null xs then
+          --   return $ Just ref'
+          -- else do
+          --   obj <- follow ref'
+          --   getLastRef obj xs
         Nothing ->
           -- TODO: Generate a new accessor. Needs actual reference to object
           return Nothing

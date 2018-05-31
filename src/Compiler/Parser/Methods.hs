@@ -65,12 +65,8 @@ parseClassStatement :: TokenParser (ClassDecl TokenInfo)
 parseClassStatement = mkTokenInfo $ do
   classT
   nameCls <- classIdT
-  (attributes, methods) <- between oBraceT cBraceT $
-    (,) <$> parseAttributesClass <*> parseMethodsClass
-  return $ ClassDecl nameCls attributes methods
-
-parseAttributesClass :: TokenParser [Expression TokenInfo]
-parseAttributesClass = many . choice $ map try [parseAssign, parseIdentifier]
+  methods <- between oBraceT cBraceT parseMethodsClass
+  return $ ClassDecl nameCls methods
 
 parseMethodsClass :: TokenParser [FunDecl TokenInfo]
 parseMethodsClass = many parseFunDecl

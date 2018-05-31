@@ -27,7 +27,7 @@ getNewId :: ScopeM Word
 getNewId = do
   newId <- use nextId
   nextId .= newId + 1
-  return newId
+  return (newId + 1)
 
 -- | Add new variable name to scope and return its ID
 addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
@@ -66,6 +66,9 @@ getAddressRef acc scopeInfoAST =
 
 addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
 addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr
+
+newObject :: ScopeInfoAST -> ScopeInfoAST
+newObject = scopeInfo.renameInfo %~ M.insert "__new__" (AddressRef 0 [])
 
 -- | Simplies accesor to non empty list
 simplifiedAccessor

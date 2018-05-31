@@ -4,7 +4,6 @@ module Compiler.Prelude.Utils where
 import           Control.Monad.Trans.Free
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
-import           Data.Maybe
 import qualified Data.Text                  as T
 
 import           Compiler.Interpreter.Utils
@@ -19,10 +18,7 @@ import           Compiler.Types
 newClass :: T.Text -> [(T.Text, Object)] -> Interpreter Word
 newClass name attributes = do
   Right classId <- liftScope getNewId
-  listRefs      <- mapM ((_ref . fromJust <$>) . uncurry newVar) attributes
-  let
-    classDef =
-      ClassDefinition name (M.fromList (zip (map fst attributes) listRefs))
+  let classDef = ClassDefinition name (M.fromList attributes)
   memory . scope . typeDefinitions %= IM.insert (fromIntegral classId) classDef
   return classId
 
@@ -33,7 +29,6 @@ instanceClass classId name = newVar name (OObject (Just classId) mempty)
 
 -------------------------------------------------------------------------------
 -- * Th generate functions
--------------------------------------------------------------------------------
 normalizePure
   :: (ToObject o, FromObject a)
   => (a -> o)

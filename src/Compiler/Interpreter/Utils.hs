@@ -14,7 +14,7 @@ import           Compiler.World.Methods
 liftScope :: ScopeM b -> Interpreter (Either ScopeError b)
 liftScope scopeM = do
   lastScope <- use (memory.scope)
-  let (value, newScope) = runState (runExceptT scopeM) lastScope
+  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) lastScope
   memory.scope .= newScope
   return value
 

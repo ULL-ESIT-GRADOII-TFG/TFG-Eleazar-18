@@ -5,59 +5,77 @@
 module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
-
+import           Control.Monad.State.Strict
 import           Data.Default
---import qualified Data.IntMap                as IM
---import qualified Data.Map                   as M
---import qualified Data.Text              as T
+import qualified Data.IntMap                  as IM
+import           Data.List
+import qualified Data.Map                     as M
+import           Lens.Micro.Platform
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
---import           Compiler.Instruction.Types
-import           Compiler.Parser.Types
-import           Compiler.Scope.Types
+import           Compiler.Instruction.Methods
 import           Compiler.Scope.Utils
+import           Compiler.Types
 
 
 instance Desugar Statement TokenInfo ScopeM Statement ScopeInfoAST where
   -- transform :: Statement a -> ScopeM (Statement a)
   transform ast = case ast of
     Import _ _  -> undefined
-    ClassSt cls -> ClassSt <$> transform cls
-    FunSt fun   -> FunSt <$> transform fun
+    ClassSt cls -> Expr <$> transform cls
+    FunSt fun   -> Expr <$> transform fun
     Expr expr   -> Expr <$> transform expr
 
-instance Desugar ClassDecl TokenInfo ScopeM ClassDecl ScopeInfoAST where
+-- Convert to a constructor function
+instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: ClassDecl a -> ScopeM (ClassDecl a)
-  -- TODO: Add syntax to build a class __init__
-  -- TODO: Add a constructor to scope
-  -- TODO:
+  -- TODO: Methods replicate warning
   -- | Class renaming scope
-  transform (ClassDecl name vars methds info) =
-    -- AddressRef ref' _ <- addNewIdentifier $ return name
+  transform (ClassDecl name methds info) = do
+    -- Generate class definition into scope
+    address <- addNewIdentifier $ return name
+    methds' <- mapM (transform . funcToMethod) methds
+    oFuncs <- forM methds' $ \func -> do
+      object <- liftIO $ runExceptT (evalStateT (runProgram $ astToInstructions func) def)
+      case object of
+          Right fun@OFunc{} -> return fun
+          _                 -> throwError ErrorClass -- TODO: Improve
 
-    -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
-    undefined
+    let classDef = ClassDefinition name (M.fromList $ zip (map (^.funName) methds) oFuncs)
+    typeDefinitions %= IM.insert (fromIntegral $ address^.ref) classDef
 
-    -- (classDef, codeScope) <- withNewScope $ do
-    --   codeScoped <- scopingThroughtAST expression
-    --   currScope <- use $ currentScope.renameInfo
-    --   -- Generate Free Program
-    --   -- [(Ref, Free)]
-    --   -- scopeInfo
-    --   return (M.map _ref currScope, codeScoped)
+    -- Creating a function to call __new__ special item. It allows create
+    -- instances of this class. It uses the class name to find its definition
+    body <- withNewScope $ do
+      let initMethod = find (\funDecl -> funDecl^.funName == "__init__") methds
+      let args = initMethod^._Just.funArgs
+      let nameAST = Factor (AStr name) def
+      let argsAST = nameAST : map ((`Identifier` def ). (`Simple` def)) args
+      mapM_ (addNewIdentifier . return) args
+      info' <- newObject <$> getScopeInfoAST info
+      return $ FunExpr args (Apply (Simple "__new__" info') argsAST def) def
 
-
-    -- -- TODO: Add Constructor function. Peek for possible __init__ method
-    -- typeDefinitions %= IM.insert (fromIntegral ref') (ClassDefinition name classDef)
-    -- return codeScope
+    info' <- getScopeInfoAST info
+    return $ VarExpr (Simple name def) body info'
 
 funcToMethod :: FunDecl a -> FunDecl a
 funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 
-instance Desugar FunDecl TokenInfo ScopeM FunDecl ScopeInfoAST where
-  -- transform :: FunDecl a -> ScopeM (ClassDecl a)
-  transform = undefined
+-- REMOVE: Se transforma el codigo en una expression equivalente a la anterior
+instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
+  -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
+  transform (FunDecl name args body info) = do
+      _ <- catchError (getIdentifier (return name)) $
+        \_ -> addNewIdentifier (return name)
+      body' <- withNewScope $ do
+        mapM_ (addNewIdentifier . return) args
+        scopeBody <- transform body -- TODO: transform code
+        info' <- getScopeInfoAST info
+        return $ FunExpr args scopeBody info'
+
+      info' <- getScopeInfoAST info
+      return $ VarExpr (Simple name def) body' info'
 
 instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: Expression TokenInfo -> ScopeM (Expression ScopeInfoAST)
@@ -72,10 +90,10 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
       let accSimple = simplifiedAccessor name
       _ <- catchError (getIdentifier accSimple) $
            \_ -> addNewIdentifier accSimple
+      info' <- getScopeInfoAST info
       withNewScope $ do
         expr'' <- transform expr'
         name' <- transform name
-        info' <- getScopeInfoAST info
         return $ VarExpr name' expr'' info'
 
     SeqExpr exprs info -> do

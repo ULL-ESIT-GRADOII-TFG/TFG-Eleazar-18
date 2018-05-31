@@ -33,6 +33,7 @@ import           Compiler.Scope.Types
 import           Compiler.World.Types
 
 
+-------------------------------------------------------------------------------
 -- * Config's Types
 
 data Config = Config
@@ -52,6 +53,7 @@ instance Default Config where
     , _modules =  []
     }
 
+-------------------------------------------------------------------------------
 -- * Interpreter's Types
 
 -- | Used to control flow of all interpreter
@@ -77,6 +79,7 @@ instance Default IState where
     }
 
 
+-------------------------------------------------------------------------------
 -- * World's Types
 
 -- | Used to storage vars into memory, atleast its reference structure
@@ -86,6 +89,9 @@ data Var = Var
   }
   deriving Show
 
+instance Default Var where
+  def = Var 0 ONone
+
 data World = World
   { _table        :: IM.IntMap Var
   , _scope        :: Scope
@@ -93,14 +99,65 @@ data World = World
   }
   deriving Show
 
+instanceObject :: [Object] -> FreeT Instruction StWorld Object
+instanceObject objs = case objs of
+  [OStr name, objs] -> return ONone
+  _ -> error ""
+
 instance Default World where
-  def = World {_table = mempty, _scope = def, _debugProgram = ("", 0)}
+  def = World
+    { _table = IM.fromList [(0, def { _rawObj = ONative instanceObject} )]
+    , _scope = def
+    , _debugProgram = ("", 0)
+    }
 
 -- | Note: `ExceptT` wraps monad state, in case of fail discard memory. That it
 -- is the predicate to follow.
 type StWorld = StateT World (ExceptT WorldError IO)
 
 
+-------------------------------------------------------------------------------
+-- * Scope
+
+type ScopeM = ExceptT ScopeError (StateT Scope IO)
+
+data Scope = Scope
+  { _nextId          :: Word
+  , _currentScope    :: ScopeInfo
+  , _stackScope      :: [ScopeInfo]
+  , _typeDefinitions :: IM.IntMap ClassDefinition
+  } deriving Show
+
+instance Default Scope where
+  def = Scope
+    { _nextId       = 0
+    , _currentScope = ScopeInfo {_renameInfo = mempty}
+    , _stackScope   = []
+    , _typeDefinitions = mempty
+    }
+
+newtype ScopeInfo = ScopeInfo
+  { _renameInfo :: M.Map T.Text AddressRef
+  } deriving Show
+
+instance Default ScopeInfo where
+  def = ScopeInfo mempty
+
+data ClassDefinition = ClassDefinition
+  { _nameClass       :: T.Text
+  , _attributesClass :: M.Map T.Text Object
+  }
+  deriving Show
+
+data ScopeInfoAST = ScopeInfoAST
+  { _tokenInfo :: TokenInfo
+  , _scopeInfo :: ScopeInfo
+  } deriving Show
+
+instance Default ScopeInfoAST where
+  def = ScopeInfoAST def def
+
+-------------------------------------------------------------------------------
 -- * Object's Types
 
 data Object
@@ -138,6 +195,7 @@ instance Show Object where
     ONone           -> "[None]"
 
 
+-------------------------------------------------------------------------------
 -- * Instruction's Types
 
 type Prog = FreeT Instruction StWorld Object
@@ -166,3 +224,7 @@ makeLenses ''Var
 makeLenses ''World
 makeLenses ''Config
 makeLenses ''Prompt
+makeLenses ''Scope
+makeLenses ''ScopeInfo
+makeLenses ''ScopeInfoAST
+makeLenses ''ClassDefinition
