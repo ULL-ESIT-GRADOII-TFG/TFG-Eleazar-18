@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Scope.Utils where
 
-import qualified Data.Text as T
 import           Control.Monad.Except
+import qualified Data.List.NonEmpty   as NL
+import qualified Data.Map             as M
+import qualified Data.Text            as T
 import           Lens.Micro.Platform
-import qualified Data.Map                   as M
-import qualified Data.List.NonEmpty         as NL
 
-import Compiler.Ast
-import Compiler.Types
+import           Compiler.Ast
+import           Compiler.Types
 
 -- | Create a temporal scope with a info
 withNewScope :: ScopeM a -> ScopeM a
@@ -57,7 +57,7 @@ getIdentifier (name NL.:|names) = do
 getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
 getScopeInfoAST info = ScopeInfoAST info <$> use currentScope
 
-getAddressRef :: Accessor a -> ScopeInfoAST -> StWorld AddressRef
+getAddressRef :: Show a => Accessor a -> ScopeInfoAST -> StWorld AddressRef
 getAddressRef acc scopeInfoAST =
   case M.lookup (mainName acc) (scopeInfoAST^.scopeInfo.renameInfo) of
     Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)

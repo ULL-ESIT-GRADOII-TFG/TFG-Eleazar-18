@@ -16,7 +16,6 @@ import           Compiler.Types
 import           Paths_ScriptFlow
 
 
--- TODO: Use args passed to executable
 -- | Start the program searching a config with authentication tokens,
 --   or request to user to log in
 start :: ArgsConfig -> IO ()

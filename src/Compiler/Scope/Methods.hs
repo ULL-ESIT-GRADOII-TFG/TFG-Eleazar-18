@@ -66,7 +66,7 @@ funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
   transform (FunDecl name args body info) = do
-      _ <- catchError (getIdentifier (return name)) $
+      addr <- catchError (getIdentifier (return name)) $
         \_ -> addNewIdentifier (return name)
       body' <- withNewScope $ do
         mapM_ (addNewIdentifier . return) args
@@ -74,7 +74,7 @@ instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
         info' <- getScopeInfoAST info
         return $ FunExpr args scopeBody info'
 
-      info' <- getScopeInfoAST info
+      info' <- addIdentifier (Simple name ()) addr <$> getScopeInfoAST info
       return $ VarExpr (Simple name def) body' info'
 
 
@@ -91,9 +91,9 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
 
     VarExpr name expr' info -> do
       let accSimple = simplifiedAccessor name
-      _ <- catchError (getIdentifier accSimple) $
+      addr <- catchError (getIdentifier accSimple) $
            \_ -> addNewIdentifier accSimple
-      info' <- getScopeInfoAST info
+      info' <- addIdentifier name addr <$> getScopeInfoAST info
       withNewScope $ do
         expr'' <- transform expr'
         name' <- transform name
