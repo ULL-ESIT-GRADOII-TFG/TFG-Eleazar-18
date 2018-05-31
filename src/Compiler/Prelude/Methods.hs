@@ -4,10 +4,12 @@ module Compiler.Prelude.Methods where
 
 import           Control.Monad.Except
 import           Control.Monad.Trans.Free
+import qualified Data.IntMap                    as IM
 import qualified Data.Map                       as M
 import qualified Data.Text                      as T
 
 import           Compiler.Interpreter.Utils
+import           Compiler.Object.Methods
 import qualified Compiler.Prelude.OBool         as OBool
 import qualified Compiler.Prelude.ODic          as ODic
 import qualified Compiler.Prelude.ODouble       as ODouble
@@ -46,14 +48,11 @@ operatorsPrecedence = M.fromList
 -- | Prelude load action
 -- TODO: Create a class to interact with http connections
 loadPrelude :: Interpreter ()
-loadPrelude = mapM_ (uncurry newVar) baseBasicFunctions
-  -- idClass <- newClass "MetaClass" $
-  --   map internalMethod
-  --   [ "__brace__"
-  --   , "__init__"
-  --   , "__call__"
-  --   ]
-  -- void $ instanceClass idClass "self"
+loadPrelude = do
+  -- Special Constructor for objects
+  memory.table %= IM.insert 0 (def { _rawObj = ONative instanceObject})
+  -- Basic functions available on start
+  mapM_ (uncurry newVar) baseBasicFunctions
 
 -- | Build a method for metaclass (Specific use)
 -- TODO: Revise error paths
@@ -88,36 +87,26 @@ getMethods obj name = case obj of
 -- TODO: Add specific functions to modify internal interpreter variables. Like prompt, or path options ...
 baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
-  [ -- ("print", ONative (normalize printObj))
-   ("not"  , ONative (normalizePure not))
+  [ ("print", ONative (normalize printObj))
+  , ("not"  , ONative (normalizePure not))
   ]
-  ++ map
-   internalMethod
-   [ "__brace__"
-   , "__init__"
-   , "__call__"
-   , "print"
-   , "**"
-   , "*"
-   , "/"
-   , "%"
-   , "+"
-   , "-"
-   , "++"
-   , "=="
-   , "!="
-   , "/="
-   , ">"
-   , "<"
-   , "<="
-   , ">="
-   , "&&"
-   , "||"
-   , "??"
-   , "!"
-   ]
+  ++ map internalMethod (M.keys operatorsPrecedence)
 
+-- TODO: use __print__
 printObj :: Object -> FreeT Instruction StWorld Object
 printObj obj = do
   liftIO $ print obj
   return ONone
+
+instanceObject :: [Object] -> FreeT Instruction StWorld Object
+instanceObject objs = case objs of
+  (ONum idRef : args) -> do
+    defs <- use $ scope.typeDefinitions
+    case IM.lookup idRef defs of
+      Just clsDef -> do
+        let self = OObject (Just $ fromIntegral idRef) mempty
+        case M.lookup "__init__" (clsDef^.attributesClass) of
+          Just method -> lift $ callObjectDirect method args >> return self
+          Nothing -> if not $ null objs then lift $ throwError NumArgsMissmatch else return self
+      Nothing -> lift $ throwError NotFoundObject
+  _ -> lift $ throwError $ WorldError "instanceObject: wrong parameters"

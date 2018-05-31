@@ -18,11 +18,16 @@ callObject address args = do
       mObj <- through obj accessors
       let args' = if null accessors then args else obj:args
       case mObj of
-        Just (OFunc _ ids prog) ->
-          runProgram (sequence_ (zipWith (=:) (map simple ids) args') >> prog)
-        Just (ONative native)   -> runProgram $ native args'
-        _t                      -> throwError NotCallable
+        Just obj' -> callObjectDirect obj' args'
+        Nothing  -> throwError NotFoundObject
     Nothing               -> throwError NotFoundObject
+
+callObjectDirect :: Object -> [Object] -> StWorld Object
+callObjectDirect obj objs = case obj of
+  OFunc _ ids prog ->
+          runProgram (zipWithM_ (=:) (map simple ids) objs >> prog)
+  ONative native   -> runProgram $ native objs
+  _t                      -> throwError NotCallable
 
 -- | Iterate over a object if it is iterable
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
@@ -30,7 +35,7 @@ mapObj obj func = case obj of
     OStr str    -> do
       -- TODO: Avoid unpack. Revisit what kind of problems there are to no exist an
       --      instance of foldable for Text
-      mapM_ (\chr -> func $ OStr $ T.singleton chr) (T.unpack str)
+      mapM_ (func . OStr . T.singleton) (T.unpack str)
       return ONone
     OVector vec -> mapM_ func vec >> return ONone
     ODic{}      -> error "implement" -- TODO:

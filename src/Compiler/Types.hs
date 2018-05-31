@@ -99,14 +99,10 @@ data World = World
   }
   deriving Show
 
-instanceObject :: [Object] -> FreeT Instruction StWorld Object
-instanceObject objs = case objs of
-  [OStr name, objs] -> return ONone
-  _ -> error ""
 
 instance Default World where
   def = World
-    { _table = IM.fromList [(0, def { _rawObj = ONative instanceObject} )]
+    { _table = mempty
     , _scope = def
     , _debugProgram = ("", 0)
     }

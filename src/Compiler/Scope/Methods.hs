@@ -47,22 +47,22 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
 
     -- Creating a function to call __new__ special item. It allows create
     -- instances of this class. It uses the class name to find its definition
+    info' <- getScopeInfoAST info
     body <- withNewScope $ do
       let initMethod = find (\funDecl -> funDecl^.funName == "__init__") methds
       let args = initMethod^._Just.funArgs
-      let nameAST = Factor (AStr name) def
+      let nameAST = Factor (ANum . fromIntegral $ address^.ref) def
       let argsAST = nameAST : map ((`Identifier` def ). (`Simple` def)) args
       mapM_ (addNewIdentifier . return) args
       info' <- newObject <$> getScopeInfoAST info
       return $ FunExpr args (Apply (Simple "__new__" info') argsAST def) def
 
-    info' <- getScopeInfoAST info
     return $ VarExpr (Simple name def) body info'
 
 funcToMethod :: FunDecl a -> FunDecl a
 funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 
--- REMOVE: Se transforma el codigo en una expression equivalente a la anterior
+
 instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
   transform (FunDecl name args body info) = do
@@ -77,6 +77,9 @@ instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
       info' <- getScopeInfoAST info
       return $ VarExpr (Simple name def) body' info'
 
+
+-- | Make a translation of variable names from AST, convert all to IDs and
+-- check rules of scoping
 instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: Expression TokenInfo -> ScopeM (Expression ScopeInfoAST)
   transform ast = case ast of
@@ -166,6 +169,3 @@ instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
       info' <- getScopeInfoAST info
       return $ Dot text acc' info'
     Simple text info  -> return $ Simple text (def {_tokenInfo = info})
-
--- -- | Make a translation of variable names from AST, convert all to IDs and check rules
--- -- of scoping
