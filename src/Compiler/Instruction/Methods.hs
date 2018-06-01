@@ -37,7 +37,7 @@ astToInstructions expr = case expr of
     value <- astToInstructions exprValue
     addr <- lift $ getAddressRef acc info
     addr =: value
-    return ONone
+    return value
 
   SeqExpr exprs _info ->
     foldM (\_ expr' -> astToInstructions expr') ONone exprs
@@ -92,10 +92,10 @@ runProgram = iterT $ \case
     retObj  <- callObject idFun args
     next retObj
 
-  Assign idObj accObject next -> do
+  Assign idObj object next -> do
     -- object <- getObject accObject
-    addObject idObj accObject
-    next
+    addObject idObj object
+    next object -- TODO: quizas se deba retornar un ORef
 
   DropVar idObj next -> do
     dropVarWorld idObj
@@ -141,7 +141,7 @@ pprint = iterT $ \case
 
   Assign idObj accObject next -> do
     linePP (format ("Assign " % string % " " % shown) (pAddr idObj) accObject)
-    next
+    next ONone
 
   DropVar idObj next -> do
     linePP (format ("Drop " % string) (pAddr idObj))
@@ -173,8 +173,8 @@ callCommand
   :: (MonadFree Instruction m) => AddressRef -> [Object] -> m Object
 callCommand nameId objs = liftF (CallCommand nameId objs id)
 
-(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m ()
-nameId =: obj = liftF (Assign nameId obj ())
+(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m Object
+nameId =: obj = liftF (Assign nameId obj id)
 
 dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
 dropVar r = liftF (DropVar r ())

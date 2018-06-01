@@ -1,14 +1,27 @@
 sums = ""
 
+class TestClas {
+  fun __init__ a b {
+    self.a = a
+    self.b = b
+  }
+
+  fun sum {
+    self.a + self.b
+  }
+}
+
+
 # Probando un for.
 # Y comentado
 
 # for val in [] {}
 
-fun say_hi name:
-  for val in ["hola", "hey"] {
-    name = name ++ val
-  }
-  name
+#fun say_hi name {
+#  for val in ["hola", "hey"] {
+#    name = name ++ val
+#  }
+#  name
+#}
 
-say_hi("Mundo")
+#say_hi("Mundo")

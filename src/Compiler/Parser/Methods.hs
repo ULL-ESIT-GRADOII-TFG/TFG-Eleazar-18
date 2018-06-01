@@ -49,6 +49,7 @@ parseStatements =
       ( choice $ map
         try
         [ ClassSt <$> parseClassStatement
+        , FunSt <$> parseFunDecl
         , parseImportStatement
         , Expr <$> parseSeqExpr
         ]

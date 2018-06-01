@@ -11,6 +11,7 @@ import qualified Data.IntMap                  as IM
 import           Data.List
 import qualified Data.Map                     as M
 import           Lens.Micro.Platform
+import Debug.Trace
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
@@ -19,13 +20,13 @@ import           Compiler.Scope.Utils
 import           Compiler.Types
 
 
-instance Desugar Statement TokenInfo ScopeM Statement ScopeInfoAST where
+instance Desugar Statement TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: Statement a -> ScopeM (Statement a)
   transform ast = case ast of
-    Import _ _  -> undefined
-    ClassSt cls -> Expr <$> transform cls
-    FunSt fun   -> Expr <$> transform fun
-    Expr expr   -> Expr <$> transform expr
+    Import _ _  -> error "Not implemented yet"
+    ClassSt cls -> transform cls
+    FunSt fun   -> transform fun
+    Expr expr   -> transform expr
 
 -- Convert to a constructor function
 instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
@@ -40,7 +41,7 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
       object <- liftIO $ runExceptT (evalStateT (runProgram $ astToInstructions func) def)
       case object of
           Right fun@OFunc{} -> return fun
-          _                 -> throwError ErrorClass -- TODO: Improve
+          _                 -> traceShow object $ throwError ErrorClass -- TODO: Improve
 
     let classDef = ClassDefinition name (M.fromList $ zip (map (^.funName) methds) oFuncs)
     typeDefinitions %= IM.insert (fromIntegral $ address^.ref) classDef

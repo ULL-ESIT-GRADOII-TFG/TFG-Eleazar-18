@@ -15,7 +15,7 @@ import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
 import           Compiler.Parser.Methods
-import           Compiler.Scope.Methods  ()
+import           Compiler.Scope.Methods               ()
 import           Compiler.Scope.Utils
 import           Compiler.Token.Lexer                 (Tokenizer (..), scanner)
 import           Compiler.Types
@@ -95,7 +95,7 @@ compileSource rawFile nameFile = do
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
       astScoped <- catchEither (Compiling . T.pack . show) . liftScope $
-        computeStatements statements >>= transform
+        computeStatements statements
       when (verbosity >= 1) $
         liftIO $ putStrLn $ groom astScoped
       evaluateScopedProgram astScoped
@@ -105,10 +105,8 @@ compileSourcePure rawFile nameFile = do
   ast <- generateAST rawFile nameFile
   case ast of
     Command _cmd _args -> Left $ Compiling "You can't use command"
-    Code statements    -> Right $ do
-      expr      <- computeStatements statements
-      astScoped <- transform expr
-      return $ astToInstructions astScoped
+    Code statements    -> Right $
+      astToInstructions <$> computeStatements statements
 
 -- | Evaluate program with AST already scoped
 evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
@@ -120,16 +118,9 @@ evaluateScopedProgram astScoped = do
       liftIO $ putStrLn showable
     Nothing -> return ()
 
--- Computar las class y los import, unir todos los Expression con seq
-computeStatements :: [Statement TokenInfo] -> ScopeM (Expression TokenInfo)
-computeStatements =
-  flip foldM (SeqExpr [] dummyTokenInfo) $ \(SeqExpr exprs t) st -> case st of
-      -- TODO
-    Import _path _ -> error "No implemented yet. Import functionality"
-    FunSt fun -> do
-      _ <- transform fun
-      return $ SeqExpr [] dummyTokenInfo
-    ClassSt cls -> do
-      _ <- transform cls
-      return $ SeqExpr [] dummyTokenInfo
-    Expr expr -> return $ SeqExpr (expr : exprs) t
+-- | Computar las class y los import, unir todos los Expression con seq
+computeStatements :: [Statement TokenInfo] -> ScopeM (Expression ScopeInfoAST)
+computeStatements = flip foldM (SeqExpr [] def) $
+  \(SeqExpr exprs t) st -> do
+    expr <- transform st
+    return $ SeqExpr (expr:exprs) t

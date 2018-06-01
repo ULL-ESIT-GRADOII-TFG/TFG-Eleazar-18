@@ -5,6 +5,7 @@ import           Control.Monad.Except
 import qualified Data.List.NonEmpty   as NL
 import qualified Data.Map             as M
 import qualified Data.Text            as T
+import           Debug.Trace
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
@@ -58,7 +59,7 @@ getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
 getScopeInfoAST info = ScopeInfoAST info <$> use currentScope
 
 getAddressRef :: Show a => Accessor a -> ScopeInfoAST -> StWorld AddressRef
-getAddressRef acc scopeInfoAST =
+getAddressRef acc scopeInfoAST = traceShow acc $
   case M.lookup (mainName acc) (scopeInfoAST^.scopeInfo.renameInfo) of
     Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)
     Nothing -> throwError $ WorldError

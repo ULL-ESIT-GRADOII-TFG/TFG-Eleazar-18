@@ -200,7 +200,7 @@ type Prog = FreeT Instruction StWorld Object
 data Instruction next
   = CallCommand !AddressRef ![Object] (Object -> next)
   -- ^ Make a call to and defined function
-  | Assign !AddressRef !Object next
+  | Assign !AddressRef !Object (Object -> next)
   -- ^ Assign an object to local variable
   | DropVar !AddressRef next
   -- ^ Remove a var from memory
