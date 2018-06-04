@@ -74,7 +74,6 @@ getMethods obj name = case obj of
   ODouble _val             -> ODouble.methods name
   ONum _val                -> ONum.methods name
   OVector _val             -> OVector.methods name
-  ODic _val                -> ODic.methods name
   ORegex        _str       -> ORegex.methods name
   OShellCommand _str       -> OShellCommand.methods name
   OFunc _bind _args _prog  -> Nothing
