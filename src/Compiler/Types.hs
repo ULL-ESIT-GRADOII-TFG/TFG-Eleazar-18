@@ -119,16 +119,23 @@ type ScopeM = ExceptT ScopeError (StateT Scope IO)
 
 data Scope = Scope
   { _nextId          :: Word
+  -- ^ Unique identifier. This is temporary. Needs to be change to something better
   , _currentScope    :: ScopeInfo
+  -- ^ New variables declares in the current scope to be later added to stackScope
   , _stackScope      :: [ScopeInfo]
+  -- ^ All above scopes
+  , _scopeAst        :: ScopeInfo
+  -- ^ Used to generate ScopeInfoAST
   , _typeDefinitions :: IM.IntMap ClassDefinition
+  -- ^ Scheme for object class
   } deriving Show
 
 instance Default Scope where
   def = Scope
     { _nextId       = 0
-    , _currentScope = ScopeInfo {_renameInfo = mempty}
+    , _currentScope = ScopeInfo $ M.fromList [("__new__", AddressRef 0 [])]
     , _stackScope   = []
+    , _scopeAst     = def
     , _typeDefinitions = mempty
     }
 
@@ -142,6 +149,7 @@ instance Default ScopeInfo where
 data ClassDefinition = ClassDefinition
   { _nameClass       :: T.Text
   , _attributesClass :: M.Map T.Text Object
+  -- ^ Methods of class to be used with objects instanced
   }
   deriving Show
 

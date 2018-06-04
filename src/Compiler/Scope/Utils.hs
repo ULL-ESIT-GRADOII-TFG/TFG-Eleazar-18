@@ -5,7 +5,6 @@ import           Control.Monad.Except
 import qualified Data.List.NonEmpty   as NL
 import qualified Data.Map             as M
 import qualified Data.Text            as T
-import           Debug.Trace
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
@@ -16,11 +15,13 @@ withNewScope :: ScopeM a -> ScopeM a
 withNewScope body = do
   lastScope <- use currentScope
   stackScope %= (lastScope :)
-  currentScope .= ScopeInfo mempty
+  currentScope .= def
+  scopeAst     .= def
   value <- body
   (curScope:rest) <- use stackScope
   currentScope .= curScope
-  stackScope .= rest
+  scopeAst     .= def
+  stackScope   .= rest
   return value
 
 -- | Generates a new ID
@@ -35,18 +36,25 @@ addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
 addNewIdentifier (name NL.:| names) = do
   newId <- getNewId
   let addr = AddressRef newId names
-  currentScope . renameInfo %= M.insert name addr
+  currentScope.renameInfo %= M.insert name addr
+  scopeAst.renameInfo %= M.insert name addr
   return addr
 
 -- | Get a specific ID from variable name
 getIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
-getIdentifier (name NL.:|names) = do
+getIdentifier (name NL.:| names) = do
   renamer <- use $ currentScope . renameInfo
   case M.lookup name renamer of
-    Just ref' -> return $ AddressRef (ref'^.ref) names
+    Just ref' -> do
+      let addr = AddressRef (ref'^.ref) names
+      scopeAst.renameInfo %= M.insert name addr
+      return addr
     Nothing  -> do
       stack <- use stackScope
-      maybe (throwError $ NoIdFound name) return (findInStack stack)
+      addr <- maybe (throwError $ NoIdFound name) return (findInStack stack)
+      scopeAst.renameInfo %= M.insert name addr
+      return addr
+
  where
   findInStack :: [ScopeInfo] -> Maybe AddressRef
   findInStack []         = Nothing
@@ -56,17 +64,17 @@ getIdentifier (name NL.:|names) = do
 
 -- | Generate ScopeInfoAST using the current scope info
 getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
-getScopeInfoAST info = ScopeInfoAST info <$> use currentScope
+getScopeInfoAST info = ScopeInfoAST info <$> use scopeAst
 
 getAddressRef :: Show a => Accessor a -> ScopeInfoAST -> StWorld AddressRef
-getAddressRef acc scopeInfoAST = traceShow acc $
+getAddressRef acc scopeInfoAST =
   case M.lookup (mainName acc) (scopeInfoAST^.scopeInfo.renameInfo) of
     Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)
     Nothing -> throwError $ WorldError
       "Internal Error: Scope phase fail on save AddressRef"
 
-addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
-addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr
+-- addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
+-- addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr
 
 newObject :: ScopeInfoAST -> ScopeInfoAST
 newObject = scopeInfo.renameInfo %~ M.insert "__new__" (AddressRef 0 [])

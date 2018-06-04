@@ -27,34 +27,39 @@ import           Compiler.Scope.Utils
 astToInstructions :: Expression ScopeInfoAST -> FreeT Instruction StWorld Object
 astToInstructions expr = case expr of
   FunExpr args prog info -> do
+    -- Drop args
     addresses <- mapM (\acc -> do
                           addr <- lift $ getAddressRef (Simple acc ()) info
                           return $ addr^.ref
                       ) args
+    -- drop prog defined vars
     return $ OFunc mempty addresses (astToInstructions prog)
 
   VarExpr acc exprValue info -> do
     value <- astToInstructions exprValue
     addr <- lift $ getAddressRef acc info
     addr =: value
-    return value
 
   SeqExpr exprs _info ->
     foldM (\_ expr' -> astToInstructions expr') ONone exprs
 
   MkScope exprs ->
+    -- Drop current scope defined vars
     foldM (\_ expr' -> astToInstructions expr') ONone exprs
 
   If condExpr prog _info -> do
     value <- astToInstructions condExpr
+    -- Drop current scope defined vars
     cond value (astToInstructions prog) (return ONone)
 
   IfElse condExpr trueProg falseProg _info -> do
     value <- astToInstructions condExpr
+    -- Drop current scope defined vars both
     cond value (astToInstructions trueProg) (astToInstructions falseProg)
 
   For acc iterExpr prog info -> do
     value <- astToInstructions iterExpr
+    -- Drop current scope defined vars and simple iter
     addr <- lift $ getAddressRef (Simple acc ()) info
     loop value (\val -> addr =: val >> astToInstructions prog)
     return ONone

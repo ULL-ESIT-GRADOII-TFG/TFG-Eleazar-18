@@ -104,9 +104,11 @@ instanceObject objs = case objs of
     defs <- use $ scope.typeDefinitions
     case IM.lookup idRef defs of
       Just clsDef -> do
-        let self = OObject (Just $ fromIntegral idRef) mempty
+        let self = OObject (Just $ fromIntegral idRef) mempty -- TODO: REF
         case M.lookup "__init__" (clsDef^.attributesClass) of
-          Just method -> lift $ callObjectDirect method args >> return self
-          Nothing -> if not $ null objs then lift $ throwError NumArgsMissmatch else return self
+          Just method -> lift $ callInitObject method (self:args) >> return self
+          Nothing -> if not $ null args then
+                       lift $ throwError NumArgsMissmatch
+                     else return self
       Nothing -> lift $ throwError NotFoundObject
   _ -> lift $ throwError $ WorldError "instanceObject: wrong parameters"

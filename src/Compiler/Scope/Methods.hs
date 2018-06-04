@@ -36,7 +36,7 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
   transform (ClassDecl name methds info) = do
     -- Generate class definition into scope
     address <- addNewIdentifier $ return name
-    methds' <- mapM (transform . funcToMethod) methds
+    methds' <- withNewScope $ mapM (transform . funcToMethod) methds
     oFuncs <- forM methds' $ \func -> do
       object <- liftIO $ runExceptT (evalStateT (runProgram $ astToInstructions func) def)
       case object of
@@ -48,17 +48,14 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
 
     -- Creating a function to call __new__ special item. It allows create
     -- instances of this class. It uses the class name to find its definition
-    info' <- getScopeInfoAST info
     body <- withNewScope $ do
       let initMethod = find (\funDecl -> funDecl^.funName == "__init__") methds
       let args = initMethod^._Just.funArgs
-      let nameAST = Factor (ANum . fromIntegral $ address^.ref) def
-      let argsAST = nameAST : map ((`Identifier` def ). (`Simple` def)) args
-      mapM_ (addNewIdentifier . return) args
-      info' <- newObject <$> getScopeInfoAST info
-      return $ FunExpr args (Apply (Simple "__new__" info') argsAST def) def
+      let nameAST = Factor (ANum . fromIntegral $ address^.ref) info
+      let argsAST = nameAST : map ((`Identifier` info ) . (`Simple` info)) args
+      return $ FunExpr args (Apply (Simple "__new__" info) argsAST info) info
 
-    return $ VarExpr (Simple name def) body info'
+    transform $ VarExpr (Simple name info) body info
 
 funcToMethod :: FunDecl a -> FunDecl a
 funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
@@ -69,14 +66,14 @@ instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
   transform (FunDecl name args body info) = do
       addr <- catchError (getIdentifier (return name)) $
         \_ -> addNewIdentifier (return name)
+      info' <- getScopeInfoAST info
       body' <- withNewScope $ do
         mapM_ (addNewIdentifier . return) args
-        scopeBody <- transform body -- TODO: transform code
         info' <- getScopeInfoAST info
+        scopeBody <- transform body
         return $ FunExpr args scopeBody info'
 
-      info' <- addIdentifier (Simple name ()) addr <$> getScopeInfoAST info
-      return $ VarExpr (Simple name def) body' info'
+      return $ VarExpr (Simple name info') body' info'
 
 
 -- | Make a translation of variable names from AST, convert all to IDs and
@@ -86,15 +83,15 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
   transform ast = case ast of
     FunExpr args body info -> withNewScope $ do
       mapM_ (addNewIdentifier . return) args
-      scopeBody <- transform body
       info' <- getScopeInfoAST info
+      scopeBody <- transform body
       return $ FunExpr args scopeBody info'
 
     VarExpr name expr' info -> do
       let accSimple = simplifiedAccessor name
       addr <- catchError (getIdentifier accSimple) $
            \_ -> addNewIdentifier accSimple
-      info' <- addIdentifier name addr <$> getScopeInfoAST info
+      info' <- getScopeInfoAST info
       withNewScope $ do
         expr'' <- transform expr'
         name' <- transform name
@@ -133,16 +130,16 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
     Apply name args info -> do
       args' <- withNewScope $ mapM transform args
       let accSimple = simplifiedAccessor name
-      addrRef <- getIdentifier accSimple
-      info' <- addIdentifier name addrRef <$> getScopeInfoAST info
+      _addrRef <- getIdentifier accSimple
+      info' <- getScopeInfoAST info
       name' <- transform name
       return $ Apply name' args' info'
 
     Identifier name info -> do
       let accSimple = simplifiedAccessor name
-      addrRef <- getIdentifier accSimple
+      _addrRef <- getIdentifier accSimple
       name' <- transform name
-      info' <- addIdentifier name addrRef <$> getScopeInfoAST info
+      info' <- getScopeInfoAST info
       return $ Identifier name' info'
 
     Factor atom info -> do

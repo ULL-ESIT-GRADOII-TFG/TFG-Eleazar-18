@@ -19,15 +19,31 @@ callObject address args = do
       let args' = if null accessors then args else obj:args
       case mObj of
         Just obj' -> callObjectDirect obj' args'
-        Nothing  -> throwError NotFoundObject
-    Nothing               -> throwError NotFoundObject
+        Nothing   -> throwError NotFoundObject
+    Nothing -> throwError NotFoundObject
 
 callObjectDirect :: Object -> [Object] -> StWorld Object
 callObjectDirect obj objs = case obj of
   OFunc _ ids prog ->
-          runProgram (zipWithM_ (=:) (map simple ids) objs >> prog)
+    if length ids /= length objs then
+      throwError NumArgsMissmatch
+    else
+      runProgram (zipWithM_ (=:) (map simple ids) objs >> prog)
   ONative native   -> runProgram $ native objs
-  _t                      -> throwError NotCallable
+  _t               -> throwError NotCallable
+
+callInitObject :: Object -> [Object] -> StWorld Object
+callInitObject obj objs = case obj of
+  OFunc _ ids prog ->
+    if length ids /= length objs then
+      throwError NumArgsMissmatch
+    else
+      runProgram $ do
+        zipWithM_ (=:) (map simple ids) objs
+        _ <- getVal (simple $ head ids) -- Avoid initial object to be remove
+        _ <- prog
+        return (ORef (head ids))
+  _  -> throwError NotCallable
 
 -- | Iterate over a object if it is iterable
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
