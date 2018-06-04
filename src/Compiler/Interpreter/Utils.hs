@@ -10,24 +10,17 @@ import           Compiler.Types
 import           Compiler.World.Methods
 
 
--- | Allow execute actions from ScopeM into Interpreter
-liftScope :: ScopeM b -> Interpreter (Either ScopeError b)
-liftScope scopeM = do
-  lastScope <- use (memory.scope)
-  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) lastScope
-  memory.scope .= newScope
-  return value
 
 -- | Allow execute actions from StWorld into Interpreter
-liftWorld :: StWorld a -> Interpreter (Maybe a)
+liftWorld :: StWorld a -> Interpreter a
 liftWorld stWorld = do
   lastMemory <- use memory
   values <- liftIO $ runExceptT (runStateT stWorld lastMemory)
   case values of
     Right (value, newMemory) -> do
       memory .= newMemory
-      return $ Just value
-    Left err -> liftIO $ print err >> return Nothing
+      return value
+    Left err -> throwError $ WrapWorld err
 
 -- | Catch `Maybe` error into interpreter to handle apart
 catchMaybe :: InterpreterError -> Interpreter (Maybe a) -> Interpreter a
@@ -46,28 +39,17 @@ catchEither errorMsg m = do
     Left err -> throwError $ errorMsg err
 
 -- | Internal use. To create native objects
-newVar :: T.Text -> Object -> Interpreter (Maybe AddressRef)
+newVar :: T.Text -> Object -> Interpreter AddressRef
 newVar idName obj = do
-  eRef <- liftScope . addNewIdentifier $ return idName
-  case eRef of
-    Right ref' -> do
-      _ <- liftWorld $ addObject ref' obj
-      return $ Just ref'
-    Left  err -> do
-      liftIO $ print err
-      return Nothing
+  ref <- liftWorld . liftScope . addNewIdentifier $ return idName
+  _ <- liftWorld $ addObject ref obj
+  return ref
 
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
 getVar idName = do
-  eRef <- liftScope . getIdentifier $ return idName
-  case eRef of
-    Right ref' -> do
-      mObj <- liftWorld $ findObject ref'
-      case mObj of
-        Just obj -> return obj
-        Nothing  -> return ONone
-    Left  err -> liftIO $ print err >> return ONone
+  ref <- liftWorld $ liftScope . getIdentifier $ return idName
+  liftWorld $ findObject ref
 
 -- | String representation of objects in REPL
 showInterpreter :: Object -> Interpreter String
@@ -78,12 +60,9 @@ showInterpreter obj = case obj of
   ODouble val -> return $ show val
   OBool val -> return $ show val
   ONum val -> return $ show val
-  ODic vals -> return $ show vals -- TODO: Show innervalue
   OVector vec -> return $ show vec -- TODO: Show Innervalue
   ORef rfs -> do
     mObj <- liftWorld (follow rfs)
-    case mObj of
-      Just obj' -> showInterpreter obj' <&> ("*-> " ++)
-      Nothing   -> return ""
+    showInterpreter obj <&> ("*-> " ++)
   ONone -> return "None"
   object -> return $ show object -- TODO: __print__

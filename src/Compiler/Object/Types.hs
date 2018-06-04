@@ -48,12 +48,12 @@ instance FromObject a => FromObject (V.Vector a) where
   fromObject (OVector vec) = mapM fromObject vec
   fromObject _             = throwError NotImplicitConversion
 
-instance ToObject a => ToObject (M.Map T.Text a) where
-  toObject = ODic . M.map toObject
+-- instance ToObject a => ToObject (M.Map T.Text a) where
+--   toObject = OObject Nothing . M.map toObject
 
-instance FromObject a => FromObject (M.Map T.Text a) where
-  fromObject (ODic dic) = mapM fromObject dic
-  fromObject _          = throwError NotImplicitConversion
+-- instance FromObject a => FromObject (M.Map T.Text a) where
+--   fromObject (OObject _ dic) = mapM fromObject dic
+--   fromObject _               = throwError NotImplicitConversion
 
 instance ToObject T.Text where
   toObject = OStr

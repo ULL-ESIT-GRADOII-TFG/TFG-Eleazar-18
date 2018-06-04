@@ -48,12 +48,10 @@ showInstructions (name:_) = do
   object <- getVar name
   case object of
     OFunc _ _ prog -> do
-      instrsM <- liftWorld $ do
+      instrs <- liftWorld $ do
         _ <- pprint prog
         instrs <- use $ debugProgram._1
         debugProgram .= ("", 0)
         return instrs
-      case instrsM of
-        Just instrs -> liftIO $ LT.putStrLn instrs
-        Nothing -> liftIO $ putStrLn "Something was wrong at get instructions"
+      liftIO $ LT.putStrLn instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

@@ -68,7 +68,6 @@ library:
     - Compiler.Prelude.ODouble
     - Compiler.Prelude.ONum
     - Compiler.Prelude.OVector
-    - Compiler.Prelude.ODic
     - Compiler.Prelude.ORegex
     - Compiler.Prelude.OShellCommand
     - Compiler.Scope.Methods

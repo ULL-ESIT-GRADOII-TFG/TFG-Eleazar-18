@@ -87,7 +87,7 @@ fromAST atom =
     AShellCommand cmd -> return $ OShellCommand cmd
     ABool bool        -> return $ OBool bool
     AVector items     -> OVector . V.fromList <$> mapM astToInstructions items
-    ADic items        -> ODic . M.fromList <$> mapM (\(key, expr) -> (key,) <$> astToInstructions expr) items
+    ADic items        -> undefined -- OObject Nothing . M.fromList <$> mapM (\(key, expr) -> (key,) <$> astToInstructions expr) items
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object

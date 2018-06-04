@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9af84f0fc3ac800bc0af5a59a7aa9147a0e058b2bd89f916357466402f723b09
+-- hash: be92aba58789e0184582f511255ecaff27991f125be77d294b03d0ab3604bb4d
 
 name:           ScriptFlow
 version:        0.0.1
@@ -84,7 +84,6 @@ library
       Compiler.Prelude.ODouble
       Compiler.Prelude.ONum
       Compiler.Prelude.OVector
-      Compiler.Prelude.ODic
       Compiler.Prelude.ORegex
       Compiler.Prelude.OShellCommand
       Compiler.Scope.Methods

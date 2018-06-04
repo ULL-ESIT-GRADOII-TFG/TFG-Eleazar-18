@@ -11,19 +11,20 @@ import           Compiler.Object.Types
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
 import           Compiler.Scope.Utils
+import           Compiler.World.Methods
 import           Compiler.Types
 
 
 -- | Generate a new class, with name and methods/properties given
 newClass :: T.Text -> [(T.Text, Object)] -> Interpreter Word
 newClass name attributes = do
-  Right classId <- liftScope getNewId
+  classId <- liftWorld $ liftScope getNewId
   let classDef = ClassDefinition name (M.fromList attributes)
   memory . scope . typeDefinitions %= IM.insert (fromIntegral classId) classDef
   return classId
 
 -- | Create a object instance from referenced class
-instanceClass :: Word -> T.Text -> Interpreter (Maybe AddressRef)
+instanceClass :: Word -> T.Text -> Interpreter AddressRef
 instanceClass classId name = newVar name (OObject (Just classId) mempty)
 
 

@@ -54,7 +54,6 @@ mapObj obj func = case obj of
       mapM_ (func . OStr . T.singleton) (T.unpack str)
       return ONone
     OVector vec -> mapM_ func vec >> return ONone
-    ODic{}      -> error "implement" -- TODO:
     ORef word   -> follow word >>= flip mapObj func
     OObject{}   -> error "Implement" -- TODO: __iter__ or __map__
     _           -> throwError NotIterable

@@ -16,6 +16,7 @@ import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
 import           Compiler.Parser.Methods
 import           Compiler.Scope.Methods               ()
+import           Compiler.World.Methods
 import           Compiler.Scope.Utils
 import           Compiler.Token.Lexer                 (Tokenizer (..), scanner)
 import           Compiler.Types
@@ -35,8 +36,8 @@ repl = do
           | T.null . T.strip $ T.pack input -> do
             multiline .= Nothing
             compileSource text "**Interpreter**"
-          | otherwise -> multiline
-          .= Just (text `mappend` "\n" `mappend` T.pack input)
+          | otherwise ->
+            multiline .= Just (text `mappend` "\n" `mappend` T.pack input)
         Nothing -> do
           tokenizer' <- tokenizer $ T.pack input
           case tokenizer' of
@@ -57,10 +58,9 @@ getPrompt = do
       return $
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
-      mkPrompt    <-
-        catchEither (Compiling . T.pack .show) $
-          use (config . prompt . unPrompt) >>= liftScope . withNewScope
-      value       <- catchMaybe (Internal "No value returned") . liftWorld $ runProgram mkPrompt
+      prompt <- use (config.prompt.unPrompt)
+      mkPrompt <- liftWorld . liftScope $ withNewScope prompt
+      value <- liftWorld $ runProgram mkPrompt
       case value of
         OStr text ->
           if isMultiline then return $ replicate (T.length text - 4) ' ' ++ "... " else return $ T.unpack text
@@ -94,7 +94,7 @@ compileSource rawFile nameFile = do
   case ast of
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
-      astScoped <- catchEither (Compiling . T.pack . show) . liftScope $
+      astScoped <- liftWorld . liftScope $
         computeStatements statements
       when (verbosity >= 1) $
         liftIO $ putStrLn $ groom astScoped
@@ -112,11 +112,8 @@ compileSourcePure rawFile nameFile = do
 evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
 evaluateScopedProgram astScoped = do
   value <- liftWorld (runProgram (astToInstructions astScoped))
-  case value of
-    Just value' -> do
-      showable <- showInterpreter value'
-      liftIO $ putStrLn showable
-    Nothing -> return ()
+  showable <- showInterpreter value
+  liftIO $ putStrLn showable
 
 -- | Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> ScopeM (Expression ScopeInfoAST)

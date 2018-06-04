@@ -11,7 +11,6 @@ import qualified Data.Text                      as T
 import           Compiler.Interpreter.Utils
 import           Compiler.Object.Methods
 import qualified Compiler.Prelude.OBool         as OBool
-import qualified Compiler.Prelude.ODic          as ODic
 import qualified Compiler.Prelude.ODouble       as ODouble
 import qualified Compiler.Prelude.ONum          as ONum
 import qualified Compiler.Prelude.ORegex        as ORegex
