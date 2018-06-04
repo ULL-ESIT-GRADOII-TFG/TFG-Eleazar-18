@@ -90,7 +90,7 @@ data Var = Var
   deriving Show
 
 instance Default Var where
-  def = Var 0 ONone
+  def = Var 1 ONone
 
 data World = World
   { _table        :: IM.IntMap Var
@@ -172,7 +172,6 @@ data Object
   | ORegex T.Text -- TODO: search precompiled type
   | OShellCommand T.Text
   | OVector (V.Vector Object)
-  | ODic (M.Map T.Text Object)
   | OFunc (M.Map T.Text Object) [Word] Prog
   | OObject (Maybe Word) (M.Map T.Text Word)
   -- ^ Object instance from class Word
@@ -195,7 +194,6 @@ instance Show Object where
     ORef{}          -> "[Reference]"
     OObject{}       -> "[Object]"
     OVector{}       -> "[Vector]"
-    ODic{}          -> "[Dictionary]"
     ONone           -> "[None]"
 
 
