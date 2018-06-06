@@ -35,6 +35,7 @@ library:
     - microlens-aeson
     - microlens-platform
     - mtl
+    - pretty
     - parsec
     - process
     - template-haskell

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: be92aba58789e0184582f511255ecaff27991f125be77d294b03d0ab3604bb4d
+-- hash: 56011f6039ad6857045162bbd21f18647dd8e08e0cf2dca609f38ed347955d18
 
 name:           ScriptFlow
 version:        0.0.1
@@ -50,6 +50,7 @@ library
     , microlens-platform
     , mtl
     , parsec
+    , pretty
     , process
     , template-haskell
     , text

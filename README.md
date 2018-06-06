@@ -1,17 +1,10 @@
 
 Prioridades:
 
-  - La implementacion de las clases. Se debe revisar ya que el intento de
-    reutilizacion del AST no es lo más adecuado
-    - [Method (Ref, Prog) | Var Ref ]
-
-    - Seek por un __init__ :: args -> (), generar un ClassName :: args -> Object
-
-    - Definir los métodos especiales por los que buscar dentro de una clase
-      - __print__
-      - __map__
-      - __bool__
-      - ...
+  - No establecer las direcciones de los argumentos en las funciones al generar el scope. Aplazarlo al runtime.
+  - El tema de lo errores se debe mejorar.
+    - Los errores internos del compilador, deben producir version+commit y localizacion de lanzamiento de excepcion.
+    - Los errores del codigo compilado deben consolidarse. E imprimir correctamente la seccion y localizacion, Como un texto informativo del error
 
   - Implementar el tipo regex usar una librería pcre
     - Regex(regex) -- Constructor
