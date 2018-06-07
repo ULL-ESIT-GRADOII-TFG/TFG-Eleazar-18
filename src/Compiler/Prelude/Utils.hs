@@ -11,8 +11,8 @@ import           Compiler.Object.Types
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Types
 import           Compiler.Scope.Utils
-import           Compiler.World.Methods
 import           Compiler.Types
+import           Compiler.World.Methods
 
 
 -- | Generate a new class, with name and methods/properties given

@@ -1,24 +1,23 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
 module Compiler.Instruction.Methods where
 
 import           Control.Monad
-import           Control.Monad.Trans.Free
 import           Control.Monad.Trans.Class
-import qualified Data.Map                 as M
-import qualified Data.Text                as T
-import qualified Data.Text.Lazy           as LT
-import qualified Data.Vector              as V
+import           Control.Monad.Trans.Free
+import qualified Data.Map                  as M
+import qualified Data.Text                 as T
+import qualified Data.Text.Lazy            as LT
+import qualified Data.Vector               as V
 import           Formatting
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
 import           Compiler.Object.Methods
+import           Compiler.Scope.Utils
 import           Compiler.Types
 import           Compiler.World.Methods
-import           Compiler.Scope.Utils
 
 
 -- | Transform AST to a simplified intermediate language, more related to
@@ -27,12 +26,12 @@ import           Compiler.Scope.Utils
 astToInstructions :: Expression ScopeInfoAST -> FreeT Instruction StWorld Object
 astToInstructions expr = case expr of
   FunExpr args prog info -> do
-    -- Drop args
     addresses <- mapM (\acc -> do
                           addr <- lift $ getAddressRef (Simple acc ()) info
                           return $ addr^.ref
                       ) args
-    -- drop prog defined vars
+    -- Drop Args
+    mapM_ dropVar (M.elems $ info^.scopeInfo.renameInfo)
     return $ OFunc mempty addresses (astToInstructions prog)
 
   VarExpr acc exprValue info -> do
@@ -40,8 +39,10 @@ astToInstructions expr = case expr of
     addr <- lift $ getAddressRef acc info
     addr =: value
 
-  SeqExpr exprs _info ->
-    foldM (\_ expr' -> astToInstructions expr') ONone exprs
+  SeqExpr exprs info -> do
+    expr <- foldM (\_ expr' -> astToInstructions expr') ONone exprs
+    mapM dropVar (M.elems $ info^.scopeInfo.renameInfo)
+    return expr
 
   MkScope exprs ->
     -- Drop current scope defined vars
@@ -87,7 +88,7 @@ fromAST atom =
     AShellCommand cmd -> return $ OShellCommand cmd
     ABool bool        -> return $ OBool bool
     AVector items     -> OVector . V.fromList <$> mapM astToInstructions items
-    ADic items        -> undefined -- OObject Nothing . M.fromList <$> mapM (\(key, expr) -> (key,) <$> astToInstructions expr) items
+    ADic _items        -> undefined -- OObject Nothing . M.fromList <$> mapM (\(key, expr) -> (key,) <$> astToInstructions expr) items
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object

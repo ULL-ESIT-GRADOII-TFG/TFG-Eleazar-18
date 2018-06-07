@@ -41,15 +41,15 @@ catchEither errorMsg m = do
 -- | Internal use. To create native objects
 newVar :: T.Text -> Object -> Interpreter AddressRef
 newVar idName obj = do
-  ref <- liftWorld . liftScope . addNewIdentifier $ return idName
-  _ <- liftWorld $ addObject ref obj
-  return ref
+  addr <- liftWorld . liftScope . addNewIdentifier $ return idName
+  _ <- liftWorld $ addObject addr obj
+  return addr
 
 -- | Internal use to get specific interpreter variables
 getVar :: T.Text -> Interpreter Object
 getVar idName = do
-  ref <- liftWorld $ liftScope . getIdentifier $ return idName
-  liftWorld $ findObject ref
+  addr <- liftWorld $ liftScope . getIdentifier $ return idName
+  liftWorld $ findObject addr
 
 -- | String representation of objects in REPL
 showInterpreter :: Object -> Interpreter String
@@ -62,7 +62,7 @@ showInterpreter obj = case obj of
   ONum val -> return $ show val
   OVector vec -> return $ show vec -- TODO: Show Innervalue
   ORef rfs -> do
-    mObj <- liftWorld (follow rfs)
+    obj <- liftWorld (follow rfs)
     showInterpreter obj <&> ("*-> " ++)
   ONone -> return "None"
   object -> return $ show object -- TODO: __print__

@@ -20,6 +20,7 @@ import qualified Compiler.Prelude.OVector       as OVector
 import           Compiler.Prelude.Types
 import           Compiler.Prelude.Utils
 import           Compiler.Types
+import           Compiler.World.Methods
 
 
 -- | Dictionary of operators precedence order
@@ -102,11 +103,14 @@ instanceObject objs = case objs of
     defs <- use $ scope.typeDefinitions
     case IM.lookup idRef defs of
       Just clsDef -> do
-        let self = OObject (Just $ fromIntegral idRef) mempty -- TODO: REF
+        self <- lift . newObject $ OObject (Just $ fromIntegral idRef) mempty
         case M.lookup "__init__" (clsDef^.attributesClass) of
-          Just method -> lift $ callInitObject method (self:args) >> return self
-          Nothing -> if not $ null args then
+          Just method -> lift $ do
+            _ <- callObjectDirect method (ORef self:args)
+            return (ORef self)
+          Nothing -> if null args then
+                       return (ORef self)
+                     else
                        lift $ throwError NumArgsMissmatch
-                     else return self
       Nothing -> lift $ throwError NotFoundObject
   _ -> lift $ throwError $ WorldError "instanceObject: wrong parameters"

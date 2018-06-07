@@ -8,7 +8,6 @@ import qualified Data.Text                    as T
 import qualified Data.Text.Lazy.IO            as LT
 import           Lens.Micro.Platform
 import           System.Exit
-import           Text.Groom
 
 import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Utils
@@ -20,18 +19,20 @@ executeCommand :: T.Text -> [T.Text] -> Interpreter ()
 executeCommand name args =
   case M.lookup name commands of
     Just command -> command args
-    Nothing -> liftIO $ putStrLn "Command not found\nType :help to see available commands"
+    Nothing ->
+      liftIO $ putStrLn "Command not found\nType :help to see available commands"
 
 commands :: M.Map T.Text ([T.Text] -> Interpreter ())
 commands = M.fromList
-  [ ("mem", \_ -> use memory >>= liftIO . putStrLn . groom)
+  [ ("mem", \_ -> use memory >>= liftIO . print) -- TODO: Make instances of prettify
   , ("instr", showInstructions)
   , ("help", help)
   , ("quit", \_ -> liftIO exitSuccess)
   ]
 
+-- TODO: Show doc about functions inside of interpreter (Methods, Class and
+--       types info)
 -- | Show an informative text about REPL
--- TODO: Show doc about functions inside of interpreter (Methods, Class and types info)
 help :: [T.Text] -> Interpreter ()
 help _ = liftIO . putStrLn $ intercalate "\n"
   [ "HELP:"

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Parser.Methods where
 
+import           Control.Monad
 import           Data.Bifunctor
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
@@ -15,9 +16,12 @@ import           Compiler.Token.Lexer     (Lexeme, getTokens, scanner)
 import           Compiler.Token.Methods
 import           Compiler.Types
 
-{-
-  TODO: Fail on use reserved words
- -}
+
+keywords :: [T.Text]
+keywords =
+  ["true", "false", "import", "lam",
+   "in", "class", "fun", "for", "if",
+   "else", "none"]
 
 mkTokenInfo :: TokenParser (TokenInfo -> a) -> TokenParser a
 mkTokenInfo parser = do
@@ -25,9 +29,9 @@ mkTokenInfo parser = do
   func <- parser
   finalPos <- getPosition
   return (func (TokenInfo (toSrcPos initialPos) (toSrcPos finalPos)))
-  where
-    toSrcPos :: SourcePos -> SrcPos
-    toSrcPos sourcePos = SrcPos (sourceLine sourcePos) (sourceColumn sourcePos) 0
+
+toSrcPos :: SourcePos -> SrcPos
+toSrcPos sourcePos = SrcPos (sourceLine sourcePos) (sourceColumn sourcePos) 0
 
 generateAST :: T.Text -> String -> Either InterpreterError Repl
 generateAST rawFile nameFile = do
@@ -96,11 +100,11 @@ parseBody = try (mkTokenInfo $ do
 parseFunDecl :: TokenParser (FunDecl TokenInfo)
 parseFunDecl = mkTokenInfo $ do
   funT
-  funName <- nameIdT
-  params  <- many nameIdT
-  prog    <- parseBody
+  funcName <- nameIdT
+  params   <- many nameIdT
+  prog     <- parseBody
   return $ \info -> FunDecl
-    funName
+    funcName
     params
     prog
     info
@@ -165,6 +169,7 @@ parseMethodChain parser = do
 
 parseMethod :: Expression TokenInfo -> TokenParser (Expression TokenInfo)
 parseMethod expr = do
+  initialPos <- getPosition
   operatorT' "."
   acc    <- parseAccessor
 
@@ -178,35 +183,35 @@ parseMethod expr = do
   param <- optionMaybe $
     between oBraceT cBraceT parseExp
 
-  return $ MkScope
-    [ VarExpr (Simple "aux" dummyTokenInfo) expr dummyTokenInfo
+  finalPos <- getPosition
+  let tok = TokenInfo (toSrcPos initialPos) (toSrcPos finalPos)
+  return $ SeqExpr
+    [ VarExpr (Simple "parser_aux_0" tok) expr tok
     , case (params, param) of
-        (Just params', Just param') -> MkScope
+        (Just params', Just param') -> SeqExpr
           [ VarExpr
-              (Simple "aux2" dummyTokenInfo)
-              (Apply (Dot "aux" acc dummyTokenInfo) params' dummyTokenInfo) dummyTokenInfo
+              (Simple "parser_aux_2" tok)
+              (Apply (Dot "parser_aux_0" acc tok) params' tok) tok
           , Apply
-              (Dot "aux2" (Simple "__bracket__" dummyTokenInfo) dummyTokenInfo)
-              [param'] dummyTokenInfo
-          ]
+              (Dot "parser_aux_2" (Simple "__bracket__" tok) tok)
+              [param'] tok
+          ] tok
 
         (Just params', Nothing)     ->
-          Apply (Dot "aux" acc dummyTokenInfo) params' dummyTokenInfo
+          Apply (Dot "parser_aux_0" acc tok) params' tok
 
-        (Nothing, Just param')      -> MkScope
+        (Nothing, Just param')      -> SeqExpr
           [ VarExpr
-              (Simple "aux2" dummyTokenInfo)
-              (Identifier (Dot "aux" acc dummyTokenInfo) dummyTokenInfo) dummyTokenInfo
+              (Simple "parser_aux_2" tok)
+              (Identifier (Dot "parser_aux_0" acc tok) tok) tok
           , Apply
-              (Dot "aux2" (Simple "__bracket__" dummyTokenInfo) dummyTokenInfo)
-              [param'] dummyTokenInfo
+              (Dot "parser_aux_2" (Simple "__bracket__" tok) tok)
+              [param'] tok
 
-          ]
+          ] tok
 
-        (Nothing, Nothing)          -> Identifier (Dot "aux" acc dummyTokenInfo) dummyTokenInfo
-
-
-    ]
+        (Nothing, Nothing)          -> Identifier (Dot "parser_aux_0" acc tok) tok
+    ] tok
 
 checkOperator :: Int -> TokenParser T.Text
 checkOperator level = do
@@ -225,6 +230,7 @@ levels = foldl level (parseMethodChain parseFactor)
     listLevel <- many $ try ((,) <$> checkOperator leveln <*> nextLevel)
     return $ treeOperators expr listLevel
 
+-- TODO: Add right TokenInfo
 treeOperators
   :: Expression TokenInfo
   -> [(T.Text, Expression TokenInfo)]
@@ -248,6 +254,7 @@ parseAccessor = choice $ map
   try
   [ mkTokenInfo $ do
     name <- nameIdT
+    when (name `elem` keywords) $ unexpected "Keyword in a name variable"
     operatorT' "."
     rest <- parseAccessor
     return $ Dot name rest

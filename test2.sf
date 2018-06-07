@@ -1,5 +1,6 @@
 
 
 fun test name hola {
-  name ++ hola
+	$"pwd".exec().strip()
 }
+

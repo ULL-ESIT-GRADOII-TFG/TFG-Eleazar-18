@@ -25,10 +25,12 @@ import qualified Data.Text.Lazy             as LT
 import qualified Data.Vector                as V
 import           Lens.Micro.Platform
 import           System.Console.Haskeline   (InputT)
+import           Text.PrettyPrint
 
 import           Compiler.Instruction.Types
 import           Compiler.Interpreter.Types
 import           Compiler.Parser.Types
+import           Compiler.Prettify
 import           Compiler.Scope.Types
 import           Compiler.World.Types
 
@@ -146,6 +148,13 @@ newtype ScopeInfo = ScopeInfo
 instance Default ScopeInfo where
   def = ScopeInfo mempty
 
+instance Prettify ScopeInfo where
+  prettify (ScopeInfo hash) verbose =
+    text "ScopeInfo { " $$
+    nest 2 (vcat (map (\(k,v) ->
+      text (T.unpack k) <> text " -> " <> prettify v verbose) $ M.toList hash)) $$
+    text "}"
+
 data ClassDefinition = ClassDefinition
   { _nameClass       :: T.Text
   , _attributesClass :: M.Map T.Text Object
@@ -160,6 +169,13 @@ data ScopeInfoAST = ScopeInfoAST
 
 instance Default ScopeInfoAST where
   def = ScopeInfoAST def def
+
+instance Prettify ScopeInfoAST where
+  prettify scopeInfoAST verbose =
+    text "ScopeInfoAST { " $$
+    nest 2 (prettify (_tokenInfo scopeInfoAST) verbose $$
+            prettify (_scopeInfo scopeInfoAST) verbose) $$
+    text "}"
 
 -------------------------------------------------------------------------------
 -- * Object's Types

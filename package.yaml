@@ -27,7 +27,6 @@ library:
     - filepath
     - formatting
     - free
-    - groom
     - haskeline
     - include-file
     - http-client
@@ -71,6 +70,7 @@ library:
     - Compiler.Prelude.OVector
     - Compiler.Prelude.ORegex
     - Compiler.Prelude.OShellCommand
+    - Compiler.Prettify
     - Compiler.Scope.Methods
     - Compiler.Scope.Types
     - Compiler.Scope.Utils

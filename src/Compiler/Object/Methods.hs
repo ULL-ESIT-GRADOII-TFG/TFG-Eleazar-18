@@ -28,22 +28,10 @@ callObjectDirect obj objs = case obj of
     if length ids /= length objs then
       throwError NumArgsMissmatch
     else
+	  -- TODO: Generate args ids
       runProgram (zipWithM_ (=:) (map simple ids) objs >> prog)
   ONative native   -> runProgram $ native objs
   _t               -> throwError NotCallable
-
-callInitObject :: Object -> [Object] -> StWorld Object
-callInitObject obj objs = case obj of
-  OFunc _ ids prog ->
-    if length ids /= length objs then
-      throwError NumArgsMissmatch
-    else
-      runProgram $ do
-        zipWithM_ (=:) (map simple ids) objs
-        _ <- getVal (simple $ head ids) -- Avoid initial object to be remove
-        _ <- prog
-        return (ORef (head ids))
-  _  -> throwError NotCallable
 
 -- | Iterate over a object if it is iterable
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
@@ -60,6 +48,6 @@ mapObj obj func = case obj of
 
 -- | Check truthfulness of an object
 checkBool :: Object -> StWorld Bool
-checkBool (OBool bool)  = return bool
-checkBool obj@OObject{} = error "Implement"  -- TODO: __bool__
-checkBool _             = return False
+checkBool (OBool bool) = return bool
+checkBool _obj         = error "Implement"  -- TODO: __bool__
+checkBool _            = return False

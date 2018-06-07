@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Prelude.ORegex where
 
-import qualified Data.Text              as T
+import qualified Data.Text      as T
 
-import           Compiler.Prelude.Utils
+-- import           Compiler.Prelude.Utils
 import           Compiler.Types
 
 methods :: T.Text -> Maybe ([Object] -> Prog)

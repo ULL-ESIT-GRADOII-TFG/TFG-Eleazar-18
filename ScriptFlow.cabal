@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 56011f6039ad6857045162bbd21f18647dd8e08e0cf2dca609f38ed347955d18
+-- hash: e3cd47a1712992eb0cfa4c72b9879233b0197abcca6827ca2d824de1ab7a7557
 
 name:           ScriptFlow
 version:        0.0.1
@@ -41,7 +41,6 @@ library
     , filepath
     , formatting
     , free
-    , groom
     , haskeline
     , http-client
     , http-client-tls
@@ -87,6 +86,7 @@ library
       Compiler.Prelude.OVector
       Compiler.Prelude.ORegex
       Compiler.Prelude.OShellCommand
+      Compiler.Prettify
       Compiler.Scope.Methods
       Compiler.Scope.Types
       Compiler.Scope.Utils

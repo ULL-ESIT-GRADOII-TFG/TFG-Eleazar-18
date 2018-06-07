@@ -2,9 +2,13 @@
 module Compiler.Instruction.Types where
 
 import           Control.Monad.State.Strict
+import           Data.List
 import qualified Data.Text                  as T
 import qualified Data.Text.Lazy             as LT
 import           Lens.Micro.Platform
+import           Text.PrettyPrint
+
+import           Compiler.Prettify
 
 
 data AddressRef = AddressRef
@@ -15,6 +19,10 @@ data AddressRef = AddressRef
 
 simple :: Word -> AddressRef
 simple word = AddressRef word []
+
+instance Prettify AddressRef where
+  prettify (AddressRef r p) _verbose =
+    text "ADDR#" <> text (show r) <> text "->" <> (text $ intercalate "." $ map T.unpack p)
 
 -- | Auxiliar type to debug Instruction Set
 data PPrint = PPrint

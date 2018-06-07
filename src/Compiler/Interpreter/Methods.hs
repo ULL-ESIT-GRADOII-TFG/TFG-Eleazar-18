@@ -7,7 +7,7 @@ import qualified Data.Text                            as T
 import qualified Data.Text.IO                         as T
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
-import           Text.Groom
+import           Text.PrettyPrint                     (renderStyle, style)
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
@@ -15,11 +15,12 @@ import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
 import           Compiler.Parser.Methods
+import           Compiler.Prettify
 import           Compiler.Scope.Methods               ()
-import           Compiler.World.Methods
 import           Compiler.Scope.Utils
 import           Compiler.Token.Lexer                 (Tokenizer (..), scanner)
 import           Compiler.Types
+import           Compiler.World.Methods
 
 
 -- | Start an repl without prelude
@@ -58,12 +59,13 @@ getPrompt = do
       return $
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
-      prompt <- use (config.prompt.unPrompt)
-      mkPrompt <- liftWorld . liftScope $ withNewScope prompt
-      value <- liftWorld $ runProgram mkPrompt
+      pt <- use (config.prompt.unPrompt)
+      value <- liftWorld $ join $ liftScope $ withNewScope $ runProgram <$> pt
       case value of
         OStr text ->
-          if isMultiline then return $ replicate (T.length text - 4) ' ' ++ "... " else return $ T.unpack text
+          if isMultiline then
+            return $ replicate (T.length text - 4) ' ' ++ "... "
+          else return $ T.unpack text
         _ ->
           -- TODO: Maybe cast object to string object
           throwError $ Internal "Not a string value"
@@ -74,6 +76,7 @@ handleError :: InterpreterError -> Interpreter ()
 handleError err = case err of
   Compiling err' -> liftIO $ T.putStrLn err'
   Internal  err' -> liftIO $ T.putStrLn err'
+  WrapWorld err' -> liftIO $ print err'
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
@@ -84,20 +87,21 @@ tokenizer input = case scanner False $ T.unpack input of
   Right tokens -> return tokens
 
 -- | Compile source code
--- TODO: Improve errors translation between them
 compileSource :: T.Text -> String -> Interpreter ()
 compileSource rawFile nameFile = do
   ast <- catchEither id . return $ generateAST rawFile nameFile
   verbosity <- use verboseLevel
-  when (verbosity >= 2) $
-    liftIO $ putStrLn $ groom ast
+  when (verbosity > 2) $ do
+    liftIO $ putStrLn "** AST **"
+    liftIO $ putStrLn $ renderStyle style $ prettify ast verbosity
   case ast of
     Command cmd args -> executeCommand cmd args
     Code statements  -> do
       astScoped <- liftWorld . liftScope $
         computeStatements statements
-      when (verbosity >= 1) $
-        liftIO $ putStrLn $ groom astScoped
+      when (verbosity >= 2) $ do
+        liftIO $ putStrLn "** SCOPED AST **"
+        liftIO $ putStrLn $ renderStyle style $ prettify astScoped verbosity
       evaluateScopedProgram astScoped
 
 compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)

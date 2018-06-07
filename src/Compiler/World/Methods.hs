@@ -2,8 +2,6 @@ module Compiler.World.Methods where
 
 import           Control.Monad
 import           Control.Monad.Except
-import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.Except
 import           Control.Monad.State.Strict
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
@@ -16,6 +14,12 @@ import           Compiler.Scope.Utils
 import           Compiler.Types
 
 
+newObject :: Object -> StWorld Word
+newObject obj = do
+  addr <- liftScope getNewId
+  addObject (simple addr) obj
+  return addr
+
 -- | Add and object to memory. Address specify route to put Object
 -- > obj = {}
 -- > obj.foo.bar = 5
@@ -26,8 +30,8 @@ import           Compiler.Types
 -- "foo"
 addObject :: AddressRef -> Object -> StWorld ()
 addObject (AddressRef word dyns) obj = do
-  word <- buildFollowingPath word dyns
-  setVar word (Var 1 obj)
+  word' <- buildFollowingPath word dyns
+  setVar word' (Var 1 obj)
 
 -- | Build objects following a given path `path` from initial address `addr`.
 -- It returns last object following path.
@@ -41,7 +45,7 @@ buildFollowingPath addr path =
     obj <- follow addrCurrent
     mAddr <- on' obj acc
     case mAddr of
-      Just addr -> return addr
+      Just addr' -> return addr'
       Nothing ->
         addObjectToObject addrCurrent acc ONone
 
@@ -54,20 +58,24 @@ on' obj acc = case obj of
   ORef addr        -> follow addr >>= (`on'` acc)
   _                -> return Nothing
 
+-- | Get a address and try to add a new accesor to it
 addObjectToObject :: Word -> T.Text -> Object -> StWorld Word
 addObjectToObject word acc obj = do
   var <- do
-    var <- getVar word
+    lastAddr <- follow' word
+    var <- getVar lastAddr
     case var of
       Just var' -> return var'
       Nothing   -> throwError NotExtensibleObject
+  addr <- liftScope getNewId
 
-  addr <- liftScope $ getNewId
   case var^.rawObj of
-    ONone ->
-      setVar addr (var & rawObj .~ (OObject Nothing (M.singleton acc addr)))
-    OObject parent attrs ->
-      setVar addr (var & rawObj .~ (OObject parent (M.insert acc addr attrs)))
+    ONone -> do
+      setVar word (var & rawObj .~ OObject Nothing (M.singleton acc addr))
+      setVar addr (Var 1 obj)
+    OObject parent attrs -> do
+      setVar word (var & rawObj .~ OObject parent (M.insert acc addr attrs))
+      setVar addr (Var 1 obj)
     _ -> throwError NotExtensibleObject
   return addr
 
@@ -132,7 +140,7 @@ dropVarWorld addrRef = do
   val <- getVar (addrRef^.ref)
   case val of
     Just var -> do
-      let var' = var & refCounter %~ (+ (-1))
+      let var' = var & refCounter %~ (\ct -> (-) ct 1)
       if var'^.refCounter == 0 then
         table %= IM.delete (fromIntegral $ addrRef^.ref)
       else
@@ -146,16 +154,20 @@ getObject obj         = return obj
 
 -- | Follow reference pointer until and not reference object.
 -- It throws a exception when reaches the limit 50
-follow :: Word -> StWorld Object
-follow word = follow' word 50
+follow' :: Word -> StWorld Word
+follow' w = follow'' w 50
   where
-    follow' word times
-      | times > 0 = lift $ throwError ExcededRecursiveLimit
+    follow'' :: Word -> Int -> StWorld Word
+    follow'' word times
+      | times <= 0 = lift $ throwError ExcededRecursiveLimit
       | otherwise = do
         obj <- findObject (simple word)
         case obj of
-          ORef word' -> follow' word' (times - 1)
-          other      -> return other
+          ORef word' -> follow'' word' (times - 1)
+          _          -> return word
+
+follow :: Word -> StWorld Object
+follow word = follow' word >>= findObject . simple
 
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b

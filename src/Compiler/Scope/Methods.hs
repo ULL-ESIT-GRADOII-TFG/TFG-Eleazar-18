@@ -11,7 +11,6 @@ import qualified Data.IntMap                  as IM
 import           Data.List
 import qualified Data.Map                     as M
 import           Lens.Micro.Platform
-import Debug.Trace
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
@@ -41,7 +40,7 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
       object <- liftIO $ runExceptT (evalStateT (runProgram $ astToInstructions func) def)
       case object of
           Right fun@OFunc{} -> return fun
-          _                 -> traceShow object $ throwError ErrorClass -- TODO: Improve
+          _                 -> throwError ErrorClass -- TODO: Improve
 
     let classDef = ClassDefinition name (M.fromList $ zip (map (^.funName) methds) oFuncs)
     typeDefinitions %= IM.insert (fromIntegral $ address^.ref) classDef
@@ -64,14 +63,14 @@ funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
   transform (FunDecl name args body info) = do
-      addr <- catchError (getIdentifier (return name)) $
+      _addr <- catchError (getIdentifier (return name)) $
         \_ -> addNewIdentifier (return name)
       info' <- getScopeInfoAST info
       body' <- withNewScope $ do
         mapM_ (addNewIdentifier . return) args
-        info' <- getScopeInfoAST info
+        info'' <- getScopeInfoAST info
         scopeBody <- transform body
-        return $ FunExpr args scopeBody info'
+        return $ FunExpr args scopeBody info''
 
       return $ VarExpr (Simple name info') body' info'
 

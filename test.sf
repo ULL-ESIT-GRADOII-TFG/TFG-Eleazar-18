@@ -1,5 +1,9 @@
-class TestClas {
+class Test {
   fun __init__ a {
     self.a = a
   }
 }
+
+
+t = 67
+
