@@ -1,6 +1,6 @@
 
 
-fun test name hola {
-	$"pwd".exec().strip()
+fun test {
+	$"pwd".exec().strip() ++ " >>> "
 }
 

@@ -30,8 +30,8 @@ astToInstructions expr = case expr of
                           addr <- lift $ getAddressRef (Simple acc ()) info
                           return $ addr^.ref
                       ) args
-    -- Drop Args
-    mapM_ dropVar (M.elems $ info^.scopeInfo.renameInfo)
+    -- -- Drop Args
+    -- mapM_ dropVar (M.elems $ info^.scopeInfo.renameInfo)
     return $ OFunc mempty addresses (astToInstructions prog)
 
   VarExpr acc exprValue info -> do
@@ -41,7 +41,7 @@ astToInstructions expr = case expr of
 
   SeqExpr exprs info -> do
     expr <- foldM (\_ expr' -> astToInstructions expr') ONone exprs
-    mapM dropVar (M.elems $ info^.scopeInfo.renameInfo)
+    mapM_ dropVar (M.elems $ info^.scopeInfo.renameInfo)
     return expr
 
   MkScope exprs ->

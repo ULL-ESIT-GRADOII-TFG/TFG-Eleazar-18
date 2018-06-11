@@ -76,7 +76,7 @@ instance Prettify a => Prettify (Statement a) where
     Import path _ -> text "Import { " <> text (T.unpack path) <> text " }"
     ClassSt classDecl -> text "ClassSt {" $$ nest 2 (prettify classDecl verbose) $$ text "}"
     FunSt funDecl -> text "FunSt {" $$ nest 2 (prettify funDecl verbose) $$ text "}"
-    Expr expr -> text "FunSt {" $$ nest 2 (prettify expr verbose) $$ text "}"
+    Expr expr -> text "Expr {" $$ nest 2 (prettify expr verbose) $$ text "}"
 
 instance Prettify a => Prettify (ClassDecl a) where
   prettify (ClassDecl name methods a) verbose =

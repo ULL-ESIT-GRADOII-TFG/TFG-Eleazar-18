@@ -45,13 +45,13 @@ data Config = Config
   , _modules      :: [T.Text]
   }
 
-newtype Prompt = Prompt { _unPrompt :: ScopeM Prog }
+newtype Prompt = Prompt { _unPrompt :: ScopeM Object }
 
 instance Default Config where
   def = Config
     { _commandShell = Nothing
     , _defaultPath = Nothing
-    , _prompt = Prompt . return . return $ OStr ">>> "
+    , _prompt = Prompt . return $ OStr ">>> "
     , _modules =  []
     }
 
@@ -91,6 +91,10 @@ data Var = Var
   }
   deriving Show
 
+instance Prettify Var where
+  prettify (Var rc raw) _verbose =
+    text "VarRC " <> text (show rc) <> text " " <> text (show raw)
+
 instance Default Var where
   def = Var 1 ONone
 
@@ -100,6 +104,14 @@ data World = World
   , _debugProgram :: (LT.Text, Int)
   }
   deriving Show
+
+instance Prettify World where
+  prettify (World tb scope _) verbose =
+    text "World {" $$
+    nest 2 (vcat (map (\(k, v) ->
+      text "#" <> text (show k) <> text " " <> prettify v verbose) $ IM.toList tb)) $$
+    -- if verbose >= 3 then undefined else (empty <>)
+    text "}"
 
 
 instance Default World where

@@ -30,20 +30,20 @@ setupConfig :: Maybe FilePath -> Interpreter ()
 setupConfig mCfgFile = do
   mCfgFile' <- getConfigFilePath mCfgFile
   loaded <- loadConfigFile mCfgFile'
-  when (not loaded) $ do
+  unless loaded $ do
     liftIO $ putStrLn "Creating a default configuration"
     createDefaultConfig
-    configFile' <- liftIO $ configFile
+    configFile' <- liftIO configFile
     _ <- loadConfigFile $ Just configFile'
     return ()
 
 getConfigFilePath :: Maybe FilePath -> Interpreter (Maybe FilePath)
-getConfigFilePath mCfgFile = do
+getConfigFilePath mCfgFile =
   case mCfgFile of
     Just cfgFile -> do
       exist <- liftIO $ doesFileExist cfgFile
       if exist
-        then do
+        then
           return $ Just cfgFile
         else do
           liftIO $ putStrLn
@@ -66,7 +66,7 @@ getConfigFilePath mCfgFile = do
 -- "scriptflow.yaml" in yaml format if file isn't found it returns False, True
 -- in otherwise
 loadConfigFile :: Maybe FilePath -> Interpreter Bool
-loadConfigFile mCfgFile = do
+loadConfigFile mCfgFile =
   case mCfgFile of
     Just cfgFile -> do
       contents <- liftIO

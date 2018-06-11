@@ -28,8 +28,12 @@ callObjectDirect obj objs = case obj of
     if length ids /= length objs then
       throwError NumArgsMissmatch
     else
-	  -- TODO: Generate args ids
-      runProgram (zipWithM_ (=:) (map simple ids) objs >> prog)
+      runProgram $ do
+        let argsIDs = map simple ids
+        zipWithM_ (=:) argsIDs objs
+        val <- prog
+        mapM_ dropVar argsIDs
+        return val
   ONative native   -> runProgram $ native objs
   _t               -> throwError NotCallable
 

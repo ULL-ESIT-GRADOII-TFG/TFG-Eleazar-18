@@ -96,10 +96,11 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
         name' <- transform name
         return $ VarExpr name' expr'' info'
 
-    SeqExpr exprs info -> do
-      expr' <- mapM transform exprs
-      info' <- getScopeInfoAST info
-      return $ SeqExpr expr' info'
+    SeqExpr exprs info ->
+      withNewScope $ do
+        expr' <- mapM transform exprs
+        info' <- getScopeInfoAST info
+        return $ SeqExpr expr' info'
 
     MkScope exprs -> do
       expr' <- withNewScope $ mapM transform exprs

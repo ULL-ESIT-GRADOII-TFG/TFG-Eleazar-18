@@ -23,7 +23,7 @@ instance FromJSON Prompt where
   parseJSON (String text) =
     case compileSourcePure text "**Config File**" of
       Left e  -> fail $ show e
-      Right p -> return $ Prompt p
+      Right p -> return $ Prompt (OFunc mempty [] <$> p)
   parseJSON _ = mzero
 
 makeLenses ''Config

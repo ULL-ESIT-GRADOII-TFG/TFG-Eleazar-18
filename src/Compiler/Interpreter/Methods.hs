@@ -5,6 +5,7 @@ import           Control.Monad.Except
 import           Data.Maybe
 import qualified Data.Text                            as T
 import qualified Data.Text.IO                         as T
+import qualified Data.Text.Lazy.IO                    as LT
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 import           Text.PrettyPrint                     (renderStyle, style)
@@ -14,6 +15,7 @@ import           Compiler.Desugar.Types
 import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
+import           Compiler.Object.Methods
 import           Compiler.Parser.Methods
 import           Compiler.Prettify
 import           Compiler.Scope.Methods               ()
@@ -60,12 +62,21 @@ getPrompt = do
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
       pt <- use (config.prompt.unPrompt)
-      value <- liftWorld $ join $ liftScope $ withNewScope $ runProgram <$> pt
+      value <- liftWorld $ liftScope pt
       case value of
         OStr text ->
           if isMultiline then
             return $ replicate (T.length text - 4) ' ' ++ "... "
           else return $ T.unpack text
+        OFunc{} -> do
+          ostr <- liftWorld $ callObjectDirect value []
+          case ostr of
+            OStr text ->
+              if isMultiline then
+                return $ replicate (T.length text - 4) ' ' ++ "... "
+              else return $ T.unpack text
+            _ ->
+              throwError $ Internal "Not a string value"
         _ ->
           -- TODO: Maybe cast object to string object
           throwError $ Internal "Not a string value"
@@ -115,7 +126,17 @@ compileSourcePure rawFile nameFile = do
 -- | Evaluate program with AST already scoped
 evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
 evaluateScopedProgram astScoped = do
-  value <- liftWorld (runProgram (astToInstructions astScoped))
+  verbosity <- use verboseLevel
+  let instrs = astToInstructions astScoped
+  when (verbosity >= 2) $ do
+    liftIO $ putStrLn "** Instructions **"
+    instrsPP <- liftWorld $ do
+      _ <- pprint instrs
+      instrsPP <- use $ debugProgram._1
+      debugProgram .= ("", 0)
+      return instrsPP
+    liftIO $ LT.putStrLn instrsPP
+  value <- liftWorld (runProgram instrs)
   showable <- showInterpreter value
   liftIO $ putStrLn showable
 

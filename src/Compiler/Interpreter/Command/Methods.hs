@@ -8,9 +8,11 @@ import qualified Data.Text                    as T
 import qualified Data.Text.Lazy.IO            as LT
 import           Lens.Micro.Platform
 import           System.Exit
+import           Text.PrettyPrint
 
 import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Utils
+import           Compiler.Prettify
 import           Compiler.Types
 
 
@@ -24,7 +26,10 @@ executeCommand name args =
 
 commands :: M.Map T.Text ([T.Text] -> Interpreter ())
 commands = M.fromList
-  [ ("mem", \_ -> use memory >>= liftIO . print) -- TODO: Make instances of prettify
+  [ ("mem", \_ -> do
+      mem <- use memory
+      verbosity <- use verboseLevel
+      liftIO . putStrLn . renderStyle style . (`prettify` verbosity) $ mem)
   , ("instr", showInstructions)
   , ("help", help)
   , ("quit", \_ -> liftIO exitSuccess)
