@@ -27,8 +27,8 @@ executeCommand name args =
 commands :: M.Map T.Text ([T.Text] -> Interpreter ())
 commands = M.fromList
   [ ("mem", \_ -> do
-      mem <- use memory
-      verbosity <- use verboseLevel
+      mem <- use memoryA
+      verbosity <- use verboseLevelA
       liftIO . putStrLn . renderStyle style . (`prettify` verbosity) $ mem)
   , ("instr", showInstructions)
   , ("help", help)
@@ -56,8 +56,8 @@ showInstructions (name:_) = do
     OFunc _ _ prog -> do
       instrs <- liftWorld $ do
         _ <- pprint prog
-        instrs <- use $ debugProgram._1
-        debugProgram .= ("", 0)
+        instrs <- use $ debugProgramA._1
+        debugProgramA .= ("", 0)
         return instrs
       liftIO $ LT.putStrLn instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

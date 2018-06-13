@@ -3,15 +3,15 @@ module Compiler.Config.Methods where
 
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class
-import qualified Data.ByteString           as BS
-import qualified Data.Yaml                 as Y
+import           Control.Monad.Trans
+import qualified Data.ByteString          as BS
+import qualified Data.Yaml                as Y
 import           Development.IncludeFile
 import           System.Console.Haskeline
 import           System.Directory
 import           System.FilePath
 
-import           Compiler.Config.Types     ()
+import           Compiler.Config.Types    ()
 import           Compiler.Types
 
 
@@ -73,7 +73,7 @@ loadConfigFile mCfgFile =
         (Y.decodeFileEither cfgFile :: IO (Either Y.ParseException Config))
       case contents of
         Right cFile -> do
-          config .= cFile
+          configA .= cFile
           return True
         Left parserError -> do
           liftIO $ putStrLn (Y.prettyPrintParseException parserError)

@@ -28,28 +28,29 @@ library:
     - formatting
     - free
     - haskeline
-    - include-file
     - http-client
     - http-client-tls
+    - include-file
     - microlens-aeson
     - microlens-platform
     - mtl
-    - pretty
     - parsec
+    - pcre-light
+    - pretty
     - process
     - template-haskell
     - text
-    - transformers
-    - unordered-containers
     - vector
     - yaml
   exposed-modules:
     - Compiler.Ast
-    - Compiler.Types
     - Compiler.Config.Methods
     - Compiler.Config.Types
     - Compiler.Core.Methods
     - Compiler.Core.Types
+    - Compiler.Desugar.Types
+    - Compiler.Error
+    - Compiler.Identifier
     - Compiler.Instruction.Methods
     - Compiler.Instruction.Types
     - Compiler.Interpreter.Command.Methods
@@ -61,15 +62,16 @@ library:
     - Compiler.Parser.Methods
     - Compiler.Parser.Types
     - Compiler.Prelude.Methods
-    - Compiler.Prelude.Types
-    - Compiler.Prelude.Utils
-    - Compiler.Prelude.OStr
     - Compiler.Prelude.OBool
     - Compiler.Prelude.ODouble
     - Compiler.Prelude.ONum
-    - Compiler.Prelude.OVector
     - Compiler.Prelude.ORegex
     - Compiler.Prelude.OShellCommand
+    - Compiler.Prelude.OStr
+    - Compiler.Prelude.OVector
+    - Compiler.Prelude.Th
+    - Compiler.Prelude.Types
+    - Compiler.Prelude.Utils
     - Compiler.Prettify
     - Compiler.Scope.Methods
     - Compiler.Scope.Types
@@ -77,6 +79,8 @@ library:
     - Compiler.Token.Lexer
     - Compiler.Token.Methods
     - Compiler.Token.Types
+    - Compiler.Types
+    - Compiler.Utils
     - Compiler.World.Methods
     - Compiler.World.Types
 

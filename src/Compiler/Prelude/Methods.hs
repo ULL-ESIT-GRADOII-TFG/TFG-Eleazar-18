@@ -3,6 +3,7 @@
 module Compiler.Prelude.Methods where
 
 import           Control.Monad.Except
+import           Control.Monad.State
 import           Control.Monad.Trans.Free
 import qualified Data.IntMap                    as IM
 import qualified Data.Map                       as M
@@ -50,7 +51,7 @@ operatorsPrecedence = M.fromList
 loadPrelude :: Interpreter ()
 loadPrelude = do
   -- Special Constructor for objects
-  memory.table %= IM.insert 0 (def { _rawObj = ONative instanceObject})
+  memoryA.tableA %= IM.insert 0 (def { _rawObj = ONative instanceObject})
   -- Basic functions available on start
   mapM_ (uncurry newVar) baseBasicFunctions
 
@@ -69,18 +70,19 @@ internalMethod name =
 -- TODO Reorganize to add internal docs
 getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
 getMethods obj name = case obj of
-  OStr _                   -> OStr.methods name
-  OBool _val               -> OBool.methods name
-  ODouble _val             -> ODouble.methods name
-  ONum _val                -> ONum.methods name
-  OVector _val             -> OVector.methods name
-  ORegex        _str       -> ORegex.methods name
-  OShellCommand _str       -> OShellCommand.methods name
-  OFunc _bind _args _prog  -> Nothing
-  ONative _func            -> Nothing
-  OObject _classId _dicObj -> Nothing
-  ORef _rfs                -> Nothing
-  ONone                    -> Nothing
+  OStr{}          -> OStr.methods name
+  OBool{}         -> OBool.methods name
+  ODouble{}       -> ODouble.methods name
+  ONum{}          -> ONum.methods name
+  OVector{}       -> OVector.methods name
+  ORegex{}        -> ORegex.methods name
+  OShellCommand{} -> OShellCommand.methods name
+  OFunc{}         -> Nothing
+  ONative{}       -> Nothing
+  OObject{}       -> Nothing
+  OClassDef{}     -> Nothing
+  ORef{}          -> Nothing
+  ONone           -> Nothing
 
 -- |
 -- TODO: Add specific functions to modify internal interpreter variables. Like prompt, or path options ...
@@ -100,11 +102,15 @@ printObj obj = do
 instanceObject :: [Object] -> FreeT Instruction StWorld Object
 instanceObject objs = case objs of
   (ONum idRef : args) -> do
-    defs <- use $ scope.typeDefinitions
-    case IM.lookup idRef defs of
+    defs <- use tableA
+    let classDef = IM.lookup idRef defs >>= \obj ->
+          case obj^.rawObjA of
+            OClassDef _ d -> return d
+            _             -> Nothing
+    case classDef of
       Just clsDef -> do
         self <- lift . newObject $ OObject (Just $ fromIntegral idRef) mempty
-        case M.lookup "__init__" (clsDef^.attributesClass) of
+        case M.lookup "__init__" clsDef of
           Just method -> lift $ do
             _ <- callObjectDirect method (ORef self:args)
             return (ORef self)
@@ -113,4 +119,4 @@ instanceObject objs = case objs of
                      else
                        lift $ throwError NumArgsMissmatch
       Nothing -> lift $ throwError NotFoundObject
-  _ -> lift $ throwError $ WorldError "instanceObject: wrong parameters"
+  _ -> lift $ throwError $ WorldError "instanceObject: Wrong parameters"

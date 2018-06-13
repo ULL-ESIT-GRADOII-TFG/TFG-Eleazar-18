@@ -30,11 +30,12 @@ callObjectDirect obj objs = case obj of
     else
       runProgram $ do
         let argsIDs = map simple ids
-        zipWithM_ (=:) argsIDs objs
+        --- zipWithM_ (=:) argsIDs objs
         val <- prog
-        mapM_ dropVar argsIDs
+        -- mapM_ dropVar argsIDs
         return val
   ONative native   -> runProgram $ native objs
+  OClassDef _name methods -> undefined
   _t               -> throwError NotCallable
 
 -- | Iterate over a object if it is iterable

@@ -36,25 +36,32 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
     -- Generate class definition into scope
     address <- addNewIdentifier $ return name
     methds' <- withNewScope $ mapM (transform . funcToMethod) methds
-    oFuncs <- forM methds' $ \func -> do
-      object <- liftIO $ runExceptT (evalStateT (runProgram $ astToInstructions func) def)
-      case object of
-          Right fun@OFunc{} -> return fun
-          _                 -> throwError ErrorClass -- TODO: Improve
+    info' <- getScopeInfoAST info
+    return $ VarExpr
+      (Simple name info')
+      (Factor (AClass name (zip (map _funName methds) methds')) info') info'
+    -- oFuncs <- forM methds' $ \func -> do
+    --   prog <- transform func
+    --   object <- liftIO $ runExceptT (evalStateT (runProgram prog) def)
+    --   case object of
+    --       Right fun@OFunc{} -> return fun
+    --       _                 -> throwError ErrorClass -- TODO: Improve
 
-    let classDef = ClassDefinition name (M.fromList $ zip (map (^.funName) methds) oFuncs)
-    typeDefinitions %= IM.insert (fromIntegral $ address^.ref) classDef
+
+    -- let classDef = OClassDef name (M.fromList $ zip (map (^.funNameA) methds) oFuncs)
+
+    -- tableA %= IM.insert (fromIntegral $ address^.ref) classDef
 
     -- Creating a function to call __new__ special item. It allows create
     -- instances of this class. It uses the class name to find its definition
-    body <- withNewScope $ do
-      let initMethod = find (\funDecl -> funDecl^.funName == "__init__") methds
-      let args = initMethod^._Just.funArgs
-      let nameAST = Factor (ANum . fromIntegral $ address^.ref) info
-      let argsAST = nameAST : map ((`Identifier` info ) . (`Simple` info)) args
-      return $ FunExpr args (Apply (Simple "__new__" info) argsAST info) info
+    -- body <- withNewScope $ do
+    --   let initMethod = find (\funDecl -> funDecl^.funNameA == "__init__") methds
+    --   let args = initMethod^._Just.funArgsA
+    --   let nameAST = Factor (ANum . fromIntegral $ address^.ref) info
+    --   let argsAST = nameAST : map ((`Identifier` info ) . (`Simple` info)) args
+    --   return $ FunExpr args (Apply (Simple "__new__" info) argsAST info) info
 
-    transform $ VarExpr (Simple name info) body info
+
 
 funcToMethod :: FunDecl a -> FunDecl a
 funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
@@ -101,10 +108,6 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
         expr' <- mapM transform exprs
         info' <- getScopeInfoAST info
         return $ SeqExpr expr' info'
-
-    MkScope exprs -> do
-      expr' <- withNewScope $ mapM transform exprs
-      return $ MkScope expr'
 
     If condExpr trueExpr info -> do
       condExpr' <- withNewScope $ transform condExpr

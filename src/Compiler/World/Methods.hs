@@ -9,14 +9,14 @@ import           Data.Maybe
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
+import           Compiler.Identifier
 import {-# SOURCE #-} Compiler.Prelude.Methods
-import           Compiler.Scope.Utils
 import           Compiler.Types
 
 
 newObject :: Object -> StWorld Word
 newObject obj = do
-  addr <- liftScope getNewId
+  let addr = getNewID
   addObject (simple addr) obj
   return addr
 
@@ -67,14 +67,14 @@ addObjectToObject word acc obj = do
     case var of
       Just var' -> return var'
       Nothing   -> throwError NotExtensibleObject
-  addr <- liftScope getNewId
+  let addr = getNewID
 
-  case var^.rawObj of
+  case var^.rawObjA of
     ONone -> do
-      setVar word (var & rawObj .~ OObject Nothing (M.singleton acc addr))
+      setVar word (var & rawObjA.~ OObject Nothing (M.singleton acc addr))
       setVar addr (Var 1 obj)
     OObject parent attrs -> do
-      setVar word (var & rawObj .~ OObject parent (M.insert acc addr attrs))
+      setVar word (var & rawObjA.~ OObject parent (M.insert acc addr attrs))
       setVar addr (Var 1 obj)
     _ -> throwError NotExtensibleObject
   return addr
@@ -84,13 +84,16 @@ on :: Object -> T.Text -> StWorld (Maybe Object)
 on obj acc = case obj of
   OObject mClassId dicObj ->
     attemps
-        [ maybe (return Nothing) (\addr -> Just <$> follow addr) $ M.lookup acc dicObj
+        [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
         -- ^ Local search
         , do
-          clsDef <- use $ scope.typeDefinitions
+          memory <- use tableA
           return $ mClassId
-            >>= (`IM.lookup` clsDef) . fromIntegral
-            >>= M.lookup acc . (^.attributesClass)
+            >>= (`IM.lookup` memory) . fromIntegral
+            >>= (\obj' -> case obj'^.rawObjA of
+                    OClassDef{} -> return $ attributesClass (obj'^.rawObjA)
+                    _           -> Nothing)
+            >>= M.lookup acc
         -- ^ Class search
         , return $ ONative <$> getMethods obj acc
         -- ^ Internal search
@@ -116,10 +119,10 @@ through obj = foldM (\obj' acc ->
   ) (Just obj)
 
 setVar :: Word -> Var -> StWorld ()
-setVar addr var = table %= IM.insert (fromIntegral addr) var
+setVar addr var = tableA %= IM.insert (fromIntegral addr) var
 
 getVar :: Word -> StWorld (Maybe Var)
-getVar addr = IM.lookup (fromIntegral addr) <$> use table
+getVar addr = IM.lookup (fromIntegral addr) <$> use tableA
 
 -- | Find object. Return `ONone` in case of can't found it
 findObject :: AddressRef -> StWorld Object
@@ -129,7 +132,7 @@ findObject addr = do
 
 lookupInMemory :: AddressRef -> StWorld (Maybe (Object, [T.Text]))
 lookupInMemory (AddressRef word accessors) =
-  (fmap . fmap) (\var -> (var^.rawObj, accessors)) (getVar word)
+  (fmap . fmap) (\var -> (var^.rawObjA, accessors)) (getVar word)
 
 -- TODO: Revisar el tema ya que se pasa un AddressRef los dyns
 --       se deberian de ver si son innecesarios. En general, estudiar
@@ -140,9 +143,9 @@ dropVarWorld addrRef = do
   val <- getVar (addrRef^.ref)
   case val of
     Just var -> do
-      let var' = var & refCounter %~ (\ct -> (-) ct 1)
-      if var'^.refCounter == 0 then
-        table %= IM.delete (fromIntegral $ addrRef^.ref)
+      let var' = var & refCounterA %~ (\ct -> (-) ct 1)
+      if var'^.refCounterA == 0 then
+        tableA %= IM.delete (fromIntegral $ addrRef^.ref)
       else
         setVar (addrRef^.ref) var'
     Nothing -> lift $ throwError DropVariableAlreadyDropped
@@ -172,9 +175,9 @@ follow word = follow' word >>= findObject . simple
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b
 liftScope scopeM = do
-  lastScope <- use scope
-  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) lastScope
-  scope .= newScope
+  lastScope <- use scopeA
+  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) (def lastScope)
+  scopeA .= newScope^.currentScopeA
   case value of
     Right val -> return val
     Left err  -> throwError $ ScopeError err

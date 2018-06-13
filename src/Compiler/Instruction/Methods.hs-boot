@@ -7,8 +7,8 @@ import           Compiler.Types
 
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object
 
-(=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m Object
+-- (=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m Object
 
-getVal :: (MonadFree Instruction m) => AddressRef -> m Object
+-- getVal :: (MonadFree Instruction m) => AddressRef -> m Object
 
-dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
+-- dropVar :: (MonadFree Instruction m) => AddressRef -> m ()

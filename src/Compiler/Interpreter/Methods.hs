@@ -33,18 +33,18 @@ repl = do
   case minput of
     Nothing    -> return ()
     Just input -> do
-      mText <- use multiline
+      mText <- use multilineA
       case mText of
         Just text
           | T.null . T.strip $ T.pack input -> do
-            multiline .= Nothing
+            multilineA .= Nothing
             compileSource text "**Interpreter**"
           | otherwise ->
-            multiline .= Just (text `mappend` "\n" `mappend` T.pack input)
+            multilineA .= Just (text `mappend` "\n" `mappend` T.pack input)
         Nothing -> do
           tokenizer' <- tokenizer $ T.pack input
           case tokenizer' of
-            Partial _ -> multiline .= Just (T.pack input)
+            Partial _ -> multilineA .= Just (T.pack input)
             Complete _ ->
               compileSource (T.pack input) "**Interpreter**"
                 `catchError` handleError
@@ -54,14 +54,14 @@ repl = do
 -- default prompt with error flag
 getPrompt :: Interpreter String
 getPrompt = do
-  isMultiline <- isJust <$> use multiline
+  isMultiline <- isJust <$> use multilineA
   flip catchError
     (\e -> do
       handleError e
       return $
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
-      pt <- use (config.prompt.unPrompt)
+      pt <- use (configA.promptA.unPromptA)
       value <- liftWorld $ liftScope pt
       case value of
         OStr text ->
@@ -101,7 +101,7 @@ tokenizer input = case scanner False $ T.unpack input of
 compileSource :: T.Text -> String -> Interpreter ()
 compileSource rawFile nameFile = do
   ast <- catchEither id . return $ generateAST rawFile nameFile
-  verbosity <- use verboseLevel
+  verbosity <- use verboseLevelA
   when (verbosity > 2) $ do
     liftIO $ putStrLn "** AST **"
     liftIO $ putStrLn $ renderStyle style $ prettify ast verbosity
@@ -120,20 +120,19 @@ compileSourcePure rawFile nameFile = do
   ast <- generateAST rawFile nameFile
   case ast of
     Command _cmd _args -> Left $ Compiling "You can't use command"
-    Code statements    -> Right $
-      astToInstructions <$> computeStatements statements
+    Code statements    -> Right $ computeStatements statements >>= transform
 
 -- | Evaluate program with AST already scoped
 evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
 evaluateScopedProgram astScoped = do
-  verbosity <- use verboseLevel
-  let instrs = astToInstructions astScoped
+  verbosity <- use verboseLevelA
+  instrs <- liftWorld . liftScope $ transform astScoped
   when (verbosity >= 2) $ do
     liftIO $ putStrLn "** Instructions **"
     instrsPP <- liftWorld $ do
       _ <- pprint instrs
-      instrsPP <- use $ debugProgram._1
-      debugProgram .= ("", 0)
+      instrsPP <- use $ debugProgramA._1
+      debugProgramA .= ("", 0)
       return instrsPP
     liftIO $ LT.putStrLn instrsPP
   value <- liftWorld (runProgram instrs)

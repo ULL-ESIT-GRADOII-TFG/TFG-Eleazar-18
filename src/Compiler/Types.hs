@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE KindSignatures    #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -15,6 +16,7 @@ module Compiler.Types
   ) where
 
 import           Control.Monad.Except
+import           Control.Monad.Free.TH
 import           Control.Monad.State.Strict
 import           Control.Monad.Trans.Free
 import           Data.Default
@@ -23,15 +25,17 @@ import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import qualified Data.Text.Lazy             as LT
 import qualified Data.Vector                as V
-import           Lens.Micro.Platform
+import           Lens.Micro.Platform        hiding (assign)
 import           System.Console.Haskeline   (InputT)
 import           Text.PrettyPrint
+import           Text.Regex.PCRE.Light
 
 import           Compiler.Instruction.Types
 import           Compiler.Interpreter.Types
 import           Compiler.Parser.Types
 import           Compiler.Prettify
 import           Compiler.Scope.Types
+import           Compiler.Utils
 import           Compiler.World.Types
 
 
@@ -100,8 +104,10 @@ instance Default Var where
 
 data World = World
   { _table        :: IM.IntMap Var
-  , _scope        :: Scope
+  , _scope        :: ScopeInfo
+  -- ^ Root Scope.
   , _debugProgram :: (LT.Text, Int)
+  -- TODO: This isn't the best way to solve this problem
   }
   deriving Show
 
@@ -131,26 +137,20 @@ type StWorld = StateT World (ExceptT WorldError IO)
 
 type ScopeM = ExceptT ScopeError (StateT Scope IO)
 
+-- | Defines stack scope for program
 data Scope = Scope
-  { _nextId          :: Word
-  -- ^ Unique identifier. This is temporary. Needs to be change to something better
-  , _currentScope    :: ScopeInfo
-  -- ^ New variables declares in the current scope to be later added to stackScope
-  , _stackScope      :: [ScopeInfo]
+  { _currentScope :: ScopeInfo
+  -- ^ New variables declares in the current scope to be later added to
+  -- stackScope
+  , _stackScope   :: [ScopeInfo]
   -- ^ All above scopes
-  , _scopeAst        :: ScopeInfo
-  -- ^ Used to generate ScopeInfoAST
-  , _typeDefinitions :: IM.IntMap ClassDefinition
-  -- ^ Scheme for object class
   } deriving Show
 
 instance Default Scope where
   def = Scope
-    { _nextId       = 0
-    , _currentScope = ScopeInfo $ M.fromList [("__new__", AddressRef 0 [])]
+    { _currentScope = ScopeInfo mempty
+    -- $ M.fromList [("__new__", AddressRef 0 [])]  -- MOVE: To Prelude
     , _stackScope   = []
-    , _scopeAst     = def
-    , _typeDefinitions = mempty
     }
 
 newtype ScopeInfo = ScopeInfo
@@ -166,13 +166,6 @@ instance Prettify ScopeInfo where
     nest 2 (vcat (map (\(k,v) ->
       text (T.unpack k) <> text " -> " <> prettify v verbose) $ M.toList hash)) $$
     text "}"
-
-data ClassDefinition = ClassDefinition
-  { _nameClass       :: T.Text
-  , _attributesClass :: M.Map T.Text Object
-  -- ^ Methods of class to be used with objects instanced
-  }
-  deriving Show
 
 data ScopeInfoAST = ScopeInfoAST
   { _tokenInfo :: TokenInfo
@@ -197,16 +190,24 @@ data Object
   | OBool Bool
   | ODouble Double
   | ONum Int
-  | ORegex T.Text -- TODO: search precompiled type
+  | ORegex Regex
+  -- ^ Regex expression following pcre syntax
   | OShellCommand T.Text
+  -- ^ Shell command
   | OVector (V.Vector Object)
+  -- ^ Sequence of objects
   | OFunc (M.Map T.Text Object) [Word] Prog
+  -- ^ Lambda with possible scope/vars attached
   | OObject (Maybe Word) (M.Map T.Text Word)
   -- ^ Object instance from class Word
   | ONative ([Object] -> Prog)
   -- ^ Native object
   | ORef Word
   -- ^ Pointer reference
+  | OClassDef
+    { nameClass       :: T.Text
+    , attributesClass :: M.Map T.Text Object
+    }
   | ONone
 
 instance Show Object where
@@ -222,39 +223,45 @@ instance Show Object where
     ORef{}          -> "[Reference]"
     OObject{}       -> "[Object]"
     OVector{}       -> "[Vector]"
+    OClassDef{}     -> "[ClassDef]"
     ONone           -> "[None]"
 
 
 -------------------------------------------------------------------------------
 -- * Instruction's Types
+data Info = Info
+  { _retrieveName :: IM.IntMap T.Text
+  , _srcInfo      :: TokenInfo
+  } deriving Show
 
 type Prog = FreeT Instruction StWorld Object
 
 -- | Intermediate set of instructions.
 data Instruction next
-  = CallCommand !AddressRef ![Object] (Object -> next)
+  = CallCommand !Info !AddressRef ![Object] (Object -> next)
   -- ^ Make a call to and defined function
-  | Assign !AddressRef !Object (Object -> next)
+  | Assign !Info !AddressRef !Object (Object -> next)
   -- ^ Assign an object to local variable
-  | DropVar !AddressRef next
+  | DropVar !Info !AddressRef next
   -- ^ Remove a var from memory
-  | GetVal !AddressRef (Object -> next)
+  | GetVal !Info !AddressRef (Object -> next)
   -- ^ Retrieve a object from a memory reference
-  | Loop !Object (Object -> Prog) next
+  | Loop !Info !Object (Object -> Prog) next
   -- ^ Loop over a object
-  | Cond !Object
+  | Cond !Info !Object
       Prog
       Prog
       (Object -> next)
   -- ^ If sentence given a object
   deriving Functor
 
-makeLenses ''IState
-makeLenses ''Var
-makeLenses ''World
-makeLenses ''Config
-makeLenses ''Prompt
-makeLenses ''Scope
-makeLenses ''ScopeInfo
-makeLenses ''ScopeInfoAST
-makeLenses ''ClassDefinition
+
+makeSuffixLenses ''IState
+makeSuffixLenses ''Var
+makeSuffixLenses ''World
+makeSuffixLenses ''Config
+makeSuffixLenses ''Prompt
+makeSuffixLenses ''Scope
+makeSuffixLenses ''ScopeInfo
+makeSuffixLenses ''ScopeInfoAST
+makeFree ''Instruction

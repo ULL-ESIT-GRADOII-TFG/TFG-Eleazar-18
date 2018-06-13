@@ -14,11 +14,11 @@ import           Compiler.World.Methods
 -- | Allow execute actions from StWorld into Interpreter
 liftWorld :: StWorld a -> Interpreter a
 liftWorld stWorld = do
-  lastMemory <- use memory
+  lastMemory <- use memoryA
   values <- liftIO $ runExceptT (runStateT stWorld lastMemory)
   case values of
     Right (value, newMemory) -> do
-      memory .= newMemory
+      memoryA .= newMemory
       return value
     Left err -> throwError $ WrapWorld err
 
@@ -55,7 +55,7 @@ getVar idName = do
 showInterpreter :: Object -> Interpreter String
 showInterpreter obj = case obj of
   OStr str -> return $ "\"" ++ T.unpack str ++ "\""
-  ORegex str -> return $ "/" ++ T.unpack str ++ "/"
+  ORegex str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
   OShellCommand str -> return $ "$ " ++ T.unpack str
   ODouble val -> return $ show val
   OBool val -> return $ show val

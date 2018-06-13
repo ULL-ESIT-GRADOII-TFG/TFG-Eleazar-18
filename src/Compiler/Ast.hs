@@ -2,11 +2,13 @@
 module Compiler.Ast where
 
 import           Compiler.Parser.Types
+import qualified Data.Map              as M
 import qualified Data.Text             as T
 import           Lens.Micro.Platform
 import           Text.PrettyPrint
 
 import           Compiler.Prettify
+import           Compiler.Utils
 
 
 data Repl
@@ -42,8 +44,6 @@ data Expression a
   | If (Expression a) (Expression a) a
   | IfElse (Expression a) (Expression a) (Expression a) a
   | For T.Text (Expression a) (Expression a) a
-  | MkScope [Expression a]
-  -- ^ Explicit scope
   | Apply (Accessor a) [Expression a] a
   | Identifier (Accessor a) a
   | Factor (Atom a) a
@@ -56,6 +56,7 @@ data Accessor a
 
 data Atom a
   = ANum Int
+  | AClass T.Text [(T.Text, Expression a)]
   | ADecimal Double
   | ARegex T.Text
   | AShellCommand T.Text
@@ -120,8 +121,6 @@ instance Prettify a => Prettify (Expression a) where
       text "For " <> text (T.unpack name) <> prettify loopExpr verbose <>
       text " { " <> prettify a verbose $$
       nest 2 (prettify body verbose) $$ text "}"
-    MkScope exprs ->
-      text "MkScope { " $$ nest 2 (vcat (map (`prettify` verbose) exprs)) $$ text "}"
     Apply acc exprs a ->
       text "Apply " <> prettify acc verbose <> text " " <> prettify a verbose $$
       nest 2 (vcat (map (\(num, expr') ->
@@ -152,5 +151,5 @@ instance Prettify a => Prettify (Atom a) where
       <> text "}"
     ANone              -> text "None"
 
-makeLenses ''FunDecl
-makeLenses ''ClassDecl
+makeSuffixLenses ''FunDecl
+makeSuffixLenses ''ClassDecl

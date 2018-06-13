@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e3cd47a1712992eb0cfa4c72b9879233b0197abcca6827ca2d824de1ab7a7557
+-- hash: 5a2c1cdc4b4317dc0c9b5f2d1ae6d76be853b1a82d2cd1e7e64ac376fc9cdbe8
 
 name:           ScriptFlow
 version:        0.0.1
@@ -49,23 +49,24 @@ library
     , microlens-platform
     , mtl
     , parsec
+    , pcre-light
     , pretty
     , process
     , template-haskell
     , text
-    , transformers
-    , unordered-containers
     , vector
     , yaml
   build-tools:
       alex
   exposed-modules:
       Compiler.Ast
-      Compiler.Types
       Compiler.Config.Methods
       Compiler.Config.Types
       Compiler.Core.Methods
       Compiler.Core.Types
+      Compiler.Desugar.Types
+      Compiler.Error
+      Compiler.Identifier
       Compiler.Instruction.Methods
       Compiler.Instruction.Types
       Compiler.Interpreter.Command.Methods
@@ -77,15 +78,16 @@ library
       Compiler.Parser.Methods
       Compiler.Parser.Types
       Compiler.Prelude.Methods
-      Compiler.Prelude.Types
-      Compiler.Prelude.Utils
-      Compiler.Prelude.OStr
       Compiler.Prelude.OBool
       Compiler.Prelude.ODouble
       Compiler.Prelude.ONum
-      Compiler.Prelude.OVector
       Compiler.Prelude.ORegex
       Compiler.Prelude.OShellCommand
+      Compiler.Prelude.OStr
+      Compiler.Prelude.OVector
+      Compiler.Prelude.Th
+      Compiler.Prelude.Types
+      Compiler.Prelude.Utils
       Compiler.Prettify
       Compiler.Scope.Methods
       Compiler.Scope.Types
@@ -93,12 +95,11 @@ library
       Compiler.Token.Lexer
       Compiler.Token.Methods
       Compiler.Token.Types
+      Compiler.Types
+      Compiler.Utils
       Compiler.World.Methods
       Compiler.World.Types
   other-modules:
-      Compiler.Desugar.Types
-      Compiler.Error
-      Compiler.Prelude.Th
       Paths_ScriptFlow
   default-language: Haskell2010
 
