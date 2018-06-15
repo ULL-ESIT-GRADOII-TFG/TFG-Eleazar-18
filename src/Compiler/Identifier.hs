@@ -11,9 +11,8 @@ counterID :: IORef Word
 counterID = unsafePerformIO $ newIORef (0 :: Word)
 
 -- | Generates a new ID
-getNewID :: Word
-{-# NOINLINE getNewID #-}
-getNewID = unsafePerformIO $ do
+getNewID :: IO Word
+getNewID = do
   val <- readIORef counterID
   writeIORef counterID (val + 1)
   return val

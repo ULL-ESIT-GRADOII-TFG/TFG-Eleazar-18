@@ -5,7 +5,6 @@
 {-# LANGUAGE OverloadedStrings     #-}
 module Compiler.Instruction.Methods where
 
-import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Free
 import qualified Data.Map                 as M
@@ -23,6 +22,11 @@ import           Compiler.Types
 import           Compiler.World.Methods
 
 
+newtype ExprSeq a = ExprSeq [Expression a]
+
+instance Desugar ExprSeq ScopeInfoAST ScopeM (FreeT Instruction StWorld) Object where
+  transform (ExprSeq exprs) = foldl (>>) (return $ return ONone) (map transform exprs)
+
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
 instance Desugar Expression ScopeInfoAST ScopeM (FreeT Instruction StWorld) Object where
@@ -32,22 +36,33 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT Instruction StWorld) Obje
       -- TODO: Generate Text -> Object
       body <- transform prog
       addresses <- mapM (\acc -> do
-                            addr <- getAddressRef (Simple acc ()) info
-                            return $ addr^.ref
+                            addr <- getIdentifier (return acc)
+                            return $ addr^.refA
                         ) args
       return . return $ OFunc mempty addresses body
 
     VarExpr acc exprValue info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
       instr <- transform exprValue
-      addr <- getAddressRef acc info
-      return $ do
-        val <- instr
-        assign info' addr val
+      addr <- getIdentifier $ simplifiedAccessor acc
+      return $
+        instr >>= assign info' addr
 
     SeqExpr exprs info -> withScope (info^.scopeInfoA) $ do
+      _info' <- infoASTToInfo info
+      foldl (\scope expr' -> do
+          instrs <- scope
+          newinstrs <- transform expr'
+          return (instrs >> newinstrs)
+        ) (return $ return ONone) exprs
+
+    MkScope exprs info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
-      instrs <- foldM (\_ expr' -> transform expr') (return ONone) exprs
+      instrs <- foldl (\scope expr' -> do
+          instrs <- scope
+          newinstrs <- transform expr'
+          return (instrs >> newinstrs)
+        ) (return $ return ONone) exprs
       return $ do
         val <- instrs
         mapM_ (dropVar info') (M.elems $ info^.scopeInfoA.renameInfoA)
@@ -77,54 +92,55 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT Instruction StWorld) Obje
       instrsIter <- transform iterExpr
       instrsBody <- transform prog
       -- Drop current scope defined vars and simple iter
-      addr <- getAddressRef (Simple acc ()) info
+      addr <- getIdentifier (return acc)
       return $ do
-        iter <- instrsIter
-        loop info' iter (\val -> assign info' addr val >> instrsBody)
+        iter' <- instrsIter
+        loop info' iter' (\val -> assign info' addr val >> instrsBody)
         return ONone
 
     Apply acc argsExpr info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
       instrArgs <- mapM transform argsExpr
-      addr <- getAddressRef acc info
+      addr <- getIdentifier (simplifiedAccessor acc)
       return $ do
         args <- sequence instrArgs
         callCommand info' addr args
 
     Identifier acc info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
-      addr <- getAddressRef acc info
+      addr <- getIdentifier (simplifiedAccessor acc)
       return $ getVal info' addr
 
-    Factor atom info -> transform atom
+    Factor atom _info -> transform atom
 
 -- | Transform literal data from AST to an object
 instance Desugar Atom ScopeInfoAST ScopeM (FreeT Instruction StWorld) Object where
   -- transform :: Atom ScopeInfoAST -> ScopeM (FreeT Instruction StWorld) Object
   transform atom = case atom of
-    ANone             -> return $ return ONone
-    ANum num          -> return . return $ ONum num
-    AStr str          -> return . return $ OStr str
-    ADecimal double   -> return . return $ ODouble double
-    ARegex reg        -> return . return $ ORegex undefined
-    AShellCommand cmd -> return . return $ OShellCommand cmd
-    ABool bool        -> return . return $ OBool bool
-    AVector items     -> do
+    ANone _            -> return $ return ONone
+    ANum num _         -> return . return $ ONum num
+    AStr str _          -> return . return $ OStr str
+    ADecimal double _   -> return . return $ ODouble double
+    ARegex _reg _        -> return . return $ ORegex undefined
+    AShellCommand cmd _ -> return . return $ OShellCommand cmd
+    ABool bool _        -> return . return $ OBool bool
+    AVector items _     -> do
       instrs <- mapM transform items
       return $ do
         objs <- sequence instrs
         return . OVector $ V.fromList objs
-    ADic items       -> do
+    ADic items _      -> do
       values <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) items
       return $ do
         objs <- mapM snd values
         addrs <- lift $ mapM newObject objs
         return $ OObject Nothing . M.fromList $ zip (map fst values) addrs
-    AClass name methods -> do
+    AClass name methods _ -> do
       methods' <- mapM (transform . snd) methods
+      addr <- getIdentifier (return name)
       return $ do
         oFuncs <- sequence methods'
-        return $ OClassDef name (M.fromList $ zip (map fst methods) oFuncs)
+        return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) oFuncs)
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object
@@ -211,33 +227,7 @@ pprint = iterT $ \case
 -------------------------------------------------------------------------------
 -- * Utils
 -------------------------------------------------------------------------------
+-- TODO: Take address info
 infoASTToInfo :: ScopeInfoAST -> ScopeM Info
-infoASTToInfo = undefined
-
--- callCommand
---   :: (MonadFree Instruction m) => AddressRef -> [Object] -> m Object
--- callCommand info nameId objs = liftF (CallCommand nameId objs id)
-
--- (=:) :: (MonadFree Instruction m) => AddressRef -> Object -> m Object
--- nameId =: obj = liftF (Assign nameId obj id)
-
--- dropVar :: (MonadFree Instruction m) => AddressRef -> m ()
--- dropVar r = liftF (DropVar r ())
-
--- loop
---   :: (MonadFree Instruction m)
---   => Object
---   -> (Object -> FreeT Instruction StWorld Object)
---   -> m ()
--- loop obj prog = liftF (Loop obj prog ())
-
--- cond
---   :: (MonadFree Instruction m)
---   => Object
---   -> FreeT Instruction StWorld Object
---   -> FreeT Instruction StWorld Object
---   -> m Object
--- cond obj true false = liftF (Cond obj true false id)
-
--- getVal :: (MonadFree Instruction m) => AddressRef -> m Object
--- getVal obj = liftF (GetVal obj id)
+infoASTToInfo scopeInfoAST =
+  Info <$> return mempty <*> return (scopeInfoAST^.tokenInfoA)

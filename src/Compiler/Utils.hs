@@ -13,3 +13,7 @@ makeSuffixLenses = makeLensesWith (
          case nameBase n of
            '_':x:xs -> [TopName (mkName (toLower x:xs ++ "A"))]
            _        -> [])
+
+-- TODO: Improve it
+leftInnerJoin :: Eq b => [(a, b)] -> [(b, c)] -> [(a, b, c)]
+leftInnerJoin xs ys = [(a, b, c) | (a, b) <- xs, (b', c) <- ys, b == b']

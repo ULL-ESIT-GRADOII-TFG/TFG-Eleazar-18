@@ -28,7 +28,7 @@ withNewScope = withScope def
 -- | Add new variable name to scope and return its ID
 addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
 addNewIdentifier (name NL.:| names) = do
-  let newId = getNewID
+  newId <- liftIO getNewID
   let addr = AddressRef (fromIntegral newId) names
   currentScopeA.renameInfoA %= M.insert name addr
   return addr
@@ -38,7 +38,7 @@ getIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
 getIdentifier (name NL.:| names) = do
   renamer <- use $ currentScopeA.renameInfoA
   case M.lookup name renamer of
-    Just ref' -> return $ AddressRef (ref'^.ref) names
+    Just ref' -> return $ AddressRef (ref'^.refA) names
     Nothing  -> do
       stack <- use stackScopeA
       maybe (throwError $ NoIdFound name) return (findInStack stack)

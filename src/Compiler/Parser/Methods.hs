@@ -92,10 +92,13 @@ parseExp = choice $ map
 parseSeqExpr :: TokenParser (Expression TokenInfo)
 parseSeqExpr = mkTokenInfo $ SeqExpr <$> many1 parseExp
 
+parseMkScope :: TokenParser (Expression TokenInfo)
+parseMkScope = mkTokenInfo $ MkScope <$> many1 parseExp
+
 parseBody :: TokenParser (Expression TokenInfo)
 parseBody = try (mkTokenInfo $ do
   oBraceT >> cBraceT
-  return $ SeqExpr []) <|> between oBraceT cBraceT parseSeqExpr
+  return $ MkScope []) <|> between oBraceT cBraceT parseMkScope
 
 parseFunDecl :: TokenParser (FunDecl TokenInfo)
 parseFunDecl = mkTokenInfo $ do
@@ -157,7 +160,7 @@ parseUnaryOperators = mkTokenInfo $ do
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = mkTokenInfo $ do
   name   <- parseAccessor
-  params <- between oParenT cParenT (parseSeqExpr `sepBy` commaT)
+  params <- between oParenT cParenT (parseMkScope `sepBy` commaT)
   return $ Apply name params
 
 parseMethodChain :: TokenParser (Expression TokenInfo)
@@ -177,7 +180,7 @@ parseMethod expr = do
   params <- optionMaybe $ between
               oParenT
               cParenT
-              (parseSeqExpr `sepBy` commaT)
+              (parseMkScope `sepBy` commaT)
 
   -- Braces
   param <- optionMaybe $
@@ -185,10 +188,10 @@ parseMethod expr = do
 
   finalPos <- getPosition
   let tok = TokenInfo (toSrcPos initialPos) (toSrcPos finalPos)
-  return $ SeqExpr
+  return $ MkScope
     [ VarExpr (Simple "parser_aux_0" tok) expr tok
     , case (params, param) of
-        (Just params', Just param') -> SeqExpr
+        (Just params', Just param') -> MkScope
           [ VarExpr
               (Simple "parser_aux_2" tok)
               (Apply (Dot "parser_aux_0" acc tok) params' tok) tok
@@ -200,7 +203,7 @@ parseMethod expr = do
         (Just params', Nothing)     ->
           Apply (Dot "parser_aux_0" acc tok) params' tok
 
-        (Nothing, Just param')      -> SeqExpr
+        (Nothing, Just param')      -> MkScope
           [ VarExpr
               (Simple "parser_aux_2" tok)
               (Identifier (Dot "parser_aux_0" acc tok) tok) tok
@@ -266,18 +269,18 @@ parseIdentifier :: TokenParser (Expression TokenInfo)
 parseIdentifier = mkTokenInfo $ Identifier <$> parseAccessor
 
 parensExp :: TokenParser (Expression TokenInfo)
-parensExp = between oParenT cParenT parseSeqExpr
+parensExp = between oParenT cParenT parseExp
 
 parseFactor :: TokenParser (Expression TokenInfo)
 parseFactor = choice $ map
   try
-  [ mkTokenInfo $ Factor . AStr <$> litTextT
-  , mkTokenInfo $ Factor . ANum <$> numberT
-  , mkTokenInfo $ Factor . ADecimal <$> decimalT
-  , mkTokenInfo $ Factor . ARegex <$> regexT
-  , mkTokenInfo $ Factor . AShellCommand <$> shellCommandT
-  , mkTokenInfo $ Factor . ABool <$> boolT
-  , mkTokenInfo $ Factor ANone <$ noneT
+  [ mkTokenInfo $ (\v i -> Factor (AStr v i) i) <$> litTextT
+  , mkTokenInfo $ (\v i -> Factor (ANum v i) i)<$> numberT
+  , mkTokenInfo $ (\v i -> Factor (ADecimal v i) i)<$> decimalT
+  , mkTokenInfo $ (\v i -> Factor (ARegex v i) i)<$> regexT
+  , mkTokenInfo $ (\v i -> Factor (AShellCommand v i) i)<$> shellCommandT
+  , mkTokenInfo $ (\v i -> Factor (ABool v i) i)<$> boolT
+  , mkTokenInfo $ (\i -> Factor (ANone i) i) <$ noneT
   , parseVector
   , parseDic
   , parensExp
@@ -286,7 +289,7 @@ parseFactor = choice $ map
   ]
 
 parseVector :: TokenParser (Expression TokenInfo)
-parseVector = mkTokenInfo $ Factor . AVector <$>
+parseVector = mkTokenInfo $ (\v i -> Factor (AVector v i) i)<$>
      between oBracketT cBracketT (parseExp `sepBy` commaT)
 
 parseDic :: TokenParser (Expression TokenInfo)
@@ -298,4 +301,4 @@ parseDic = mkTokenInfo $ do
       body <- parseExp
       return (key, body)
   items <- between oBraceT cBraceT (item `sepBy` commaT)
-  return $ Factor (ADic items)
+  return $ \info -> Factor (ADic items info) info

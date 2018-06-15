@@ -1,5 +1,11 @@
+* ScriptFlow
 
-Prioridades:
+  TODO: What is it?
+
+** Documentation
+   See [[./docs/lang.org]]
+
+** Work in Progress:
 
   - No establecer las direcciones de los argumentos en las funciones al generar el scope. Aplazarlo al runtime.
   - El tema de lo errores se debe mejorar.
@@ -20,3 +26,6 @@ Prioridades:
 
   - Realizar las comunicaciones con el API de Github
     - Mediante el propio lenguaje o de forma interna
+
+**  License
+   The 3-Clause BSD License

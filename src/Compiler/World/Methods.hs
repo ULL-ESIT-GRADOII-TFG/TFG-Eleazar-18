@@ -16,7 +16,7 @@ import           Compiler.Types
 
 newObject :: Object -> StWorld Word
 newObject obj = do
-  let addr = getNewID
+  addr <- liftIO getNewID
   addObject (simple addr) obj
   return addr
 
@@ -67,7 +67,7 @@ addObjectToObject word acc obj = do
     case var of
       Just var' -> return var'
       Nothing   -> throwError NotExtensibleObject
-  let addr = getNewID
+  addr <- liftIO getNewID
 
   case var^.rawObjA of
     ONone -> do
@@ -140,14 +140,14 @@ lookupInMemory (AddressRef word accessors) =
 -- | Drops a variable when its reference counter reaches 0
 dropVarWorld :: AddressRef -> StWorld ()
 dropVarWorld addrRef = do
-  val <- getVar (addrRef^.ref)
+  val <- getVar (addrRef^.refA)
   case val of
     Just var -> do
       let var' = var & refCounterA %~ (\ct -> (-) ct 1)
       if var'^.refCounterA == 0 then
-        tableA %= IM.delete (fromIntegral $ addrRef^.ref)
+        tableA %= IM.delete (fromIntegral $ addrRef^.refA)
       else
-        setVar (addrRef^.ref) var'
+        setVar (addrRef^.refA) var'
     Nothing -> lift $ throwError DropVariableAlreadyDropped
 
 -- | Get a value object
@@ -176,7 +176,8 @@ follow word = follow' word >>= findObject . simple
 liftScope :: ScopeM b -> StWorld b
 liftScope scopeM = do
   lastScope <- use scopeA
-  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) (def lastScope)
+  let defScope = def { _currentScope = lastScope}
+  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) defScope
   scopeA .= newScope^.currentScopeA
   case value of
     Right val -> return val

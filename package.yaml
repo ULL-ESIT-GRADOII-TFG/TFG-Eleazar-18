@@ -9,7 +9,7 @@ copyright: 2018 Eleazar Díaz Delgado
 license: BSD3
 github: none
 extra-source-files:
-  - README.md
+  - README.org
   - defaultConfig.yaml
 
 library:

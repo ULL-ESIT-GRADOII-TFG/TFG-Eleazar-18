@@ -28,13 +28,13 @@ instance Default TokenInfo where
   def = TokenInfo def def
 
 instance Prettify SrcPos where
-  prettify (SrcPos col row offset) _ =
+  prettify (SrcPos col row _offset) _ =
     text "L" <>
     text (show row) <>
     text ":C" <>
-    text (show col) <>
-    text " >> " <>
-    text (show offset)
+    text (show col)
+    -- text " >> " <>
+    -- text (show offset)
 
 instance Prettify TokenInfo where
   prettify (TokenInfo st en) verbose =

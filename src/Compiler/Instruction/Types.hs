@@ -5,10 +5,10 @@ import           Control.Monad.State.Strict
 import           Data.List
 import qualified Data.Text                  as T
 import qualified Data.Text.Lazy             as LT
-import           Lens.Micro.Platform
 import           Text.PrettyPrint
 
 import           Compiler.Prettify
+import           Compiler.Utils
 
 
 data AddressRef = AddressRef
@@ -35,5 +35,5 @@ data PPrint = PPrint
 type StPrint = StateT PPrint IO
 
 
-makeLenses ''AddressRef
-makeLenses ''PPrint
+makeSuffixLenses ''AddressRef
+makeSuffixLenses ''PPrint

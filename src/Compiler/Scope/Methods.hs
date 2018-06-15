@@ -5,16 +5,10 @@
 module Compiler.Scope.Methods where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Strict
 import           Data.Default
-import qualified Data.IntMap                  as IM
-import           Data.List
-import qualified Data.Map                     as M
-import           Lens.Micro.Platform
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
-import           Compiler.Instruction.Methods
 import           Compiler.Scope.Utils
 import           Compiler.Types
 
@@ -34,33 +28,12 @@ instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
   -- | Class renaming scope
   transform (ClassDecl name methds info) = do
     -- Generate class definition into scope
-    address <- addNewIdentifier $ return name
+    _address <- addNewIdentifier $ return name
     methds' <- withNewScope $ mapM (transform . funcToMethod) methds
     info' <- getScopeInfoAST info
     return $ VarExpr
       (Simple name info')
-      (Factor (AClass name (zip (map _funName methds) methds')) info') info'
-    -- oFuncs <- forM methds' $ \func -> do
-    --   prog <- transform func
-    --   object <- liftIO $ runExceptT (evalStateT (runProgram prog) def)
-    --   case object of
-    --       Right fun@OFunc{} -> return fun
-    --       _                 -> throwError ErrorClass -- TODO: Improve
-
-
-    -- let classDef = OClassDef name (M.fromList $ zip (map (^.funNameA) methds) oFuncs)
-
-    -- tableA %= IM.insert (fromIntegral $ address^.ref) classDef
-
-    -- Creating a function to call __new__ special item. It allows create
-    -- instances of this class. It uses the class name to find its definition
-    -- body <- withNewScope $ do
-    --   let initMethod = find (\funDecl -> funDecl^.funNameA == "__init__") methds
-    --   let args = initMethod^._Just.funArgsA
-    --   let nameAST = Factor (ANum . fromIntegral $ address^.ref) info
-    --   let argsAST = nameAST : map ((`Identifier` info ) . (`Simple` info)) args
-    --   return $ FunExpr args (Apply (Simple "__new__" info) argsAST info) info
-
+      (Factor (AClass name (zip (map _funName methds) methds') info') info') info'
 
 
 funcToMethod :: FunDecl a -> FunDecl a
@@ -95,7 +68,7 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
 
     VarExpr name expr' info -> do
       let accSimple = simplifiedAccessor name
-      addr <- catchError (getIdentifier accSimple) $
+      _addr <- catchError (getIdentifier accSimple) $
            \_ -> addNewIdentifier accSimple
       info' <- getScopeInfoAST info
       withNewScope $ do
@@ -103,11 +76,15 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
         name' <- transform name
         return $ VarExpr name' expr'' info'
 
-    SeqExpr exprs info ->
-      withNewScope $ do
-        expr' <- mapM transform exprs
-        info' <- getScopeInfoAST info
-        return $ SeqExpr expr' info'
+    SeqExpr exprs info -> do
+      expr' <- mapM transform exprs
+      info' <- getScopeInfoAST info
+      return $ SeqExpr expr' info'
+
+    MkScope exprs info -> withNewScope $ do
+      expr' <- mapM transform exprs
+      info' <- getScopeInfoAST info
+      return $ MkScope expr' info'
 
     If condExpr trueExpr info -> do
       condExpr' <- withNewScope $ transform condExpr
@@ -129,7 +106,6 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
       info' <- getScopeInfoAST info
       return $ For name iterExpr' body' info'
 
-    -- TODO:
     Apply name args info -> do
       args' <- withNewScope $ mapM transform args
       let accSimple = simplifiedAccessor name
@@ -152,15 +128,20 @@ instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
 instance Desugar Atom TokenInfo ScopeM Atom ScopeInfoAST where
   -- transform :: Expression a -> ScopeM (Expression a)
   transform atom = case atom of
-    ANone -> return ANone
-    ANum val -> return $ ANum val
-    ADecimal val -> return $ ADecimal val
-    ARegex val -> return $ ARegex val
-    AShellCommand val -> return $ AShellCommand val
-    AStr str -> return $ AStr str
-    ABool bool -> return $ ABool bool
-    AVector vals -> AVector <$> mapM transform vals
-    ADic vals -> ADic <$> mapM (\(key, val) -> (key,) <$> transform val) vals
+    ANone i -> ANone <$> getScopeInfoAST i
+    ANum val i -> ANum val <$> getScopeInfoAST i
+    ADecimal val i -> ADecimal val <$> getScopeInfoAST i
+    ARegex val i -> ARegex val <$> getScopeInfoAST i
+    AShellCommand val i ->  AShellCommand val <$> getScopeInfoAST i
+    AStr str i -> AStr str <$> getScopeInfoAST i
+    ABool bool i-> ABool bool <$> getScopeInfoAST i
+    AVector vals i -> AVector <$> mapM transform vals <*> getScopeInfoAST i
+    AClass name vals i -> AClass name
+      <$> mapM (\(key, val) -> (key,) <$> transform val) vals
+      <*> getScopeInfoAST i
+    ADic vals i -> ADic
+      <$> mapM (\(key, val) -> (key,) <$> transform val) vals
+      <*> getScopeInfoAST i
 
 instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
   -- transform :: Expression a -> ScopeM (Expression a)

@@ -10,7 +10,6 @@ import           Compiler.Types
 import           Compiler.World.Methods
 
 
-
 -- | Allow execute actions from StWorld into Interpreter
 liftWorld :: StWorld a -> Interpreter a
 liftWorld stWorld = do
@@ -18,6 +17,7 @@ liftWorld stWorld = do
   values <- liftIO $ runExceptT (runStateT stWorld lastMemory)
   case values of
     Right (value, newMemory) -> do
+      -- traceM (show newMemory)
       memoryA .= newMemory
       return value
     Left err -> throwError $ WrapWorld err
@@ -55,14 +55,14 @@ getVar idName = do
 showInterpreter :: Object -> Interpreter String
 showInterpreter obj = case obj of
   OStr str -> return $ "\"" ++ T.unpack str ++ "\""
-  ORegex str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
+  ORegex _str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
   OShellCommand str -> return $ "$ " ++ T.unpack str
   ODouble val -> return $ show val
   OBool val -> return $ show val
   ONum val -> return $ show val
   OVector vec -> return $ show vec -- TODO: Show Innervalue
   ORef rfs -> do
-    obj <- liftWorld (follow rfs)
-    showInterpreter obj <&> ("*-> " ++)
+    obj' <- liftWorld (follow rfs)
+    showInterpreter obj' <&> ("*-> " ++)
   ONone -> return "None"
   object -> return $ show object -- TODO: __print__

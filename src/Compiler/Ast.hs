@@ -2,9 +2,7 @@
 module Compiler.Ast where
 
 import           Compiler.Parser.Types
-import qualified Data.Map              as M
 import qualified Data.Text             as T
-import           Lens.Micro.Platform
 import           Text.PrettyPrint
 
 import           Compiler.Prettify
@@ -39,14 +37,25 @@ data FunDecl a = FunDecl
 -- | Generic representation of expression
 data Expression a
   = FunExpr [T.Text] (Expression a) a
+  -- Create a lambda function
   | VarExpr (Accessor a) (Expression a) a
+  -- ^ Creates a new variable
   | SeqExpr [Expression a] a
+  -- ^ Group up expression without use a new scope
+  | MkScope [Expression a] a
+  -- ^ Creates a scope
   | If (Expression a) (Expression a) a
+  -- ^ Simple if
   | IfElse (Expression a) (Expression a) (Expression a) a
+  -- ^ if else
   | For T.Text (Expression a) (Expression a) a
+  -- ^ for
   | Apply (Accessor a) [Expression a] a
+  -- ^ Make a call to a function with parameters given
   | Identifier (Accessor a) a
+  -- ^ Allows retrieve a value from memory given an address "Accessor"
   | Factor (Atom a) a
+  -- ^ Raw Factors
   deriving Show
 
 data Accessor a
@@ -55,16 +64,16 @@ data Accessor a
   deriving Show
 
 data Atom a
-  = ANum Int
-  | AClass T.Text [(T.Text, Expression a)]
-  | ADecimal Double
-  | ARegex T.Text
-  | AShellCommand T.Text
-  | AStr T.Text
-  | ABool Bool
-  | AVector [Expression a]
-  | ADic [(T.Text, Expression a)]
-  | ANone
+  = ANum Int a
+  | AClass T.Text [(T.Text, Expression a)] a
+  | ADecimal Double a
+  | ARegex T.Text a
+  | AShellCommand T.Text a
+  | AStr T.Text a
+  | ABool Bool a
+  | AVector [Expression a] a
+  | ADic [(T.Text, Expression a)] a
+  | ANone a
   deriving Show
 
 instance Prettify Repl where
@@ -105,6 +114,10 @@ instance Prettify a => Prettify (Expression a) where
       prettify a verbose $$
       nest 2 (prettify expr' verbose) $$
       text "}"
+    MkScope exprs a ->
+      text "MkScope { " <> prettify a verbose $$
+      nest 2 (vcat (map (`prettify` verbose) exprs)) $$
+      text "}"
     SeqExpr exprs a ->
       text "SeqExpr { " <> prettify a verbose $$
       nest 2 (vcat (map (`prettify` verbose) exprs)) $$
@@ -124,7 +137,9 @@ instance Prettify a => Prettify (Expression a) where
     Apply acc exprs a ->
       text "Apply " <> prettify acc verbose <> text " " <> prettify a verbose $$
       nest 2 (vcat (map (\(num, expr') ->
-        text (show (num :: Int)) <> prettify expr' verbose) (zip [1..] exprs)))
+        text (show (num :: Int))
+          <> text " -> "
+          <> prettify expr' verbose) (zip [1..] exprs)))
     Identifier acc a ->
       text "Identifier " <> prettify acc verbose <> text " " <> prettify a verbose
     Factor atom a ->
@@ -138,18 +153,23 @@ instance Prettify a => Prettify (Accessor a) where
 
 instance Prettify a => Prettify (Atom a) where
   prettify atom verbose = case atom of
-    ANum num           -> text "Num " <> text (show num)
-    ADecimal num       -> text "Decimal " <> text (show num)
-    ARegex reg         -> text "Regex " <> text (T.unpack reg)
-    AShellCommand comm -> text "Command " <> text (T.unpack comm)
-    AStr str           -> text "Str " <> text (T.unpack str)
-    ABool bool         -> text "Bool " <> text (show bool)
-    AVector vec        -> text "Vector " <> hsep (map (`prettify` verbose) vec)
-    ADic dic           -> text "Dic {" <>
+    ANum num _           -> text "Num " <> text (show num)
+    ADecimal num _       -> text "Decimal " <> text (show num)
+    ARegex reg _         -> text "Regex " <> text (T.unpack reg)
+    AShellCommand comm _ -> text "Command " <> text (T.unpack comm)
+    AStr str _           -> text "Str " <> text (T.unpack str)
+    ABool bool _        -> text "Bool " <> text (show bool)
+    AVector vec _       -> text "Vector " <> hsep (map (`prettify` verbose) vec)
+    AClass nameClass dic _ ->
+      text "Class " <> text (T.unpack nameClass) <> text " {" <>
       nest 2 (vcat (map (\(name, expr) ->
         text (T.unpack name) <> text ": " <> prettify expr verbose) dic))
       <> text "}"
-    ANone              -> text "None"
+    ADic dic _          -> text "Dic {" <>
+      nest 2 (vcat (map (\(name, expr) ->
+        text (T.unpack name) <> text ": " <> prettify expr verbose) dic))
+      <> text "}"
+    ANone _             -> text "None"
 
 makeSuffixLenses ''FunDecl
 makeSuffixLenses ''ClassDecl

@@ -2,6 +2,7 @@
 module Compiler.Object.Methods where
 
 import           Control.Monad.Except
+import qualified Data.Map                     as M
 import qualified Data.Text                    as T
 
 import {-# SOURCE #-} Compiler.Instruction.Methods
@@ -30,13 +31,35 @@ callObjectDirect obj objs = case obj of
     else
       runProgram $ do
         let argsIDs = map simple ids
-        --- zipWithM_ (=:) argsIDs objs
+        zipWithM_(assign undefined) argsIDs objs
         val <- prog
-        -- mapM_ dropVar argsIDs
+        mapM_ (dropVar undefined) argsIDs
         return val
   ONative native   -> runProgram $ native objs
-  OClassDef _name methods -> undefined
+  OClassDef _name refCls methods -> do
+      self <- newObject $ OObject (Just refCls) mempty
+      case M.lookup "__init__" methods of
+        Just method -> do
+          _ <- callObjectDirect method (ORef self:objs)
+          return (ORef self)
+        Nothing -> if null objs then
+                     return (ORef self)
+                   else
+                     lift $ throwError NumArgsMissmatch
   _t               -> throwError NotCallable
+
+-- instanceObject :: [Object] -> FreeT Instruction StWorld Object
+-- instanceObject objs = case objs of
+--   (ONum idRef : args) -> do
+--     defs <- use tableA
+--     let classDef = IM.lookup idRef defs >>= \obj ->
+--           case obj^.rawObjA of
+--             OClassDef _ d -> return d
+--             _             -> Nothing
+--     case classDef of
+--       Just clsDef -> do
+--       Nothing -> lift $ throwError NotFoundObject
+--   _ -> lift $ throwError $ WorldError "instanceObject: Wrong parameters"
 
 -- | Iterate over a object if it is iterable
 mapObj :: Object -> (Object -> StWorld Object) -> StWorld Object
@@ -54,5 +77,5 @@ mapObj obj func = case obj of
 -- | Check truthfulness of an object
 checkBool :: Object -> StWorld Bool
 checkBool (OBool bool) = return bool
-checkBool _obj         = error "Implement"  -- TODO: __bool__
+-- checkBool _obj         = error "Implement"  -- TODO: __bool__
 checkBool _            = return False

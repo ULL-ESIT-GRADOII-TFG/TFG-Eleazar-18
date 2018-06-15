@@ -2,7 +2,7 @@
 module Compiler.Object.Types where
 
 import           Control.Monad.Except
-import qualified Data.Map             as M
+-- import qualified Data.Map             as M
 import qualified Data.Text            as T
 import qualified Data.Vector          as V
 

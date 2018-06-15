@@ -113,11 +113,18 @@ data World = World
 
 instance Prettify World where
   prettify (World tb scope _) verbose =
-    text "World {" $$
-    nest 2 (vcat (map (\(k, v) ->
-      text "#" <> text (show k) <> text " " <> prettify v verbose) $ IM.toList tb)) $$
-    -- if verbose >= 3 then undefined else (empty <>)
-    text "}"
+    let aux = leftInnerJoin ((M.toList (_renameInfo scope)) & each._2 %~ (fromIntegral . _ref)) (IM.toList tb)
+    in
+      text "World {" $$
+      -- Do a cross joint
+      nest 2 (vcat (map (\(name, address, value) ->
+        text (T.unpack name)
+        <> text " -> "
+        <> text "#"
+        <> text (show address)
+        <> text " "
+        <> prettify value verbose) aux)) $$
+      text "}"
 
 
 instance Default World where
@@ -149,7 +156,6 @@ data Scope = Scope
 instance Default Scope where
   def = Scope
     { _currentScope = ScopeInfo mempty
-    -- $ M.fromList [("__new__", AddressRef 0 [])]  -- MOVE: To Prelude
     , _stackScope   = []
     }
 
@@ -206,6 +212,7 @@ data Object
   -- ^ Pointer reference
   | OClassDef
     { nameClass       :: T.Text
+    , refClass        :: Word
     , attributesClass :: M.Map T.Text Object
     }
   | ONone

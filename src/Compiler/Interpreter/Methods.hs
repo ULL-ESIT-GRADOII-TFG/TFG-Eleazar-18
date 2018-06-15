@@ -19,7 +19,6 @@ import           Compiler.Object.Methods
 import           Compiler.Parser.Methods
 import           Compiler.Prettify
 import           Compiler.Scope.Methods               ()
-import           Compiler.Scope.Utils
 import           Compiler.Token.Lexer                 (Tokenizer (..), scanner)
 import           Compiler.Types
 import           Compiler.World.Methods
@@ -112,15 +111,15 @@ compileSource rawFile nameFile = do
         computeStatements statements
       when (verbosity >= 2) $ do
         liftIO $ putStrLn "** SCOPED AST **"
-        liftIO $ putStrLn $ renderStyle style $ prettify astScoped verbosity
-      evaluateScopedProgram astScoped
+        mapM_ (liftIO . putStrLn . renderStyle style . flip prettify verbosity) astScoped
+      mapM_ evaluateScopedProgram astScoped
 
 compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)
 compileSourcePure rawFile nameFile = do
   ast <- generateAST rawFile nameFile
   case ast of
     Command _cmd _args -> Left $ Compiling "You can't use command"
-    Code statements    -> Right $ computeStatements statements >>= transform
+    Code statements    -> Right $ computeStatements statements >>= transform . ExprSeq
 
 -- | Evaluate program with AST already scoped
 evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter ()
@@ -140,8 +139,8 @@ evaluateScopedProgram astScoped = do
   liftIO $ putStrLn showable
 
 -- | Computar las class y los import, unir todos los Expression con seq
-computeStatements :: [Statement TokenInfo] -> ScopeM (Expression ScopeInfoAST)
-computeStatements = flip foldM (SeqExpr [] def) $
-  \(SeqExpr exprs t) st -> do
+computeStatements :: [Statement TokenInfo] -> ScopeM [Expression ScopeInfoAST]
+computeStatements = flip foldM [] $
+  \exprs st -> do
     expr <- transform st
-    return $ SeqExpr (expr:exprs) t
+    return $ expr:exprs
