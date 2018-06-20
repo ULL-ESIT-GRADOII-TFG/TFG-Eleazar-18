@@ -1,5 +1,6 @@
 {
 {-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Compiler.Token.Lexer where
 
 import qualified Data.Vector as V

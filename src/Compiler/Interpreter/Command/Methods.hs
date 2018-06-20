@@ -56,8 +56,8 @@ showInstructions (name:_) = do
     OFunc _ _ prog -> do
       instrs <- liftWorld $ do
         _ <- pprint prog
-        instrs <- use $ debugProgramA._1
-        debugProgramA .= ("", 0)
+        instrs <- use $ innerStateA.debugProgramA._1
+        innerStateA.debugProgramA .= ("", 0)
         return instrs
       liftIO $ LT.putStrLn instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

@@ -7,18 +7,24 @@ import qualified Data.Text            as T
 import           Lens.Micro.Platform
 
 import           Compiler.Ast
+import           Compiler.Error
 import           Compiler.Identifier
 import           Compiler.Types
 
+flatScope :: Scope -> ScopeInfo
+flatScope scope = ScopeInfo $
+  (scope^.currentScopeA.renameInfoA) `mappend`
+  (mconcat (map _renameInfo (_stackScope scope)))
+
 withScope :: ScopeInfo -> ScopeM a -> ScopeM a
 withScope scope body = do
-  currentScope <- use currentScopeA
-  stackScopeA %= (currentScope:)
-  currentScopeA .= scope
+  currentScope <- use $ innerStateA.currentScopeA
+  innerStateA.stackScopeA %= (currentScope:)
+  innerStateA.currentScopeA .= scope
   value <- body
-  (curScope:rest) <- use stackScopeA
-  currentScopeA .= curScope
-  stackScopeA   .= rest
+  (curScope:rest) <- use $ innerStateA.stackScopeA
+  innerStateA.currentScopeA .= curScope
+  innerStateA.stackScopeA   .= rest
   return value
 
 -- | Create a temporal scope with a info
@@ -30,18 +36,18 @@ addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
 addNewIdentifier (name NL.:| names) = do
   newId <- liftIO getNewID
   let addr = AddressRef (fromIntegral newId) names
-  currentScopeA.renameInfoA %= M.insert name addr
+  innerStateA.currentScopeA.renameInfoA %= M.insert name addr
   return addr
 
 -- | Get a specific ID from variable name
 getIdentifier :: NL.NonEmpty T.Text -> ScopeM AddressRef
 getIdentifier (name NL.:| names) = do
-  renamer <- use $ currentScopeA.renameInfoA
+  renamer <- use $ innerStateA.currentScopeA.renameInfoA
   case M.lookup name renamer of
     Just ref' -> return $ AddressRef (ref'^.refA) names
     Nothing  -> do
-      stack <- use stackScopeA
-      maybe (throwError $ NoIdFound name) return (findInStack stack)
+      stack <- use $ innerStateA.stackScopeA
+      maybe (throw $ NoIdFound name) return (findInStack stack)
 
  where
   findInStack :: [ScopeInfo] -> Maybe AddressRef
@@ -52,13 +58,13 @@ getIdentifier (name NL.:| names) = do
 
 -- | Generate ScopeInfoAST using the current scope info
 getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
-getScopeInfoAST info = ScopeInfoAST info <$> use currentScopeA
+getScopeInfoAST info = ScopeInfoAST info <$> use (innerStateA.currentScopeA)
 
 getAddressRef :: Show a => Accessor a -> ScopeInfoAST -> ScopeM AddressRef
 getAddressRef acc scopeInfoAST =
   case M.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
     Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)
-    Nothing                  -> throwError NoSavedAddressRef
+    Nothing                  -> throw NoSavedAddressRef
 
 -- addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
 -- addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr

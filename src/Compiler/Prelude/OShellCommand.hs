@@ -7,6 +7,7 @@ import qualified Data.Text                as T
 import qualified Data.Text.IO             as T
 import           System.Process
 
+import           Compiler.Error
 import           Compiler.Prelude.Types
 import           Compiler.Types
 
@@ -24,4 +25,4 @@ execProcess (OShellCommand text) = do
     (_, hout, _, _h) <- createProcess ((shell $ T.unpack text) { std_out = CreatePipe })
     maybe (return "") T.hGetContents hout
   return $ OStr value
-execProcess _ = lift $ throwError $ WorldError "execProcess: Not called with OShellCommnad Object"
+execProcess _ = throw $ WorldError "execProcess: Not called with OShellCommnad Object"

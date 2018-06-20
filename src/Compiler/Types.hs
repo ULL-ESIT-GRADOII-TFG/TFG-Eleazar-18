@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE KindSignatures    #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -30,6 +31,7 @@ import           System.Console.Haskeline   (InputT)
 import           Text.PrettyPrint
 import           Text.Regex.PCRE.Light
 
+import           Compiler.Error
 import           Compiler.Instruction.Types
 import           Compiler.Interpreter.Types
 import           Compiler.Parser.Types
@@ -88,6 +90,10 @@ instance Default IState where
 -------------------------------------------------------------------------------
 -- * World's Types
 
+-- | Note: `ExceptT` wraps monad state, in case of fail discard memory. That it
+-- is the predicate to follow.
+type StWorld = StateT (TkSt World) (ExceptT (ErrorInfo WorldError) IO)
+
 -- | Used to storage vars into memory, atleast its reference structure
 data Var = Var
   { _refCounter :: !Word
@@ -102,18 +108,22 @@ instance Prettify Var where
 instance Default Var where
   def = Var 1 ONone
 
+-- | Keeps all information of running program (memory, debugging info ...)
 data World = World
   { _table        :: IM.IntMap Var
-  , _scope        :: ScopeInfo
+  -- ^ Generic table to storage all vars/objects
+  , _scope        :: Scope
   -- ^ Root Scope.
+  , _co           :: [Word]
+  -- ^ Object Scope
   , _debugProgram :: (LT.Text, Int)
   -- TODO: This isn't the best way to solve this problem
   }
   deriving Show
 
 instance Prettify World where
-  prettify (World tb scope _) verbose =
-    let aux = leftInnerJoin ((M.toList (_renameInfo scope)) & each._2 %~ (fromIntegral . _ref)) (IM.toList tb)
+  prettify (World tb scope _ _) verbose =
+    let aux = leftInnerJoin ((M.toList (_renameInfo $ _currentScope scope)) & each._2 %~ (fromIntegral . _ref)) (IM.toList tb)
     in
       text "World {" $$
       -- Do a cross joint
@@ -126,23 +136,19 @@ instance Prettify World where
         <> prettify value verbose) aux)) $$
       text "}"
 
-
 instance Default World where
   def = World
     { _table = mempty
     , _scope = def
+    , _co = []
     , _debugProgram = ("", 0)
     }
-
--- | Note: `ExceptT` wraps monad state, in case of fail discard memory. That it
--- is the predicate to follow.
-type StWorld = StateT World (ExceptT WorldError IO)
 
 
 -------------------------------------------------------------------------------
 -- * Scope
 
-type ScopeM = ExceptT ScopeError (StateT Scope IO)
+type ScopeM = ExceptT (ErrorInfo ScopeError) (TkState Scope IO)
 
 -- | Defines stack scope for program
 data Scope = Scope
@@ -158,6 +164,7 @@ instance Default Scope where
     { _currentScope = ScopeInfo mempty
     , _stackScope   = []
     }
+
 
 newtype ScopeInfo = ScopeInfo
   { _renameInfo :: M.Map T.Text AddressRef
@@ -263,6 +270,23 @@ data Instruction next
   deriving Functor
 
 
+-------------------------------------------------------------------------------
+-- * Custom State type to kkep track of TokenInfo
+type TkState st m = StateT (TkSt st) m
+
+-- | Intermediate data type to keeps tracks of current TokenInfo
+data TkSt a = TkSt
+  { _innerState       :: a
+  , _currentTokenInfo :: TokenInfo
+  -- ^ Used to generate precise errors locations
+  } deriving Show
+
+instance Default a => Default (TkSt a) where
+  def = TkSt def def
+
+instance Monad m => GetInfo (StateT (TkSt st) m) where
+  getInfo = _currentTokenInfo <$> get
+
 makeSuffixLenses ''IState
 makeSuffixLenses ''Var
 makeSuffixLenses ''World
@@ -271,4 +295,5 @@ makeSuffixLenses ''Prompt
 makeSuffixLenses ''Scope
 makeSuffixLenses ''ScopeInfo
 makeSuffixLenses ''ScopeInfoAST
+makeSuffixLenses ''TkSt
 makeFree ''Instruction

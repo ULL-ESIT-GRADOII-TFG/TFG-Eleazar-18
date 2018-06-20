@@ -5,6 +5,7 @@ import           Control.Monad.Except
 import qualified Data.Map                     as M
 import qualified Data.Text                    as T
 
+import           Compiler.Error
 import {-# SOURCE #-} Compiler.Instruction.Methods
 import           Compiler.Types
 import           Compiler.World.Methods
@@ -20,20 +21,21 @@ callObject address args = do
       let args' = if null accessors then args else obj:args
       case mObj of
         Just obj' -> callObjectDirect obj' args'
-        Nothing   -> throwError NotFoundObject
-    Nothing -> throwError NotFoundObject
+        Nothing   -> throw NotFoundObject
+    Nothing -> throw NotFoundObject
 
 callObjectDirect :: Object -> [Object] -> StWorld Object
 callObjectDirect obj objs = case obj of
   OFunc _ ids prog ->
     if length ids /= length objs then
-      throwError NumArgsMissmatch
+      throw NumArgsMissmatch
     else
       runProgram $ do
         let argsIDs = map simple ids
-        zipWithM_(assign undefined) argsIDs objs
+        tokn <- lift . use $ currentTokenInfoA
+        zipWithM_ (assign (Info mempty tokn)) argsIDs objs
         val <- prog
-        mapM_ (dropVar undefined) argsIDs
+        mapM_ (dropVar (Info mempty tokn)) argsIDs
         return val
   ONative native   -> runProgram $ native objs
   OClassDef _name refCls methods -> do
@@ -45,8 +47,8 @@ callObjectDirect obj objs = case obj of
         Nothing -> if null objs then
                      return (ORef self)
                    else
-                     lift $ throwError NumArgsMissmatch
-  _t               -> throwError NotCallable
+                     throw NumArgsMissmatch
+  _t               -> throw NotCallable
 
 -- instanceObject :: [Object] -> FreeT Instruction StWorld Object
 -- instanceObject objs = case objs of
@@ -72,7 +74,7 @@ mapObj obj func = case obj of
     OVector vec -> mapM_ func vec >> return ONone
     ORef word   -> follow word >>= flip mapObj func
     OObject{}   -> error "Implement" -- TODO: __iter__ or __map__
-    _           -> throwError NotIterable
+    _           -> throw NotIterable
 
 -- | Check truthfulness of an object
 checkBool :: Object -> StWorld Bool

@@ -130,8 +130,8 @@ evaluateScopedProgram astScoped = do
     liftIO $ putStrLn "** Instructions **"
     instrsPP <- liftWorld $ do
       _ <- pprint instrs
-      instrsPP <- use $ debugProgramA._1
-      debugProgramA .= ("", 0)
+      instrsPP <- use $ innerStateA.debugProgramA._1
+      innerStateA.debugProgramA .= ("", 0)
       return instrsPP
     liftIO $ LT.putStrLn instrsPP
   value <- liftWorld (runProgram instrs)

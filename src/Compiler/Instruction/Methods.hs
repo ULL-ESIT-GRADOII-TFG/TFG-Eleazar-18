@@ -176,14 +176,14 @@ runProgram = iterT $ \case
 
 linePP :: LT.Text -> StWorld ()
 linePP txt = do
-  level <- use $ debugProgramA._2
-  debugProgramA._1 %= \t -> t `mappend` LT.replicate (fromIntegral level) "  " `mappend` txt `mappend` "\n"
+  level <- use $ innerStateA.debugProgramA._2
+  innerStateA.debugProgramA._1 %= \t -> t `mappend` LT.replicate (fromIntegral level) "  " `mappend` txt `mappend` "\n"
 
 withLevel :: StWorld a -> StWorld ()
 withLevel action = do
-  (debugProgramA._2) += 1
+  (innerStateA.debugProgramA._2) += 1
   _ <- action
-  (debugProgramA._2) -= 1
+  (innerStateA.debugProgramA._2) -= 1
 
 pAddr :: AddressRef -> String
 pAddr (AddressRef addr vals) =
@@ -191,6 +191,7 @@ pAddr (AddressRef addr vals) =
   in "#" ++ show addr ++ path
 
 -- TODO: Make pretty printer
+-- TODO: Remove formatter and use prettify
 pprint :: FreeT Instruction StWorld Object -> StWorld Object
 pprint = iterT $ \case
   CallCommand _ idFun args next -> do
@@ -217,7 +218,6 @@ pprint = iterT $ \case
       withLevel $ pprint trueNext
       linePP "False Case:"
       withLevel $ pprint falseNext
-
     next ONone
 
   GetVal _ idObj next -> do

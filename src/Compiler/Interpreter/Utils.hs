@@ -14,11 +14,10 @@ import           Compiler.World.Methods
 liftWorld :: StWorld a -> Interpreter a
 liftWorld stWorld = do
   lastMemory <- use memoryA
-  values <- liftIO $ runExceptT (runStateT stWorld lastMemory)
+  values <- liftIO $ runExceptT (runStateT stWorld (TkSt lastMemory def))
   case values of
     Right (value, newMemory) -> do
-      -- traceM (show newMemory)
-      memoryA .= newMemory
+      memoryA .= newMemory^.innerStateA
       return value
     Left err -> throwError $ WrapWorld err
 

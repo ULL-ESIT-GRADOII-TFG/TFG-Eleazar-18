@@ -9,8 +9,10 @@ import           Data.Maybe
 import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 
+import           Compiler.Error
 import           Compiler.Identifier
 import {-# SOURCE #-} Compiler.Prelude.Methods
+import           Compiler.Scope.Utils
 import           Compiler.Types
 
 
@@ -54,7 +56,7 @@ buildFollowingPath addr path =
 on' :: Object -> T.Text -> StWorld (Maybe Word)
 on' obj acc = case obj of
   OObject _ dicObj -> return $ M.lookup acc dicObj
-                      -- ^ Local search
+                      -- Local search
   ORef addr        -> follow addr >>= (`on'` acc)
   _                -> return Nothing
 
@@ -66,7 +68,7 @@ addObjectToObject word acc obj = do
     var <- getVar lastAddr
     case var of
       Just var' -> return var'
-      Nothing   -> throwError NotExtensibleObject
+      Nothing   -> throw NotExtensibleObject
   addr <- liftIO getNewID
 
   case var^.rawObjA of
@@ -76,7 +78,7 @@ addObjectToObject word acc obj = do
     OObject parent attrs -> do
       setVar word (var & rawObjA.~ OObject parent (M.insert acc addr attrs))
       setVar addr (Var 1 obj)
-    _ -> throwError NotExtensibleObject
+    _ -> throw NotExtensibleObject
   return addr
 
 -- | Access through an object
@@ -85,18 +87,18 @@ on obj acc = case obj of
   OObject mClassId dicObj ->
     attemps
         [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
-        -- ^ Local search
+        -- Local search
         , do
-          memory <- use tableA
+          memory <- use (innerStateA.tableA)
           return $ mClassId
             >>= (`IM.lookup` memory) . fromIntegral
             >>= (\obj' -> case obj'^.rawObjA of
                     OClassDef{} -> return $ attributesClass (obj'^.rawObjA)
                     _           -> Nothing)
             >>= M.lookup acc
-        -- ^ Class search
+        -- Class search
         , return $ ONative <$> getMethods obj acc
-        -- ^ Internal search
+        -- Internal search
         ]
   ORef addr -> follow addr >>= (`on` acc)
   _         -> return $ ONative <$> getMethods obj acc
@@ -119,10 +121,10 @@ through obj = foldM (\obj' acc ->
   ) (Just obj)
 
 setVar :: Word -> Var -> StWorld ()
-setVar addr var = tableA %= IM.insert (fromIntegral addr) var
+setVar addr var = innerStateA.tableA %= IM.insert (fromIntegral addr) var
 
 getVar :: Word -> StWorld (Maybe Var)
-getVar addr = IM.lookup (fromIntegral addr) <$> use tableA
+getVar addr = IM.lookup (fromIntegral addr) <$> use (innerStateA.tableA)
 
 -- | Find object. Return `ONone` in case of can't found it
 findObject :: AddressRef -> StWorld Object
@@ -145,10 +147,10 @@ dropVarWorld addrRef = do
     Just var -> do
       let var' = var & refCounterA %~ (\ct -> (-) ct 1)
       if var'^.refCounterA == 0 then
-        tableA %= IM.delete (fromIntegral $ addrRef^.refA)
+        innerStateA.tableA %= IM.delete (fromIntegral $ addrRef^.refA)
       else
         setVar (addrRef^.refA) var'
-    Nothing -> lift $ throwError DropVariableAlreadyDropped
+    Nothing -> throw DropVariableAlreadyDropped
 
 -- | Get a value object
 getObject :: Object -> StWorld Object
@@ -162,7 +164,7 @@ follow' w = follow'' w 50
   where
     follow'' :: Word -> Int -> StWorld Word
     follow'' word times
-      | times <= 0 = lift $ throwError ExcededRecursiveLimit
+      | times <= 0 = throw ExcededRecursiveLimit
       | otherwise = do
         obj <- findObject (simple word)
         case obj of
@@ -175,10 +177,14 @@ follow word = follow' word >>= findObject . simple
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b
 liftScope scopeM = do
-  lastScope <- use scopeA
-  let defScope = def { _currentScope = lastScope}
-  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) defScope
-  scopeA .= newScope^.currentScopeA
+  innerState <- get
+  scope <- use $ innerStateA.scopeA
+  let flattedScope = flatScope scope
+  let tempScope = innerStateA .~ (def { _stackScope = [flattedScope] }) $ innerState
+  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) tempScope
+  let tempBase = newScope^.innerStateA.currentScopeA
+  let newBaseScope = flatScope (Scope tempBase [scope^.currentScopeA])
+  innerStateA.scopeA.currentScopeA .= newBaseScope
   case value of
     Right val -> return val
-    Left err  -> throwError $ ScopeError err
+    Left err  -> throw $ ScopeError err

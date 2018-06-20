@@ -7,6 +7,7 @@ import           Control.Monad.Trans.Free
 import qualified Data.Map                       as M
 import qualified Data.Text                      as T
 
+import           Compiler.Error
 import           Compiler.Interpreter.Utils
 import qualified Compiler.Prelude.OBool         as OBool
 import qualified Compiler.Prelude.ODouble       as ODouble
@@ -55,10 +56,10 @@ internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
   , ONative $ \case
-    []           -> throwError NumArgsMissmatch
+    []           -> throw NumArgsMissmatch
     objs@(obj:_) -> case getMethods obj name of
       Just func -> func objs
-      Nothing   -> throwError NotFoundObject
+      Nothing   -> throw NotFoundObject
   )
 
 -- TODO Reorganize to add internal docs

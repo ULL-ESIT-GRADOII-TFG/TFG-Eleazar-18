@@ -4,6 +4,7 @@ module Compiler.Prelude.Types where
 import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 
+import           Compiler.Error
 import           Compiler.Object.Types
 import           Compiler.Types
 
@@ -17,16 +18,16 @@ instance Normalize (FreeT Instruction StWorld Object)  where
   normalize f ls =
     case ls of
       [] -> f
-      _  -> throwError NumArgsMissmatch
+      _  -> throw NumArgsMissmatch
 
 instance Normalize Object where
   normalize f ls =
     case ls of
       [] -> return f
-      _  -> throwError NumArgsMissmatch
+      _  -> throw NumArgsMissmatch
 
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
-  normalize _   []     = throwError NumArgsMissmatch
+  normalize _   []     = throw NumArgsMissmatch
   normalize fun (a:xs) = do
     obj <- lift $ fromObject a
     normalize (fun obj) xs
