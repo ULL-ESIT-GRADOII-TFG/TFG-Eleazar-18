@@ -19,6 +19,7 @@ import qualified Compiler.Prelude.OVector       as OVector
 import           Compiler.Prelude.Types
 import           Compiler.Prelude.Utils
 import           Compiler.Types
+import           Compiler.World.Methods
 
 
 -- | Dictionary of operators precedence order
@@ -59,7 +60,7 @@ internalMethod name =
     []           -> throw NumArgsMissmatch
     objs@(obj:_) -> case getMethods obj name of
       Just func -> func objs
-      Nothing   -> throw NotFoundObject
+      Nothing   -> lift $ liftScope . throw $ NotDefinedObject name
   )
 
 -- TODO Reorganize to add internal docs

@@ -12,9 +12,9 @@ import           Compiler.Identifier
 import           Compiler.Types
 
 flatScope :: Scope -> ScopeInfo
-flatScope scope = ScopeInfo $
+flatScope scope = ScopeInfo (
   (scope^.currentScopeA.renameInfoA) `mappend`
-  (mconcat (map _renameInfo (_stackScope scope)))
+  mconcat (map _renameInfo (_stackScope scope)))
 
 withScope :: ScopeInfo -> ScopeM a -> ScopeM a
 withScope scope body = do
@@ -45,9 +45,9 @@ getIdentifier (name NL.:| names) = do
   renamer <- use $ innerStateA.currentScopeA.renameInfoA
   case M.lookup name renamer of
     Just ref' -> return $ AddressRef (ref'^.refA) names
-    Nothing  -> do
+    Nothing   -> do
       stack <- use $ innerStateA.stackScopeA
-      maybe (throw $ NoIdFound name) return (findInStack stack)
+      maybe (throw $ NotDefinedObject name) return (findInStack stack)
 
  where
   findInStack :: [ScopeInfo] -> Maybe AddressRef
@@ -65,12 +65,6 @@ getAddressRef acc scopeInfoAST =
   case M.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
     Just (AddressRef addr _) -> return $ AddressRef addr (tailName acc)
     Nothing                  -> throw NoSavedAddressRef
-
--- addIdentifier :: Accessor a -> AddressRef -> ScopeInfoAST -> ScopeInfoAST
--- addIdentifier acc addr = scopeInfo.renameInfo %~ M.insert (mainName acc) addr
-
--- newObject :: ScopeInfoAST -> ScopeInfoAST
--- newObject = scopeInfo.renameInfo %~ M.insert "__new__" (AddressRef 0 [])
 
 -- | Simplies accesor to non empty list
 simplifiedAccessor

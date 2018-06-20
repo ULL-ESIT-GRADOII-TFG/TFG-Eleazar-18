@@ -12,6 +12,7 @@ import           Text.PrettyPrint                     (renderStyle, style)
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
+import           Compiler.Error
 import           Compiler.Instruction.Methods
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
@@ -46,7 +47,7 @@ repl = do
             Partial _ -> multilineA .= Just (T.pack input)
             Complete _ ->
               compileSource (T.pack input) "**Interpreter**"
-                `catchError` handleError
+                `catchError` handleREPLError
   repl
 
 -- | Get prompt from configuration try execute prompt code else show a
@@ -56,7 +57,7 @@ getPrompt = do
   isMultiline <- isJust <$> use multilineA
   flip catchError
     (\e -> do
-      handleError e
+      handleREPLError e
       return $
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
@@ -82,11 +83,12 @@ getPrompt = do
 
 -- | Handle possible errors during execution of interpreter
 -- TODO: Improve
-handleError :: InterpreterError -> Interpreter ()
-handleError err = case err of
+handleREPLError :: InterpreterError -> Interpreter ()
+handleREPLError err = case err of
   Compiling err' -> liftIO $ T.putStrLn err'
   Internal  err' -> liftIO $ T.putStrLn err'
-  WrapWorld err' -> liftIO $ print err'
+  WrapWorld err' -> liftIO $ putStrLn $ renderStyle style $ renderError err'
+
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer

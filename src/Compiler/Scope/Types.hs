@@ -7,17 +7,23 @@ import           Compiler.Error
 
 
 data ScopeError
-  = NoIdFound T.Text
+  = NotDefinedObject T.Text
   | InternalFail
   | ErrorClass
   | NoSavedAddressRef
   deriving Show
 
-instance ReadeableError ScopeError where
-  getMessage err = case err of
-    NoIdFound _id     -> ""
-    InternalFail      -> ""
-    ErrorClass        -> ""
-    NoSavedAddressRef -> ""
+auxiliarScopeError err = case err of
+    NotDefinedObject name -> (,) Error $
+      "It wasn't found `" ++ T.unpack name ++ "` in the current scope."
+    InternalFail      -> (,) Critical
+      "A Internal Fail into Scope phase was happened. Report it."
+    ErrorClass        -> (,) Error
+      ""
+    NoSavedAddressRef -> (,) Critical
+      "Problem generating unique ids for variable name. Report it."
 
-  getLevel _err = Error
+instance ReadeableError ScopeError where
+  getMessage = snd . auxiliarScopeError
+
+  getLevel = fst . auxiliarScopeError

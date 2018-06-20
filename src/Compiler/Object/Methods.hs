@@ -21,8 +21,8 @@ callObject address args = do
       let args' = if null accessors then args else obj:args
       case mObj of
         Just obj' -> callObjectDirect obj' args'
-        Nothing   -> throw NotFoundObject
-    Nothing -> throw NotFoundObject
+        Nothing   -> throw $ NotFoundObject (address^.refA)
+    Nothing -> throw $ NotFoundObject (address^.refA)
 
 callObjectDirect :: Object -> [Object] -> StWorld Object
 callObjectDirect obj objs = case obj of

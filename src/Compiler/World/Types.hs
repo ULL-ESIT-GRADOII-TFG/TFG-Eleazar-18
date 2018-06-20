@@ -8,7 +8,7 @@ import           Compiler.Scope.Types
 
 
 data WorldError
-  = NotFoundObject
+  = NotFoundObject Word
   | NotIterable
   | NotCallable
   | NumArgsMissmatch
@@ -22,7 +22,8 @@ data WorldError
 
 instance ReadeableError WorldError where
   getMessage err = case err of
-    NotFoundObject             -> ""
+    NotFoundObject ref ->
+      "It wasn't found ref `" ++ show ref ++ "` in memory."
     NotIterable                -> ""
     NotCallable                -> ""
     NumArgsMissmatch           -> ""

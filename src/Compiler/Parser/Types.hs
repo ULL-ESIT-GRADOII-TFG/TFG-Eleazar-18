@@ -2,10 +2,10 @@
 module Compiler.Parser.Types where
 
 import           Data.Default
-import           Lens.Micro.Platform
 import           Text.PrettyPrint
 
 import           Compiler.Prettify
+import           Compiler.Utils
 
 
 data TokenInfo = TokenInfo
@@ -46,4 +46,5 @@ instance Prettify TokenInfo where
 dummyTokenInfo :: TokenInfo
 dummyTokenInfo = def
 
-makeLenses ''SrcPos
+makeSuffixLenses ''TokenInfo
+makeSuffixLenses ''SrcPos
