@@ -20,6 +20,13 @@ instance ToObject Object where
 instance FromObject Object where
   fromObject = return
 
+instance ToObject () where
+  toObject () = ONone
+
+instance FromObject () where
+  fromObject ONone = return ()
+  fromObject _     = throw NotImplicitConversion
+
 instance ToObject Bool where
   toObject = OBool
 
@@ -56,6 +63,13 @@ instance FromObject a => FromObject (V.Vector a) where
 -- instance FromObject a => FromObject (M.Map T.Text a) where
 --   fromObject (OObject _ dic) = mapM fromObject dic
 --   fromObject _               = throw NotImplicitConversion
+
+instance ToObject String where
+  toObject = OStr . T.pack
+
+instance FromObject String where
+  fromObject (OStr text) = return (T.unpack text)
+  fromObject _           = throw NotImplicitConversion
 
 instance ToObject T.Text where
   toObject = OStr

@@ -21,7 +21,7 @@ callObject address args = do
       let args' = if null accessors then args else obj:args
       case mObj of
         Just obj' -> callObjectDirect obj' args'
-        Nothing   -> throw $ NotFoundObject (address^.refA)
+        Nothing   -> throw $ NotPropertyFound [] (T.intercalate "." (address^.dynPathA)) []
     Nothing -> throw $ NotFoundObject (address^.refA)
 
 callObjectDirect :: Object -> [Object] -> StWorld Object

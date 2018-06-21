@@ -26,6 +26,12 @@ instance Normalize Object where
       [] -> return f
       _  -> throw NumArgsMissmatch
 
+instance ToObject a => Normalize (IO a) where
+  normalize f ls =
+    case ls of
+      [] -> toObject <$> liftIO f
+      _  -> throw NumArgsMissmatch
+
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
   normalize _   []     = throw NumArgsMissmatch
   normalize fun (a:xs) = do

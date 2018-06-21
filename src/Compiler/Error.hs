@@ -28,11 +28,14 @@ instance (GetInfo m, Monad m) => GetInfo (FreeT i m) where
   getInfo = lift getInfo
 
 class ReadeableError a where
-  --getAll :: a -> (ErrorLevel, String)
+  getAll :: a -> (ErrorLevel, String)
+  getAll = (,) <$> getLevel <*> getMessage
 
   getMessage :: a -> String
+  getMessage = snd . getAll
   getLevel :: a -> ErrorLevel
-  getLevel _ = Error
+  getLevel = fst . getAll
+  {-# MINIMAL getAll | getMessage, getLevel #-}
 
 instance ReadeableError a => ReadeableError (ErrorInfo a) where
   getMessage = getMessage . _errorInternal
@@ -46,7 +49,9 @@ throw err = do
 -- | Render a error adding location of code (line) and file name
 renderErrorWithSource :: ReadeableError a => ErrorInfo a -> T.Text -> String -> Doc
 renderErrorWithSource err@(ErrorInfo tok _) source filename = renderError err
+  <> text "\n\n"
   <> nest 2 codeFormatted
+  <> text "\n\n"
   <> text "File: " <> text filename
   where
     errorLines = 1 + (tok^.endA.rowA) - (tok^.startA.rowA)
@@ -56,7 +61,7 @@ renderErrorWithSource err@(ErrorInfo tok _) source filename = renderError err
         text (show num) <> text " " <> text (T.unpack code))
         [tok^.startA.rowA..] getSourceCode
 
-
+-- | Render an error without location information. Useful for interpreter.
 renderError :: ReadeableError a => ErrorInfo a -> Doc
 renderError (ErrorInfo _tok internal) =
   text (show $ getLevel internal) <> text ": " <> text (getMessage internal)

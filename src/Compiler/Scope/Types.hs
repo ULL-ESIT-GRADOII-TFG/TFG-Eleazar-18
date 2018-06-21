@@ -13,7 +13,9 @@ data ScopeError
   | NoSavedAddressRef
   deriving Show
 
-auxiliarScopeError err = case err of
+
+instance ReadeableError ScopeError where
+  getAll err = case err of
     NotDefinedObject name -> (,) Error $
       "It wasn't found `" ++ T.unpack name ++ "` in the current scope."
     InternalFail      -> (,) Critical
@@ -22,8 +24,3 @@ auxiliarScopeError err = case err of
       ""
     NoSavedAddressRef -> (,) Critical
       "Problem generating unique ids for variable name. Report it."
-
-instance ReadeableError ScopeError where
-  getMessage = snd . auxiliarScopeError
-
-  getLevel = fst . auxiliarScopeError

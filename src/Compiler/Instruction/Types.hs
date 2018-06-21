@@ -22,7 +22,7 @@ simple word = AddressRef word []
 
 instance Prettify AddressRef where
   prettify (AddressRef r p) _verbose =
-    text "ADDR#" <> text (show r) <> text "->" <> (text $ intercalate "." $ map T.unpack p)
+    text "ADDR#" <> text (show r) <> text "." <> text (intercalate "." $ map T.unpack p)
 
 -- | Auxiliar type to debug Instruction Set
 data PPrint = PPrint

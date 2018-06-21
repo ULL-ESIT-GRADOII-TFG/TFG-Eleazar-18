@@ -15,6 +15,8 @@ import {-# SOURCE #-} Compiler.Prelude.Methods
 import           Compiler.Scope.Utils
 import           Compiler.Types
 
+import           Debug.Trace
+
 
 newObject :: Object -> StWorld Word
 newObject obj = do
@@ -86,8 +88,9 @@ on :: Object -> T.Text -> StWorld (Maybe Object)
 on obj acc = case obj of
   OObject mClassId dicObj ->
     attemps
-        [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
         -- Local search
+        [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
+        -- Class search
         , do
           memory <- use (innerStateA.tableA)
           return $ mClassId
@@ -96,9 +99,8 @@ on obj acc = case obj of
                     OClassDef{} -> return $ attributesClass (obj'^.rawObjA)
                     _           -> Nothing)
             >>= M.lookup acc
-        -- Class search
-        , return $ ONative <$> getMethods obj acc
         -- Internal search
+        , return $ ONative <$> getMethods obj acc
         ]
   ORef addr -> follow addr >>= (`on` acc)
   _         -> return $ ONative <$> getMethods obj acc
@@ -172,7 +174,7 @@ follow' w = follow'' w 50
           _          -> return word
 
 follow :: Word -> StWorld Object
-follow word = follow' word >>= findObject . simple
+follow word = traceShow "follow" $ follow' word >>= findObject . simple
 
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b

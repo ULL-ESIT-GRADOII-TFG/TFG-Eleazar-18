@@ -6,6 +6,7 @@ import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 import qualified Data.Map                       as M
 import qualified Data.Text                      as T
+import           System.Directory
 
 import           Compiler.Error
 import           Compiler.Interpreter.Utils
@@ -42,6 +43,7 @@ operatorsPrecedence = M.fromList
   , ("&&", (3, RightAssoc))
   , ("||", (3, RightAssoc))
   , ("??", (1, RightAssoc))
+  , ("!" , (1, LeftAssoc))
   ]
 
 -- | Prelude load action
@@ -86,6 +88,7 @@ baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
   [ ("print", ONative (normalize printObj))
   , ("not"  , ONative (normalizePure not))
+  , ("cd"   , ONative (normalize setCurrentDirectory))
   ]
   ++ map internalMethod (M.keys operatorsPrecedence)
 

@@ -15,7 +15,7 @@ import           Compiler.Types
 methods :: T.Text -> Maybe ([Object] -> Prog)
 methods name = case name of
   "exec" -> Just $ normalize execProcess
-  -- "!" -> Just $ normalizePure' (mappend :: V.Vector Object -> V.Vector Object -> V.Vector Object)
+  "!"    -> Just $ normalize execProcess
   _      -> Nothing
 
 -- | Execute a command into the shell

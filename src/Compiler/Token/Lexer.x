@@ -62,7 +62,9 @@ tokens :-
     "true"        { mkL (BoolT True) }
     "false"       { mkL (BoolT False) }
     \"            { begin string }
+    \!"$"         { mkL (OperatorT $ T.pack "!") `andBegin` shell }
     "$"           { begin shell }
+    \!\$\"        { mkL (OperatorT $ T.pack "!") `andBegin` shell_alternative }
     \$\"          { begin shell_alternative }
     r\"           { begin regex }
     $operators+   { mkL' OperatorT }
