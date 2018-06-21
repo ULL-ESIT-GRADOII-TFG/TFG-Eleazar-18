@@ -142,7 +142,7 @@ evaluateScopedProgram astScoped = do
 
 -- | Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement TokenInfo] -> ScopeM [Expression ScopeInfoAST]
-computeStatements = flip foldM [] $
-  \exprs st -> do
+computeStatements stmts = reverse <$> foldM
+  (\exprs st -> do
     expr <- transform st
-    return $ expr:exprs
+    return $ expr:exprs) [] stmts

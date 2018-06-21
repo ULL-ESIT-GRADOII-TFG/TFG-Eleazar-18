@@ -46,12 +46,12 @@ addObject (AddressRef word dyns) obj = do
 buildFollowingPath :: Word -> [T.Text] -> StWorld Word
 buildFollowingPath addr path =
   (flip . flip foldM) addr path $ \addrCurrent acc -> do
-    obj <- follow addrCurrent
-    mAddr <- on' obj acc
+    lastRef <- follow' addrCurrent
+    mAddr <- on' (ORef lastRef) acc
     case mAddr of
       Just addr' -> return addr'
       Nothing ->
-        addObjectToObject addrCurrent acc ONone
+        addObjectToObject lastRef acc ONone
 
 -- | Like `on` but doesn't perform a internal search or class search. Its mainly used to
 -- modify objects not to access them
@@ -86,7 +86,7 @@ addObjectToObject word acc obj = do
 -- | Access through an object
 on :: Object -> T.Text -> StWorld (Maybe Object)
 on obj acc = case obj of
-  OObject mClassId dicObj ->
+  OObject mClassId dicObj -> traceShow ("Then here with " ++ T.unpack acc) $
     attemps
         -- Local search
         [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
@@ -102,7 +102,7 @@ on obj acc = case obj of
         -- Internal search
         , return $ ONative <$> getMethods obj acc
         ]
-  ORef addr -> follow addr >>= (`on` acc)
+  ORef addr -> traceShow "Getting Addr" $ follow addr >>= (`on` acc)
   _         -> return $ ONative <$> getMethods obj acc
 
 -- | Return the first `Just` get from list else try next

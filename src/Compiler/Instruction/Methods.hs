@@ -153,7 +153,7 @@ runProgram = iterT $ \case
   Assign _ idObj object next -> do
     -- object <- getObject accObject
     addObject idObj object
-    next object -- TODO: quizas se deba retornar un ORef
+    next object -- TODO: debe retornar un ORef
 
   DropVar _ idObj next -> do
     dropVarWorld idObj

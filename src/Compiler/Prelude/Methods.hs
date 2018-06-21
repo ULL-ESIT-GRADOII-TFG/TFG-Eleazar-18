@@ -89,6 +89,7 @@ baseBasicFunctions =
   [ ("print", ONative (normalize printObj))
   , ("not"  , ONative (normalizePure not))
   , ("cd"   , ONative (normalize setCurrentDirectory))
+  , ("co"   , ONative (normalize changeObject))
   ]
   ++ map internalMethod (M.keys operatorsPrecedence)
 
@@ -97,3 +98,6 @@ printObj :: Object -> FreeT Instruction StWorld Object
 printObj obj = do
   liftIO $ print obj
   return ONone
+
+changeObject :: Object -> FreeT Instruction StWorld Object
+changeObject = undefined

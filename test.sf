@@ -5,5 +5,7 @@ class Test {
 }
 
 
-t = 67
+t = Test("Hello")
+
+t2 = Test(4)
 
