@@ -11,9 +11,11 @@ data WorldError
   = NotFoundObject Word
   | NotPropertyFound { initial :: [T.Text], propertyNotFound :: T.Text, last :: [T.Text] }
   -- ^ Object access initial accessor, failed access identifier, everything else
-  | NotIterable
-  | NotCallable
-  | NumArgsMissmatch
+  | NotIterable String
+  | NotBoolean String
+  | NotCallable String
+  | NumArgsMissmatch Int Int
+  -- ^ Expected and given
   | NotImplicitConversion
   | ExcededRecursiveLimit
   | DropVariableAlreadyDropped
@@ -26,15 +28,17 @@ instance ReadeableError WorldError where
   getAll err = case err of
     NotFoundObject ref -> (,) Error $
       "It wasn't found ref `" ++ show ref ++ "` in memory."
-    NotPropertyFound ini err lst -> (,) Error $
-      "Can't be accessed `" ++ T.unpack err ++"` property in `"
-      ++ T.unpack (T.intercalate "." (ini ++ [err] ++ lst)) ++ "`"
-    NotIterable                -> (,) Error $
-      "No iterable object `TODO` it should implement __iter__"
-    NotCallable                -> (,) Error $
-      "No callable object `TODO` it should implement __call__"
-    NumArgsMissmatch           -> (,) Error $
-      "It was expected to get x args given xx"
+    NotPropertyFound ini mid lst -> (,) Error $
+      "Can't be accessed `" ++ T.unpack mid ++"` property in `"
+      ++ T.unpack (T.intercalate "." (ini ++ [mid] ++ lst)) ++ "`"
+    NotIterable ty               -> (,) Error $
+      "No iterable object `" ++ ty ++ "` it should implement __map__"
+    NotCallable ty                -> (,) Error $
+      "No callable object `" ++ ty ++ "` it should implement __call__"
+    NotBoolean ty                -> (,) Error $
+      "No a boolean object `" ++ ty ++ "` it should implement __bool__"
+    NumArgsMissmatch expected given -> (,) Error $
+      "It was expected to get " ++ show expected ++ " args given " ++ show given
     NotImplicitConversion      -> (,) Error $
       "No implicit conversion from `type`  to `type`"
     ExcededRecursiveLimit      -> (,) Critical $

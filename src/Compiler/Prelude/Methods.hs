@@ -4,19 +4,12 @@ module Compiler.Prelude.Methods where
 
 import           Control.Monad.Except
 import           Control.Monad.Trans.Free
-import qualified Data.Map                       as M
-import qualified Data.Text                      as T
+import qualified Data.Map                   as M
+import qualified Data.Text                  as T
 import           System.Directory
 
 import           Compiler.Error
 import           Compiler.Interpreter.Utils
-import qualified Compiler.Prelude.OBool         as OBool
-import qualified Compiler.Prelude.ODouble       as ODouble
-import qualified Compiler.Prelude.ONum          as ONum
-import qualified Compiler.Prelude.ORegex        as ORegex
-import qualified Compiler.Prelude.OShellCommand as OShellCommand
-import qualified Compiler.Prelude.OStr          as OStr
-import qualified Compiler.Prelude.OVector       as OVector
 import           Compiler.Prelude.Types
 import           Compiler.Prelude.Utils
 import           Compiler.Types
@@ -59,28 +52,11 @@ internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
   , ONative $ \case
-    []           -> throw NumArgsMissmatch
+    []           -> throw $ NumArgsMissmatch 0 1
     objs@(obj:_) -> case getMethods obj name of
       Just func -> func objs
       Nothing   -> lift $ liftScope . throw $ NotDefinedObject name
   )
-
--- TODO Reorganize to add internal docs
-getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
-getMethods obj name = case obj of
-  OStr{}          -> OStr.methods name
-  OBool{}         -> OBool.methods name
-  ODouble{}       -> ODouble.methods name
-  ONum{}          -> ONum.methods name
-  OVector{}       -> OVector.methods name
-  ORegex{}        -> ORegex.methods name
-  OShellCommand{} -> OShellCommand.methods name
-  OFunc{}         -> Nothing
-  ONative{}       -> Nothing
-  OObject{}       -> Nothing
-  OClassDef{}     -> Nothing
-  ORef{}          -> Nothing
-  ONone           -> Nothing
 
 -- |
 -- TODO: Add specific functions to modify internal interpreter variables. Like prompt, or path options ...

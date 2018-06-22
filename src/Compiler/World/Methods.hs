@@ -3,21 +3,34 @@ module Compiler.World.Methods where
 import           Control.Monad
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
-import qualified Data.IntMap                as IM
-import qualified Data.Map                   as M
+import qualified Data.IntMap                    as IM
+import qualified Data.Map                       as M
 import           Data.Maybe
-import qualified Data.Text                  as T
+import qualified Data.Text                      as T
 import           Lens.Micro.Platform
 
 import           Compiler.Error
 import           Compiler.Identifier
-import {-# SOURCE #-} Compiler.Prelude.Methods
+import qualified Compiler.Prelude.OBool         as OBool
+import qualified Compiler.Prelude.ODouble       as ODouble
+import qualified Compiler.Prelude.ONum          as ONum
+import qualified Compiler.Prelude.ORegex        as ORegex
+import qualified Compiler.Prelude.OShellCommand as OShellCommand
+import qualified Compiler.Prelude.OStr          as OStr
+import qualified Compiler.Prelude.OVector       as OVector
 import           Compiler.Scope.Utils
 import           Compiler.Types
 
-import           Debug.Trace
 
+-- | Set a var into memory
+setVar :: Word -> Var -> StWorld ()
+setVar addr var = innerStateA.tableA %= IM.insert (fromIntegral addr) var
 
+-- | Get a var from memory
+getVar :: Word -> StWorld (Maybe Var)
+getVar addr = IM.lookup (fromIntegral addr) <$> use (innerStateA.tableA)
+
+-- | Create a new object in memory.
 newObject :: Object -> StWorld Word
 newObject obj = do
   addr <- liftIO getNewID
@@ -86,7 +99,7 @@ addObjectToObject word acc obj = do
 -- | Access through an object
 on :: Object -> T.Text -> StWorld (Maybe Object)
 on obj acc = case obj of
-  OObject mClassId dicObj -> traceShow ("Then here with " ++ T.unpack acc) $
+  OObject mClassId dicObj ->
     attemps
         -- Local search
         [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
@@ -102,8 +115,17 @@ on obj acc = case obj of
         -- Internal search
         , return $ ONative <$> getMethods obj acc
         ]
-  ORef addr -> traceShow "Getting Addr" $ follow addr >>= (`on` acc)
+  ORef addr -> follow addr >>= (`on` acc)
   _         -> return $ ONative <$> getMethods obj acc
+
+catchArgsMethodsError :: StWorld a -> StWorld a
+catchArgsMethodsError stw = catchError stw onNumArgsMissmatch
+  where
+    onNumArgsMissmatch :: ErrorInfo WorldError -> StWorld a
+    onNumArgsMissmatch errTy = case errTy of
+      ErrorInfo info (NumArgsMissmatch expected given) ->
+        throwError $ ErrorInfo info (NumArgsMissmatch (expected - 1) (given - 1))
+      err'                            -> throwError err'
 
 -- | Return the first `Just` get from list else try next
 attemps :: Monad m => [m (Maybe a)] -> m (Maybe a)
@@ -122,11 +144,22 @@ through obj = foldM (\obj' acc ->
       Nothing    -> return Nothing
   ) (Just obj)
 
-setVar :: Word -> Var -> StWorld ()
-setVar addr var = innerStateA.tableA %= IM.insert (fromIntegral addr) var
-
-getVar :: Word -> StWorld (Maybe Var)
-getVar addr = IM.lookup (fromIntegral addr) <$> use (innerStateA.tableA)
+-- TODO Reorganize to add internal docs
+getMethods :: Object -> T.Text -> Maybe ([Object] -> Prog)
+getMethods obj name = case obj of
+  OStr{}          -> OStr.methods name
+  OBool{}         -> OBool.methods name
+  ODouble{}       -> ODouble.methods name
+  ONum{}          -> ONum.methods name
+  OVector{}       -> OVector.methods name
+  ORegex{}        -> ORegex.methods name
+  OShellCommand{} -> OShellCommand.methods name
+  OFunc{}         -> Nothing
+  ONative{}       -> Nothing
+  OObject{}       -> Nothing
+  OClassDef{}     -> Nothing
+  ORef{}          -> Nothing
+  ONone           -> Nothing
 
 -- | Find object. Return `ONone` in case of can't found it
 findObject :: AddressRef -> StWorld Object
@@ -174,7 +207,7 @@ follow' w = follow'' w 50
           _          -> return word
 
 follow :: Word -> StWorld Object
-follow word = traceShow "follow" $ follow' word >>= findObject . simple
+follow word = follow' word >>= findObject . simple
 
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e215666d36658d92675ad4ed9cea420a54eae3d1bbfc07c56c2da0c786c055c3
+-- hash: 1fa110f83e01be1398568db7227927c7a88c295349c283d08d340b220549a2f1
 
 name:           ScriptFlow
 version:        0.0.1
@@ -131,5 +131,6 @@ test-suite Compiler-test
   other-modules:
       Lexer
       Parser
+      Programs
       Paths_ScriptFlow
   default-language: Haskell2010

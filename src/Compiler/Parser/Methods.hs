@@ -17,6 +17,7 @@ import           Compiler.Token.Methods
 import           Compiler.Types
 
 
+-- | List of reserved keywords
 keywords :: [T.Text]
 keywords =
   ["true", "false", "import", "lam",
