@@ -3,14 +3,13 @@ module Compiler.Interpreter.Command.Methods where
 
 import           Control.Monad.Except
 import           Data.List
-import qualified Data.Map                     as M
-import qualified Data.Text                    as T
-import qualified Data.Text.Lazy.IO            as LT
+import qualified Data.Map                   as M
+import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 import           System.Exit
 import           Text.PrettyPrint
 
-import           Compiler.Instruction.Methods
+import           Compiler.Instruction.Utils
 import           Compiler.Interpreter.Utils
 import           Compiler.Prettify
 import           Compiler.Types
@@ -54,10 +53,6 @@ showInstructions (name:_) = do
   object <- getVar name
   case object of
     OFunc _ _ prog -> do
-      instrs <- liftWorld $ do
-        _ <- pprint prog
-        instrs <- use $ innerStateA.debugProgramA._1
-        innerStateA.debugProgramA .= ("", 0)
-        return instrs
-      liftIO $ LT.putStrLn instrs
+      instrs <- liftWorld $ pprint prog
+      liftIO . putStrLn $ renderStyle style instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

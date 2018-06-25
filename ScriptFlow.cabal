@@ -2,15 +2,15 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1fa110f83e01be1398568db7227927c7a88c295349c283d08d340b220549a2f1
+-- hash: 31f5b9a9e7b8a86801b96a87bce2d2de33d100e623348dc662b0cd86a3049824
 
 name:           ScriptFlow
 version:        0.0.1
 synopsis:       An easy scripting language
 description:    Please see README.org
-category:       Development
-homepage:       https://github.com/none#readme
-bug-reports:    https://github.com/none/issues
+category:       Development, Languages
+homepage:       https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18#readme
+bug-reports:    https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18/issues
 author:         Eleazar Díaz Delgado
 maintainer:     eleazardzdo@gmail.com
 copyright:      2018 Eleazar Díaz Delgado
@@ -24,7 +24,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/none
+  location: https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
 
 library
   hs-source-dirs:
@@ -39,7 +39,6 @@ library
     , data-default
     , directory
     , filepath
-    , formatting
     , free
     , haskeline
     , http-client
@@ -68,6 +67,7 @@ library
       Compiler.Error
       Compiler.Identifier
       Compiler.Instruction.Methods
+      Compiler.Instruction.Utils
       Compiler.Instruction.Types
       Compiler.Interpreter.Command.Methods
       Compiler.Interpreter.Methods

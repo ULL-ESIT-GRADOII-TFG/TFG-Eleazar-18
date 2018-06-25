@@ -24,7 +24,6 @@ import           Data.Default
 import qualified Data.IntMap                as IM
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
-import qualified Data.Text.Lazy             as LT
 import qualified Data.Vector                as V
 import           Lens.Micro.Platform        hiding (assign)
 import           System.Console.Haskeline   (InputT)
@@ -110,19 +109,17 @@ instance Default Var where
 
 -- | Keeps all information of running program (memory, debugging info ...)
 data World = World
-  { _table        :: IM.IntMap Var
+  { _table :: IM.IntMap Var
   -- ^ Generic table to storage all vars/objects
-  , _scope        :: Scope
+  , _scope :: Scope
   -- ^ Root Scope.
-  , _co           :: [Word]
+  , _co    :: [Word]
   -- ^ Object Scope
-  , _debugProgram :: (LT.Text, Int)
-  -- TODO: This isn't the best way to solve this problem
   }
   deriving Show
 
 instance Prettify World where
-  prettify (World tb scope _ _) verbose =
+  prettify (World tb scope _) verbose =
     let aux = leftInnerJoin ((M.toList (_renameInfo $ _currentScope scope)) & each._2 %~ (fromIntegral . _ref)) (IM.toList tb)
     in
       text "World {" $$
@@ -141,7 +138,6 @@ instance Default World where
     { _table = mempty
     , _scope = def
     , _co = []
-    , _debugProgram = ("", 0)
     }
 
 

@@ -5,7 +5,6 @@ import           Control.Monad.Except
 import           Data.Maybe
 import qualified Data.Text                            as T
 import qualified Data.Text.IO                         as T
-import qualified Data.Text.Lazy.IO                    as LT
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 import           Text.PrettyPrint                     (renderStyle, style)
@@ -14,6 +13,7 @@ import           Compiler.Ast
 import           Compiler.Desugar.Types
 import           Compiler.Error
 import           Compiler.Instruction.Methods
+import           Compiler.Instruction.Utils
 import           Compiler.Interpreter.Command.Methods
 import           Compiler.Interpreter.Utils
 import           Compiler.Object.Methods
@@ -130,12 +130,8 @@ evaluateScopedProgram astScoped = do
   instrs <- liftWorld . liftScope $ transform astScoped
   when (verbosity >= 2) $ do
     liftIO $ putStrLn "** Instructions **"
-    instrsPP <- liftWorld $ do
-      _ <- pprint instrs
-      instrsPP <- use $ innerStateA.debugProgramA._1
-      innerStateA.debugProgramA .= ("", 0)
-      return instrsPP
-    liftIO $ LT.putStrLn instrsPP
+    instrsPP <- liftWorld $ pprint instrs
+    liftIO . putStrLn $ renderStyle style instrsPP
   value <- liftWorld (runProgram instrs)
   showable <- showInterpreter value
   liftIO $ putStrLn showable

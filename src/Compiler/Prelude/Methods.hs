@@ -10,6 +10,7 @@ import           System.Directory
 
 import           Compiler.Error
 import           Compiler.Interpreter.Utils
+import           Compiler.Object.Methods
 import           Compiler.Prelude.Types
 import           Compiler.Prelude.Utils
 import           Compiler.Types
@@ -65,15 +66,29 @@ baseBasicFunctions =
   [ ("print", ONative (normalize printObj))
   , ("not"  , ONative (normalizePure not))
   , ("cd"   , ONative (normalize setCurrentDirectory))
-  , ("co"   , ONative (normalize changeObject))
+  , ("use"   , ONative (normalize changeObject))
+  , ("unuse"   , ONative (normalize changeObject))
+  , ("dir"   , ONative (normalize changeObject))
+  , ("docs"   , ONative (normalize changeObject)) -- __docs__
+  , ("save_config"   , ONative (normalize changeObject)) -- __config__
+  , ("load_config"   , ONative (normalize changeObject)) -- __config__
   ]
   ++ map internalMethod (M.keys operatorsPrecedence)
 
--- TODO: use __print__
 printObj :: Object -> FreeT Instruction StWorld Object
-printObj obj = do
-  liftIO $ print obj
-  return ONone
+printObj obj = case obj of
+  OObject (Just classRef) _attrs -> do
+    clsObj <- lift $ findObject (simple classRef)
+    case clsObj of
+      OClassDef _name _ref methods ->
+        case M.lookup "__print__" methods of
+          Just func' -> do
+            obj' <- lift $ callObjectDirect func' [obj]
+            printObj obj'
+          Nothing    ->
+            undefined
+      o  -> undefined
+  _ -> undefined
 
 changeObject :: Object -> FreeT Instruction StWorld Object
 changeObject = undefined

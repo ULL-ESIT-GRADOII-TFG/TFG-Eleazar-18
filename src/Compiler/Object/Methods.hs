@@ -1,12 +1,14 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Object.Methods where
 
 import           Control.Monad.Except
-import qualified Data.Map                     as M
-import qualified Data.Text                    as T
+import           Control.Monad.Trans.Free
+import qualified Data.Map                 as M
+import qualified Data.Text                as T
+import           Text.PrettyPrint
 
 import           Compiler.Error
-import {-# SOURCE #-} Compiler.Instruction.Methods
 import           Compiler.Prelude.Types
 import           Compiler.Types
 import           Compiler.World.Methods
@@ -90,9 +92,56 @@ checkBool obj = case obj of
         case M.lookup "__bool__" methods of
           Just func' -> callObjectDirect func' [obj] >>= checkBool
           Nothing    -> throw $ NotBoolean "Object"
-      o  -> throw $ NotIterable (typeName o)
+      o  -> throw $ NotBoolean (typeName o)
   _ -> throw $ NotBoolean (typeName obj)
 
+-- | String representation of objects in REPL
+showObject :: Object -> StWorld Doc
+showObject obj = case obj of
+  OStr str -> return . text $ "\"" ++ T.unpack str ++ "\""
+  ORegex _str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
+  OShellCommand str -> return . text $ "$ " ++ T.unpack str
+  ODouble val -> return . text $ show val
+  OBool val -> return . text $ show val
+  ONum val -> return . text $ show val
+  OVector vec -> return . text $ show vec -- TODO: Show Innervalue
+  ORef rfs -> do
+    obj' <- follow rfs
+    showObject obj' <&> (text "* -> " <>)
+  ONone -> return "None"
+  object -> return . text $ show object -- TODO: __print__
+
+-- | Execute a sequence of instructions
+runProgram :: FreeT Instruction StWorld Object -> StWorld Object
+runProgram = iterT $ \case
+  -- Find into world function and correspondent objects
+  CallCommand _ idFun args next -> do
+    retObj  <- callObject idFun args
+    next retObj
+
+  Assign _ idObj object next -> do
+    -- object <- getObject accObject
+    addObject idObj object
+    next object -- TODO: debe retornar un ORef
+
+  DropVar _ idObj next -> do
+    dropVarWorld idObj
+    next
+
+  Loop _ accObject prog next -> do
+    -- oIter <- getObject accObject
+    _     <- mapObj accObject (runProgram . prog)
+    next
+
+  Cond _ objectCond trueNext falseNext next -> do
+    bool <-  checkBool objectCond
+    if bool
+      then runProgram trueNext >>= next
+      else runProgram falseNext >>= next
+
+  GetVal _ idObj next -> do
+    ref' <- findObject idObj
+    next ref'
 
 typeName :: Object -> String
 typeName obj = case obj of

@@ -1,22 +1,16 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
 module Compiler.Instruction.Methods where
 
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Free
 import qualified Data.Map                 as M
-import qualified Data.Text                as T
-import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
-import           Formatting
 import           Lens.Micro.Platform      hiding (assign)
 
 import           Compiler.Ast
 import           Compiler.Desugar.Types
-import           Compiler.Object.Methods
 import           Compiler.Scope.Utils
 import           Compiler.Types
 import           Compiler.World.Methods
@@ -141,88 +135,6 @@ instance Desugar Atom ScopeInfoAST ScopeM (FreeT Instruction StWorld) Object whe
       return $ do
         oFuncs <- sequence methods'
         return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) oFuncs)
-
--- | Execute a sequence of instructions
-runProgram :: FreeT Instruction StWorld Object -> StWorld Object
-runProgram = iterT $ \case
-  -- Find into world function and correspondent objects
-  CallCommand _ idFun args next -> do
-    retObj  <- callObject idFun args
-    next retObj
-
-  Assign _ idObj object next -> do
-    -- object <- getObject accObject
-    addObject idObj object
-    next object -- TODO: debe retornar un ORef
-
-  DropVar _ idObj next -> do
-    dropVarWorld idObj
-    next
-
-  Loop _ accObject prog next -> do
-    -- oIter <- getObject accObject
-    _     <- mapObj accObject (runProgram . prog)
-    next
-
-  Cond _ objectCond trueNext falseNext next -> do
-    bool <-  checkBool objectCond
-    if bool
-      then runProgram trueNext >>= next
-      else runProgram falseNext >>= next
-
-  GetVal _ idObj next -> do
-    ref' <- findObject idObj
-    next ref'
-
-linePP :: LT.Text -> StWorld ()
-linePP txt = do
-  level <- use $ innerStateA.debugProgramA._2
-  innerStateA.debugProgramA._1 %= \t -> t `mappend` LT.replicate (fromIntegral level) "  " `mappend` txt `mappend` "\n"
-
-withLevel :: StWorld a -> StWorld ()
-withLevel action = do
-  (innerStateA.debugProgramA._2) += 1
-  _ <- action
-  (innerStateA.debugProgramA._2) -= 1
-
-pAddr :: AddressRef -> String
-pAddr (AddressRef addr vals) =
-  let path = if not $ null vals then "-" ++ T.unpack (T.intercalate "." vals) else ""
-  in "#" ++ show addr ++ path
-
--- TODO: Make pretty printer
--- TODO: Remove formatter and use prettify
-pprint :: FreeT Instruction StWorld Object -> StWorld Object
-pprint = iterT $ \case
-  CallCommand _ idFun args next -> do
-    linePP (format ("Call " % string % " With: " % shown) (pAddr idFun) args)
-    next ONone
-
-  Assign _ idObj accObject next -> do
-    linePP (format ("Assign " % string % " " % shown) (pAddr idObj) accObject)
-    next ONone
-
-  DropVar _ idObj next -> do
-    linePP (format ("Drop " % string) (pAddr idObj))
-    next
-
-  Loop _ accObject prog next -> do
-    linePP (format ("Loop " % shown) accObject)
-    withLevel . pprint $ prog ONone
-    next
-
-  Cond _ objectCond trueNext falseNext next -> do
-    linePP (format ("Cond " % shown) objectCond)
-    withLevel $ do
-      linePP "True Case:"
-      withLevel $ pprint trueNext
-      linePP "False Case:"
-      withLevel $ pprint falseNext
-    next ONone
-
-  GetVal _ idObj next -> do
-    linePP (format ("GetVal " % string) (pAddr idObj))
-    next ONone
 
 -------------------------------------------------------------------------------
 -- * Utils

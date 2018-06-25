@@ -2,12 +2,12 @@ name: ScriptFlow
 version: '0.0.1'
 synopsis: An easy scripting language
 description: Please see README.org
-category: Development
+category: Development, Languages
 author: Eleazar Díaz Delgado
 maintainer: eleazardzdo@gmail.com
 copyright: 2018 Eleazar Díaz Delgado
 license: BSD3
-github: none
+github: ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
 extra-source-files:
   - README.org
   - defaultConfig.yaml
@@ -25,7 +25,6 @@ library:
     - data-default
     - directory
     - filepath
-    - formatting
     - free
     - haskeline
     - http-client
@@ -52,6 +51,7 @@ library:
     - Compiler.Error
     - Compiler.Identifier
     - Compiler.Instruction.Methods
+    - Compiler.Instruction.Utils
     - Compiler.Instruction.Types
     - Compiler.Interpreter.Command.Methods
     - Compiler.Interpreter.Methods
