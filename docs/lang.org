@@ -5,6 +5,8 @@
 
 ** Introducción
 
+   Dominio de useo ejemplos
+
 ** Lenguaje {{{lang_name}}}
 
    {{{lang_name}}} es un lenguaje de tipado dinámico para el desarrollo de /scripts/ para la automatización de tareas
@@ -22,17 +24,17 @@
 
      El lenguaje puede ser sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando "{}":
 
-#+BEGIN_SRC haskell
-fun saludar_a nombre:
-  print("Saludos, " ++ nombre)
-#+END_SRC
+     #+BEGIN_SRC haskell
+       fun saludar_a nombre:
+         print("Saludos, " ++ nombre)
+     #+END_SRC
 
-    O la sintáxis equivalente al estilo de la familia de /C/:
-#+BEGIN_SRC haskell
-fun saludar_a nombre {
-  print("Saludos, " ++ nombre)
-}
-#+END_SRC
+     O la sintáxis equivalente al estilo de la familia de /C/:
+     #+BEGIN_SRC haskell
+       fun saludar_a nombre {
+         print("Saludos, " ++ nombre)
+       }
+     #+END_SRC
 
 
 **** Literales
@@ -41,75 +43,111 @@ fun saludar_a nombre {
      booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
      shell.
 
-#+BEGIN_SRC python
-# none
-none
+     #+BEGIN_SRC python
 
-# Booleanos
-true
-false
+       # none
+       none
 
-# Enteros
-12 + 4 # ...
+       # Booleanos
+       true
+       false
 
-# Decimales (Se utiliza un double para su representanción actualmente)
-45.5
+       # Enteros
+       12 + 4 # ...
 
-# Las cadenas pueden ser multilineas se crean con "
-"Un\nejemplo
-de cadena"
+       # Decimales (Se utiliza un double para su representanción actualmente)
+       45.5
 
-# Las regex se construyen con r" y terminan con ". Usan la sintaxis de PCRE.
-r"a*"  # Sin implementar aún
+       # Las cadenas pueden ser multilineas se crean con "
+       "Un\nejemplo
+       de cadena"
 
-# Los comandos shell se crean con
-$cd #HOME/repos; nvim .$
-Ó mutltilinea
-$
-  cd #HOME/repos
-  nvim .
-$
+       # Las regex se construyen con r" y terminan con ". Usan la sintaxis de PCRE.
+       r"a*"  # Sin implementar aún
 
-O la sintaxis alternativa
-$"pwd"
-#+end_src
+       # Los comandos shell se crean con
+       $cd #HOME/repos; nvim .$
+       Ó mutltilinea
+       $
+       cd #HOME/repos
+       nvim .
+       $
 
-    A su vez también existen tipos contenedores tales como los vectores y los
-    diccionarios o tablas hash.
+       O la sintaxis alternativa
+       $"pwd"
+     #+end_src
 
-#+BEGIN_SRC python
-# Vectores
-[45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
+     A su vez también existen tipos contenedores tales como los vectores y los
+     diccionarios o tablas hash.
 
-# Diccionarios
-{ test: [1,2,3,47,5]
-, author:
-      { name: "Flynn"
-      , "vive en": "tal sitio"
-      }
-}
+     #+BEGIN_SRC python
+       # Vectores
+       [45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
 
-#+end_src
+       # Diccionarios
+       { test -> [1,2,3,47,5]
+         , author ->
+         { name -> "Flynn"
+           , "vive en" -> "tal sitio"
+         }
+       }
+
+     #+end_src
+
+     TODO: dir docs to get methods/attributes and documentation about them
+
+
+
+**** Funciones
+
 
 *** Orientado a objetos
 
-    El lenguaje tiene un básico soporte a la programación orientada a objetos.
+    El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
+    de clases sin capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
+    usando el método especial `__init__`.
 
-#+BEGIN_SRC python
-class Repository {
-    name = "None"
-    url
-    local_repo
+    Los métodos asociados al objeto internamente se pasan a si mismo como argumento usando la palabra
+    reservada `self`. El lenguaje no soporta métodos estáticos.
 
-    fun __init__ new_name {
-        self.name = name
-    }
-}
-#+end_src
+
+    #+BEGIN_SRC python
+      class Repository {
+              fun __init__ new_name {
+                  self.url = none
+                  self.local_repo = none
+                  self.name = new_name
+              }
+      }
+    #+end_src
+
+
 
     Métodos estándar para la realización de tareas comunes.
-        - print
-        - TODO: Completar según value.rs
+    - print
+    -
+
+**** Objectos
+     Un objeto en {{{lang_name}}} es un diccionario con la clase a la que pertenece, si se diese el caso de ser
+     un objeto instanciado.
+
+     En el siguiente ejemplo se enumeran las distintas formas de crear un objeto
+     #+BEGIN_SRC python
+       # A partir de un diccionario vacío
+       obj = {}
+
+       # A partir de none
+       obj2 = none
+       # Al asignar dentro de una varible establecidad `none` un "sub-item".
+       # Automáticamente se genera un objeto con ese item dentro
+       obj2.a = "ejemplo"
+       > { a -> "ejemplo" }
+
+       # A partir de una clase definida
+       class Test {}
+       # El constructor devolverá la instancia correspondiente
+       obj3 = Test()
+     #+END_SRC
 
 ** Configuración
 
@@ -132,13 +170,13 @@ class Repository {
 
     Por defecto, la sección del /prompt/ contiene la siguiente configuración:
 
-#+BEGIN_SRC yaml
-repl:
-  # ...
-  # A portion of code to define repl prompt (Default: "{$pwd} >>>")
-  prompt: "{$pwd} >>> "
-  # ...
-#+end_src
+    #+BEGIN_SRC yaml
+        repl:
+          # ...
+          # A portion of code to define repl prompt (Default: "{$pwd} >>>")
+          prompt: "{$pwd} >>> "
+          # ...
+    #+end_src
 
     El prompt permite diferentes añadir texto al mismo desde distintas fuentes.
     Y realizar un minimo de personalizaciones visuales en el color de texto que
@@ -176,12 +214,12 @@ repl:
 
     Dado un fichero de entrada con el código escrito en {{{lang_name}}}.
 
-#+BEGIN_SRC python
-fun say_hi name:
-  "Hola, " ++ name
+    #+BEGIN_SRC python
+      fun say_hi name:
+      "Hola, " ++ name
 
-say_hi("Mundo")
-#+end_src
+      say_hi("Mundo")
+    #+end_src
 
 
     Se procede al "parseo" del código, el cual, se realiza a dos fases. La primera el
@@ -190,12 +228,12 @@ say_hi("Mundo")
     que se usarán para generar el *AST*. Cada token contiene la información
     necesaria para reconstruir el código.
 
-#+BEGIN_SRC haskell
-[FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
-      LitTextT "Hola, ", OperatorT "++", NameIdT "name",
-CBraceT,
-NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
-#+end_src
+    #+BEGIN_SRC haskell
+      [FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
+            LitTextT "Hola, ", OperatorT "++", NameIdT "name",
+      CBraceT,
+      NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
+    #+end_src
 
     En esta fase de "tokenización", se procede a identificar los niveles de
     indentación en el código en el caso de que se este usando la sintáxis sin
@@ -206,22 +244,22 @@ NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
     La segunda fase del "parseo" se encarga de generar el árbol sintáctico
     abstracto o sus siglas en inglés *AST*.
 
-#+BEGIN_SRC haskell
-SeqExpr [
-      VarDecl (Simple "say_hi")
-                 (FunDecl ["name"]
-                    (SeqExpr
-                       [Apply (Simple "++")
-                          [Factor (AStr "Hola, "),
-                           Identifier (Simple "name")]
-                       ]
-                    )
-                  )
-      ,
-      Apply (Simple "say_hi")
-            [SeqExpr [Factor (AStr "Mundo")]]
-]
-#+end_src
+    #+BEGIN_SRC haskell
+      SeqExpr [
+            VarDecl (Simple "say_hi")
+                      (FunDecl ["name"]
+                          (SeqExpr
+                            [Apply (Simple "++")
+                                [Factor (AStr "Hola, "),
+                                Identifier (Simple "name")]
+                            ]
+                          )
+                        )
+            ,
+            Apply (Simple "say_hi")
+                  [SeqExpr [Factor (AStr "Mundo")]]
+      ]
+    #+end_src
 
     La salida del *AST* está simplificada, ya que se tiene que guardar
     información de la posición dentro del fichero (columna, fila, y offset)
@@ -231,49 +269,49 @@ SeqExpr [
     forma parecida a los *PEGs*. Un ejemplo simplificado es la definción de
     una función:
 
-#+BEGIN_SRC haskell
-parseFunDecl :: TokenParser Expression
-parseFunDecl = do
-  funT
-  funName <- nameIdT
-  params  <- many nameIdT
-  prog    <- parseBody
-  return (VarDecl
-    (Simple funName)
-    (FunDecl params prog))
-#+end_src
+    #+BEGIN_SRC haskell
+      parseFunDecl :: TokenParser Expression
+      parseFunDecl = do
+        funT
+        funName <- nameIdT
+        params  <- many nameIdT
+        prog    <- parseBody
+        return (VarDecl
+          (Simple funName)
+          (FunDecl params prog))
+    #+end_src
 
     Una vez generado se realiza la comprobación del *scope* del AST. En esta fase
     comprueban si están usando variables que no existen, o si sobreescriben
     otra. Y se procede al renombrado de las variables.
 
-#+BEGIN_SRC haskell
-SeqExpr [
-      VarDecl var_0        -- say_hi
-                 (FunDecl [param_0] -- name
-                    (SeqExpr
-                       [Apply op_0   -- "++"
-                          [Factor (AStr "Hola, "),
-                           Identifier param_0]
-                       ]
-                    )
-                  )
-      ,
-      Apply var_0     -- say_hi
-            [SeqExpr [Factor (AStr "Mundo")]]
-]
-#+end_src
+    #+BEGIN_SRC haskell
+      SeqExpr [
+            VarDecl var_0        -- say_hi
+                       (FunDecl [param_0] -- name
+                          (SeqExpr
+                             [Apply op_0   -- "++"
+                                [Factor (AStr "Hola, "),
+                                 Identifier param_0]
+                             ]
+                          )
+                        )
+            ,
+            Apply var_0     -- say_hi
+                  [SeqExpr [Factor (AStr "Mundo")]]
+      ]
+    #+end_src
 
     Una de la últimas fases es la conversion del AST a un conjunto de
     instrucciones simplificado.
 
-#+BEGIN_SRC haskell
-  Assign var_0
-      OFunc [param_0]
-            CallCommand op_0 ["Hola, ", GetVal param_0]
+    #+BEGIN_SRC haskell
+      Assign var_0
+          OFunc [param_0]
+                CallCommand op_0 ["Hola, ", GetVal param_0]
 
-  CallCommand var_0 ["Mundo"]
-#+end_src
+      CallCommand var_0 ["Mundo"]
+    #+end_src
 
     Y de esta foma es como se representa el código guardado en memoria. Es decir, las
     funciones que se definan su contenido es guardado en este formato.
@@ -282,20 +320,24 @@ SeqExpr [
 
     El conjunto de instrucciones definidas es el siguiente.
 
-#+BEGIN_SRC haskell
-data InstructionG (st :: * -> *) next
-  = CallCommand !AddressRef ![Object] (Object -> next)
-  | Assign !AddressRef !Object next
-  | DropVar !AddressRef next
-  | GetVal !AddressRef (Object -> next)
-  | Loop !Object (Object -> (FreeT (InstructionG st) st Object)) next
-  | Cond !Object
-      (FreeT (InstructionG st) st Object)
-      (FreeT (InstructionG st) st Object)
-      (Object -> next)
-  | End
-  deriving Functor
-#+end_src
+    #+BEGIN_SRC haskell
+      data Instruction next
+        = CallCommand !Info !AddressRef ![Object] (Object -> next)
+        -- ^ Make a call to and defined function
+        | Assign !Info !AddressRef !Object (Object -> next)
+        -- ^ Assign an object to local variable
+        | DropVar !Info !AddressRef next
+        -- ^ Remove a var from memory
+        | GetVal !Info !AddressRef (Object -> next)
+        -- ^ Retrieve a object from a memory reference
+        | Loop !Info !Object (Object -> Prog) next
+        -- ^ Loop over a object
+        | Cond !Info !Object
+            Prog
+            Prog
+            (Object -> next)
+        -- ^ If sentence given a object
+    #+END_SRC
 
     La estructura de datos puede intimidar, pero su uso simplifica manejo de
     este conjunto de instrucciones. La Free Monad permite trabajar esta
