@@ -24,6 +24,7 @@ keywords =
    "in", "class", "fun", "for", "if",
    "else", "none"]
 
+-- | Helper to generate location info
 mkTokenInfo :: TokenParser (TokenInfo -> a) -> TokenParser a
 mkTokenInfo parser = do
   initialPos <- getPosition
@@ -161,7 +162,7 @@ parseUnaryOperators = mkTokenInfo $ do
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = mkTokenInfo $ do
   name   <- parseAccessor
-  params <- between oParenT cParenT (parseMkScope `sepBy` commaT)
+  params <- between oParenT cParenT (parseMkScope `sepBy` commaT) <|> many1 parseFactor
   return $ Apply name params
 
 parseMethodChain :: TokenParser (Expression TokenInfo)
