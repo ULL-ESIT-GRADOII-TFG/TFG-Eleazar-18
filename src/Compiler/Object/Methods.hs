@@ -4,11 +4,13 @@ module Compiler.Object.Methods where
 
 import           Control.Monad.Except
 import           Control.Monad.Trans.Free
-import qualified Data.Map                 as M
-import qualified Data.Text                as T
+import qualified Data.Map                   as M
+import qualified Data.Text                  as T
+import qualified Data.Vector                as V
 import           Text.PrettyPrint
 
 import           Compiler.Error
+import           Compiler.Instruction.Utils
 import           Compiler.Prelude.Types
 import           Compiler.Types
 import           Compiler.World.Methods
@@ -104,12 +106,34 @@ showObject obj = case obj of
   ODouble val -> return . text $ show val
   OBool val -> return . text $ show val
   ONum val -> return . text $ show val
-  OVector vec -> return . text $ show vec -- TODO: Show Innervalue
+  OVector vec -> do
+    vec' <- V.mapM showObject vec
+    if V.null vec' then
+      return $ text "[]"
+    else
+      return $ V.foldl
+        (\acc v -> acc <> ", " <> v)
+        (text "[ " <> vec' V.! 0)
+        (V.drop 1 vec')
+        <> " ]"
   ORef rfs -> do
     obj' <- follow rfs
-    showObject obj' <&> (text "* -> " <>)
+    showObject obj' <&> (text "*" <>) -- TODO: Remove when the project turn it more stable
   ONone -> return "None"
-  object -> return . text $ show object -- TODO: __print__
+  OFunc _env args body -> do
+    body' <- pprint body
+    return $ text "Function with args: " <> text (show args) <> text "{" $$
+      nest 2 body' $$
+      text "}"
+  ONative _ -> return . text $ show obj
+  OClassDef name _ _ -> return $ text "Class " <> text (T.unpack name)
+  OObject _ methods -> do
+    dic <- mapM (\(key, obj') -> do
+      objDoc <- showObject (ORef obj')
+      return $ text (T.unpack key) <> text " -> " <> objDoc) $ M.toList methods
+    return $ text "{" $$
+      nest 2 (vcat dic)$$
+      text "}"
 
 -- | Execute a sequence of instructions
 runProgram :: FreeT Instruction StWorld Object -> StWorld Object

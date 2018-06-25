@@ -83,21 +83,14 @@ lexerTest =
 
       tokenFlow "test:\n  h1\n   \n\nh3" `shouldBe` Right [NameIdT "test",OBraceT,NameIdT "h1",CBraceT, NameIdT "h3"]
 
-    it "TEST" $ do
+    it "Parses dic items" $
+      tokenFlow "{a -> 5}" `shouldBe` Right [OBraceT,NameIdT "a",OperatorT "->",NumT 5,CBraceT]
+
+    it "TEST" $
       tokenFlow "for h in []:\n  hi\n" `shouldBe` Right [ForT,NameIdT "h", InT, OBracketT,CBracketT,OBraceT,NameIdT "hi",CBraceT]
 
-    it "TEST2" $ do
+    it "TEST2" $
       tokenFlow "for h in [] {}" `shouldBe` Right [ForT,NameIdT "h", InT, OBracketT,CBracketT,OBraceT,CBraceT]
 
-    it "TEST3" $ do
+    it "TEST3" $
       tokenFlow "if true {false} else {true}" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
-
-      tokenFlow "fun say_hi name {\"Hola, \" ++ name} say_hi(\"Mundo\")" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
-
-  -- describe "Parse several Tokens" $ do
-  --
-  --   it "In the same line" $ do
-  --     parse parseTokens "TEST" "hello 4556 hi" `shouldBe` Right [NameIdT "hello", NumT 4556, NameIdT "hi"]
-  --
-  --   it "Keywords" $ do
-  --     parse parseTokens "TEST" "for as if else" `shouldBe` Right [ForT, AsT, IfT, ElseT]

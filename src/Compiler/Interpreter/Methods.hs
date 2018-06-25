@@ -133,7 +133,7 @@ evaluateScopedProgram astScoped = do
     instrsPP <- liftWorld $ pprint instrs
     liftIO . putStrLn $ renderStyle style instrsPP
   value <- liftWorld (runProgram instrs)
-  showable <- showInterpreter value
+  showable <- liftWorld $ renderStyle style <$> showObject value
   liftIO $ putStrLn showable
 
 -- | Computar las class y los import, unir todos los Expression con seq

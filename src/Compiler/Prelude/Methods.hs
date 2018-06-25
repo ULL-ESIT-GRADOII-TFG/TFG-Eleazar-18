@@ -7,6 +7,7 @@ import           Control.Monad.Trans.Free
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import           System.Directory
+import           Text.PrettyPrint
 
 import           Compiler.Error
 import           Compiler.Interpreter.Utils
@@ -80,15 +81,29 @@ printObj obj = case obj of
   OObject (Just classRef) _attrs -> do
     clsObj <- lift $ findObject (simple classRef)
     case clsObj of
-      OClassDef _name _ref methods ->
+      OClassDef name _ref methods ->
         case M.lookup "__print__" methods of
           Just func' -> do
             obj' <- lift $ callObjectDirect func' [obj]
-            printObj obj'
-          Nothing    ->
-            undefined
-      o  -> undefined
-  _ -> undefined
+            str <- lift $ renderStyle style <$> showObject obj'
+            liftIO $ putStrLn str
+            return ONone
+          Nothing    -> do
+            str <- lift $
+              renderStyle style . (text (T.unpack name) <> text " " <>)
+                <$> showObject obj
+            liftIO $ putStrLn str
+            return ONone
+      _  -> do
+        str <- lift $
+          renderStyle style <$> showObject obj
+        liftIO $ putStrLn str
+        return ONone
+  _ -> do
+    str <- lift $
+      renderStyle style <$> showObject obj
+    liftIO $ putStrLn str
+    return ONone
 
 changeObject :: Object -> FreeT Instruction StWorld Object
 changeObject = undefined

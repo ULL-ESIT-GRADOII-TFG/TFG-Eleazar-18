@@ -299,7 +299,7 @@ parseDic = mkTokenInfo $ do
   let
     item = do
       key <- litTextT <|> nameIdT
-      operatorT' ":"
+      operatorT' "->"
       body <- parseExp
       return (key, body)
   items <- between oBraceT cBraceT (item `sepBy` commaT)
