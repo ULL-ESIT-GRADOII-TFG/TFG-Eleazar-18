@@ -1,5 +1,6 @@
 module Compiler.World.Methods where
 
+import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
@@ -18,6 +19,7 @@ import qualified Compiler.Prelude.ORegex        as ORegex
 import qualified Compiler.Prelude.OShellCommand as OShellCommand
 import qualified Compiler.Prelude.OStr          as OStr
 import qualified Compiler.Prelude.OVector       as OVector
+import           Compiler.Prelude.Utils
 import           Compiler.Scope.Utils
 import           Compiler.Types
 
@@ -111,7 +113,11 @@ on obj acc = case obj of
             >>= (\obj' -> case obj'^.rawObjA of
                     OClassDef{} -> return $ attributesClass (obj'^.rawObjA)
                     _           -> Nothing)
-            >>= M.lookup acc
+            >>= (\table ->
+              M.lookup acc table
+              <|>
+              -- Find into share methods (operators) too
+              (M.lookup acc operatorsPrecedence >>= \(_, _, name) -> M.lookup name table))
         -- Internal search
         , return $ ONative <$> getMethods obj acc
         ]
@@ -154,7 +160,7 @@ getMethods obj name = case obj of
   OVector{}       -> OVector.methods name
   ORegex{}        -> ORegex.methods name
   OShellCommand{} -> OShellCommand.methods name
-  OFunc{}         -> Nothing
+  OFunc{}         -> Nothing -- TODO: Add methods mappend -> monoid instance
   ONative{}       -> Nothing
   OObject{}       -> Nothing
   OClassDef{}     -> Nothing

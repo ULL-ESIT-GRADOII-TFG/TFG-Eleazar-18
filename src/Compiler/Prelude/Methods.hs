@@ -18,29 +18,6 @@ import           Compiler.Types
 import           Compiler.World.Methods
 
 
--- | Dictionary of operators precedence order
-operatorsPrecedence :: M.Map T.Text (Int, Assoc)
-operatorsPrecedence = M.fromList
-  [ ("**", (8, LeftAssoc))
-  , ("*" , (7, LeftAssoc))
-  , ("/" , (7, LeftAssoc))
-  , ("%" , (7, LeftAssoc))
-  , ("+" , (6, LeftAssoc))
-  , ("-" , (6, LeftAssoc))
-  , ("++", (5, RightAssoc))
-  , ("==", (4, LeftAssoc))
-  , ("!=", (4, LeftAssoc))
-  , ("/=", (4, LeftAssoc))
-  , (">" , (4, LeftAssoc))
-  , ("<" , (4, LeftAssoc))
-  , ("<=", (4, LeftAssoc))
-  , (">=", (4, LeftAssoc))
-  , ("&&", (3, RightAssoc))
-  , ("||", (3, RightAssoc))
-  , ("??", (1, RightAssoc))
-  , ("!" , (1, LeftAssoc))
-  ]
-
 -- | Prelude load action
 -- TODO: Create a class to interact with http connections
 loadPrelude :: Interpreter ()
@@ -67,7 +44,7 @@ baseBasicFunctions =
   [ ("print", ONative (normalize printObj))
   , ("not"  , ONative (normalizePure not))
   , ("cd"   , ONative (normalize setCurrentDirectory))
-  , ("use"   , ONative (normalize changeObject))
+  , ("use"   , ONative (normalize changeObject)) -- __implicit__
   , ("unuse"   , ONative (normalize changeObject))
   , ("dir"   , ONative (normalize changeObject))
   , ("docs"   , ONative (normalize changeObject)) -- __docs__

@@ -3,16 +3,16 @@ module Compiler.Parser.Methods where
 
 import           Control.Monad
 import           Data.Bifunctor
-import qualified Data.Map                 as M
-import qualified Data.Text                as T
-import qualified Data.Vector              as V
+import qualified Data.Map               as M
+import qualified Data.Text              as T
+import qualified Data.Vector            as V
 import           Text.Parsec
 
 import           Compiler.Ast
 import           Compiler.Parser.Types
-import           Compiler.Prelude.Methods (operatorsPrecedence)
-import           Compiler.Prelude.Types   (Assoc (..))
-import           Compiler.Token.Lexer     (Lexeme, getTokens, scanner)
+import           Compiler.Prelude.Types (Assoc (..))
+import           Compiler.Prelude.Utils (operatorsPrecedence)
+import           Compiler.Token.Lexer   (Lexeme, getTokens, scanner)
 import           Compiler.Token.Methods
 import           Compiler.Types
 
@@ -150,7 +150,7 @@ parseFor = mkTokenInfo $ do
   nameVar <- nameIdT
   inT
   expr <- parseExp
-  prog    <- parseBody
+  prog <- parseBody
   return $ For nameVar expr prog
 
 parseUnaryOperators :: TokenParser (Expression TokenInfo)
@@ -222,7 +222,7 @@ checkOperator :: Int -> TokenParser T.Text
 checkOperator level = do
   op <- operatorT
   case M.lookup op operatorsPrecedence of
-    Just (levelOP, _assoc) -> if levelOP == level
+    Just (levelOP, _assoc, _special) -> if levelOP == level
       then return op
       else parserFail ("Operator in wrong level " ++ show level)
     Nothing -> parserFail "No valid operator"
@@ -242,11 +242,11 @@ treeOperators
   -> Expression TokenInfo
 treeOperators expr []               = expr
 treeOperators expr list@((op, _):_) = case M.lookup op operatorsPrecedence of
-  Just (_, LeftAssoc) -> foldl
+  Just (_, LeftAssoc, _) -> foldl
     (\acc (_, expr') -> Apply (Simple op dummyTokenInfo) [acc, expr'] dummyTokenInfo)
     expr
     list
-  Just (_, RightAssoc) -> foldr1
+  Just (_, RightAssoc, _) -> foldr1
     (\expr' acc -> Apply (Simple op dummyTokenInfo) [expr', acc] dummyTokenInfo)
     (expr : map snd list)
   Nothing -> error "Operator not found. Internal error"
