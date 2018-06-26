@@ -37,9 +37,8 @@ toSrcPos sourcePos = SrcPos (sourceLine sourcePos) (sourceColumn sourcePos) 0
 
 generateAST :: T.Text -> String -> Either InterpreterError Repl
 generateAST rawFile nameFile = do
-  tokenizer' <- first (Compiling . T.pack) . scanner True $ T.unpack rawFile
-  first (Compiling . T.pack . show) . parserLexer nameFile $ getTokens
-    tokenizer'
+  tokenizer' <- first (Tokenizer . T.pack) . scanner True $ T.unpack rawFile
+  first Parsing . parserLexer nameFile $ getTokens tokenizer'
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
 parserLexer = parse parseInterpreter

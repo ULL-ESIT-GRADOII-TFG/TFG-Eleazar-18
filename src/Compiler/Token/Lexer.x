@@ -134,7 +134,10 @@ getTokens (Complete tokens) = tokens
 data Lexeme = L
   { posn :: AlexPosn
   , tokn :: Token
-  } deriving (Show, Eq)
+  } deriving Eq
+
+instance Show Lexeme where
+  show (L _pos tok) = show tok
 
 -- | Internal use. Used to take account of indent level
 data AlexUserState = AlexUserState

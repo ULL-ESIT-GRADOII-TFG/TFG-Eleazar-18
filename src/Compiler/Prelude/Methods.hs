@@ -61,7 +61,8 @@ printObj obj = case obj of
       OClassDef name _ref methods ->
         case M.lookup "__print__" methods of
           Just func' -> do
-            obj' <- lift $ callObjectDirect func' [obj]
+            func'' <- lift $ follow func'
+            obj' <- lift $ callObjectDirect func'' [obj]
             str <- lift $ renderStyle style <$> showObject obj'
             liftIO $ putStrLn str
             return ONone

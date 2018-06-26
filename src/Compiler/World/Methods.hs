@@ -39,6 +39,10 @@ newObject obj = do
   addObject (simple addr) obj
   return addr
 
+-- | Internal use to management memory. Doesn't check for objects referencing this var
+deleteUnsafe :: Word -> StWorld ()
+deleteUnsafe addr = void $ IM.delete (fromIntegral addr) <$> use (innerStateA.tableA)
+
 -- | Add and object to memory. Address specify route to put Object
 -- > obj = {}
 -- > obj.foo.bar = 5
@@ -104,11 +108,11 @@ on obj acc = case obj of
   OObject mClassId dicObj ->
     attemps
         -- Local search
-        [ maybe (return Nothing) (fmap Just . follow) $ M.lookup acc dicObj
+        [ maybe (return Nothing) (fmap (Just . ORef) . follow') $ M.lookup acc dicObj
         -- Class search
         , do
           memory <- use (innerStateA.tableA)
-          return $ mClassId
+          return $ ORef <$> (mClassId
             >>= (`IM.lookup` memory) . fromIntegral
             >>= (\obj' -> case obj'^.rawObjA of
                     OClassDef{} -> return $ attributesClass (obj'^.rawObjA)
@@ -117,7 +121,7 @@ on obj acc = case obj of
               M.lookup acc table
               <|>
               -- Find into share methods (operators) too
-              (M.lookup acc operatorsPrecedence >>= \(_, _, name) -> M.lookup name table))
+              (M.lookup acc operatorsPrecedence >>= \(_, _, name) -> M.lookup name table)))
         -- Internal search
         , return $ ONative <$> getMethods obj acc
         ]
@@ -215,6 +219,8 @@ follow' w = follow'' w 50
 follow :: Word -> StWorld Object
 follow word = follow' word >>= findObject . simple
 
+-- TODO: This must to be explained in detail why one is going to be better than other
+--
 -- | Allow execute actions from ScopeM into Interpreter
 liftScope :: ScopeM b -> StWorld b
 liftScope scopeM = do

@@ -9,8 +9,8 @@ import           Compiler.Utils
 
 
 data TokenInfo = TokenInfo
-  { _start :: SrcPos
-  , _end   :: SrcPos
+  { _start :: !SrcPos
+  , _end   :: !SrcPos
   }
   deriving Show
 

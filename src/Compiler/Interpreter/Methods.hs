@@ -85,7 +85,8 @@ getPrompt = do
 -- TODO: Improve
 handleREPLError :: InterpreterError -> Interpreter ()
 handleREPLError err = case err of
-  Compiling err' -> liftIO $ T.putStrLn err'
+  Tokenizer err' -> liftIO $ T.putStrLn err'
+  Parsing parseError   -> liftIO . putStrLn $ show parseError
   Internal  err' -> liftIO $ T.putStrLn err'
   WrapWorld err' -> liftIO $ putStrLn $ renderStyle style $ renderError err'
 
@@ -120,7 +121,7 @@ compileSourcePure :: T.Text -> String -> Either InterpreterError (ScopeM Prog)
 compileSourcePure rawFile nameFile = do
   ast <- generateAST rawFile nameFile
   case ast of
-    Command _cmd _args -> Left $ Compiling "You can't use command"
+    Command _cmd _args -> Left $ Internal "You can't use command"
     Code statements    -> Right $ computeStatements statements >>= transform . ExprSeq
 
 -- | Evaluate program with AST already scoped

@@ -205,7 +205,7 @@ data Object
   -- ^ Shell command
   | OVector (V.Vector Object)
   -- ^ Sequence of objects
-  | OFunc (M.Map T.Text Object) [Word] Prog
+  | OFunc (M.Map T.Text Object) [Word] ([Object] -> Prog)
   -- ^ Lambda with possible scope/vars attached
   | OObject (Maybe Word) (M.Map T.Text Word)
   -- ^ Object instance from class Word
@@ -216,7 +216,7 @@ data Object
   | OClassDef
     { nameClass       :: T.Text
     , refClass        :: Word
-    , attributesClass :: M.Map T.Text Object
+    , attributesClass :: M.Map T.Text Word
     }
   | ONone
 

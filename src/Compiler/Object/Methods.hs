@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Object.Methods where
 
-import           Control.Monad.Except
 import           Control.Monad.Trans.Free
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
@@ -39,13 +38,7 @@ callObjectDirect obj objs = case obj of
     if length ids /= length objs then
       throw $ NumArgsMissmatch (length ids) (length objs)
     else
-      runProgram $ do
-        let argsIDs = map simple ids
-        tokn <- lift . use $ currentTokenInfoA
-        zipWithM_ (assign (Info mempty tokn)) argsIDs objs
-        val <- prog
-        mapM_ (dropVar (Info mempty tokn)) argsIDs
-        return val
+      runProgram $ prog objs
 
   ONative native -> runProgram $ native objs
 
@@ -53,13 +46,21 @@ callObjectDirect obj objs = case obj of
       self <- newObject $ OObject (Just refCls) mempty
       case M.lookup "__init__" methods of
         Just method -> do
-          _ <- catchArgsMethodsError $ callObjectDirect method (ORef self:objs)
-          return (ORef self)
+          _ <- catchArgsMethodsError $ callObjectDirect (ORef method) (ORef self:objs)
+          obj' <- follow self
+          deleteUnsafe self
+          return obj'
         Nothing ->
-          if null objs then
-            return (ORef self)
+          if null objs then do
+            obj' <- follow self
+            deleteUnsafe self
+            return obj'
           else
             throw $ NumArgsMissmatch 0 (length objs)
+
+  ORef ref' -> do
+    obj' <- follow ref'
+    callObjectDirect obj' objs
 
   t -> throw $ NotCallable (typeName t)
 
@@ -78,7 +79,9 @@ mapObj obj func = case obj of
       case clsObj of
         OClassDef _name _ref methods ->
           case M.lookup "__map__" methods of
-            Just func' -> callObjectDirect func' [obj, ONative $ normalize func]
+            Just func' -> do
+              func'' <- follow func'
+              callObjectDirect func'' [obj, ONative $ normalize func]
             Nothing    -> return ONone
         o  -> throw $ NotIterable (typeName o)
     o -> throw $ NotIterable (typeName o)
@@ -92,7 +95,9 @@ checkBool obj = case obj of
     case clsObj of
       OClassDef _name _ref methods ->
         case M.lookup "__bool__" methods of
-          Just func' -> callObjectDirect func' [obj] >>= checkBool
+          Just func' -> do
+            func'' <- follow func'
+            callObjectDirect func'' [obj] >>= checkBool
           Nothing    -> throw $ NotBoolean "Object"
       o  -> throw $ NotBoolean (typeName o)
   _ -> throw $ NotBoolean (typeName obj)
@@ -121,7 +126,7 @@ showObject obj = case obj of
     showObject obj' <&> (text "*" <>) -- TODO: Remove when the project turn it more stable
   ONone -> return "None"
   OFunc _env args body -> do
-    body' <- pprint body
+    body' <- pprint (body (repeat ONone))
     return $ text "Function with args: " <> text (show args) <> text "{" $$
       nest 2 body' $$
       text "}"

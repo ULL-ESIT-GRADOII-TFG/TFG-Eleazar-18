@@ -65,4 +65,37 @@ data Token
   -- ^ Dedent `x` levels
   | EosT
   -- ^ End of source
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Token where
+  show tok = case tok of
+    OBraceT         -> "{"
+    CBraceT         -> "}"
+    OParenT         -> "("
+    CParenT         -> ")"
+    OBracketT       -> "["
+    CBracketT       -> "]"
+    ClassT          -> "class"
+    ImportT         -> "import"
+    LamT            -> "lam"
+    FunT            -> "fun"
+    ForT            -> "for"
+    InT             -> "as"
+    IfT             -> "if"
+    ElseT           -> "else"
+    CommaT          -> ","
+    AssignT         -> "="
+    ShellCommandT _ -> "'shell command'"
+    RegexExprT _    -> "'regex'"
+    NameIdT _       -> "'identifier'"
+    ClassIdT _      -> "'class name'"
+    LitTextT _      -> "'literal string'"
+    NumT _          -> "'number'"
+    DecimalT _      -> "'double'"
+    BoolT _         -> "'boolean'"
+    NoneT           -> "none"
+    OperatorT _     -> "'operator'"
+    ICommandT _ _   -> "'interpreter command'"
+    SkipT           -> "'skip'"
+    DedentT _       -> "'dedent'"
+    EosT            -> "'eof'"

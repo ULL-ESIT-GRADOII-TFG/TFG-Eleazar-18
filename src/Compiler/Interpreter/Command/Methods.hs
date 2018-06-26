@@ -53,6 +53,6 @@ showInstructions (name:_) = do
   object <- getVar name
   case object of
     OFunc _ _ prog -> do
-      instrs <- liftWorld $ pprint prog
+      instrs <- liftWorld $ pprint (prog (repeat ONone))
       liftIO . putStrLn $ renderStyle style instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

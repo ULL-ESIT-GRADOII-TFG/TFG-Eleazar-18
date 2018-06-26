@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Compiler.Instruction.Methods where
 
+import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Free
 import qualified Data.Map                 as M
@@ -28,12 +29,20 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT Instruction StWorld) Obje
   transform expr = case expr of
     FunExpr args prog info -> withScope (info^.scopeInfoA) $ do
       -- TODO: Generate Text -> Object
+      info' <- infoASTToInfo info
       body <- transform prog
       addresses <- mapM (\acc -> do
                             addr <- getIdentifier (return acc)
                             return $ addr^.refA
                         ) args
-      return . return $ OFunc mempty addresses body
+
+      return . return $ OFunc mempty addresses (\objs -> do
+          let argsIDs = map simple addresses
+          zipWithM_ (assign info') argsIDs objs
+          obj <- body
+          mapM_ (dropVar info') argsIDs
+          return obj
+        )
 
     VarExpr acc exprValue info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
@@ -134,7 +143,8 @@ instance Desugar Atom ScopeInfoAST ScopeM (FreeT Instruction StWorld) Object whe
       addr <- getIdentifier (return name)
       return $ do
         oFuncs <- sequence methods'
-        return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) oFuncs)
+        refFuncs <- lift $ mapM newObject oFuncs
+        return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) refFuncs)
 
 -------------------------------------------------------------------------------
 -- * Utils
