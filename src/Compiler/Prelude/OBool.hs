@@ -8,7 +8,8 @@ import           Compiler.Types
 
 methods :: T.Text -> Maybe ([Object] -> Prog)
 methods name = case name of
-  "!"  -> Just $ normalizePure not
-  "||" -> Just $ normalizePure' (||)
-  "&&" -> Just $ normalizePure' (&&)
-  _    -> Nothing
+  "!"   -> Just $ normalizePure not
+  "||"  -> Just $ normalizePure' (||)
+  "&&"  -> Just $ normalizePure' (&&)
+  "not" -> Just $ normalizePure not
+  _     -> Nothing

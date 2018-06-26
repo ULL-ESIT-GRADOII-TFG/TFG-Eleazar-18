@@ -2,8 +2,11 @@
 module Compiler.Object.Types where
 
 -- import qualified Data.Map             as M
-import qualified Data.Text      as T
-import qualified Data.Vector    as V
+import qualified Data.ByteString       as B
+import qualified Data.Text             as T
+import qualified Data.Text.Encoding    as TE
+import qualified Data.Vector           as V
+import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
 import           Compiler.Types
@@ -55,6 +58,13 @@ instance FromObject a => FromObject (V.Vector a) where
   fromObject (OVector vec) = mapM fromObject vec
   fromObject _             = throw NotImplicitConversion
 
+instance ToObject a => ToObject [a] where
+  toObject = OVector . V.map toObject . V.fromList
+
+instance FromObject a => FromObject [a] where
+  fromObject (OVector vec) = V.toList <$> mapM fromObject vec
+  fromObject _             = throw NotImplicitConversion
+
 -- TODO: Generate subvars
 -- instance ToObject a => ToObject (M.Map T.Text a) where
 --   toObject = OObject Nothing . M.map toObject
@@ -64,11 +74,22 @@ instance FromObject a => FromObject (V.Vector a) where
 --   fromObject (OObject _ dic) = mapM fromObject dic
 --   fromObject _               = throw NotImplicitConversion
 
-instance ToObject String where
+-- There aren't a char type equivalent right now. Remind: Two paths [Char] String
+-- instance ToObject Char where
+--   toObject = OStr . T.singleton
+
+instance {-# OVERLAPPING #-} ToObject [Char] where
   toObject = OStr . T.pack
 
-instance FromObject String where
+instance {-# OVERLAPPING #-} FromObject [Char] where
   fromObject (OStr text) = return (T.unpack text)
+  fromObject _           = throw NotImplicitConversion
+
+instance ToObject B.ByteString where
+  toObject = OStr . TE.decodeUtf8
+
+instance FromObject B.ByteString where
+  fromObject (OStr text) = return $ TE.encodeUtf8 text
   fromObject _           = throw NotImplicitConversion
 
 instance ToObject T.Text where
@@ -77,3 +98,17 @@ instance ToObject T.Text where
 instance FromObject T.Text where
   fromObject (OStr text) = return text
   fromObject _           = throw NotImplicitConversion
+
+instance ToObject Regex where
+  toObject = ORegex
+
+instance FromObject a => FromObject (Maybe a) where
+  fromObject ONone = return Nothing
+  fromObject obj   = Just <$> fromObject obj
+
+instance ToObject a => ToObject (Maybe a) where
+  toObject = maybe ONone toObject
+
+instance FromObject Regex where
+  fromObject (ORegex regex) = return regex
+  fromObject _              = throw NotImplicitConversion
