@@ -168,53 +168,73 @@ parseMethodChain :: TokenParser (Expression TokenInfo)
   -> TokenParser (Expression TokenInfo)
 parseMethodChain parser = do
   expr <- parser
-  expr' <- optionMaybe $ parseMethod expr
-  maybe (return expr) (parseMethodChain . return) expr'
+  let parseMethod' e = do
+        expr' <- optionMaybe $ parseMethod e
+        maybe (return e) parseMethod' expr'
+  parseMethod' expr
 
 parseMethod :: Expression TokenInfo -> TokenParser (Expression TokenInfo)
 parseMethod expr = do
   initialPos <- getPosition
-  operatorT' "."
-  acc    <- parseAccessor
+  nextExpr <- choice
+    [ do
+      operatorT' "."
+      acc <- parseAccessor
 
-  -- Apply
-  params <- optionMaybe $ between
-              oParenT
-              cParenT
-              (parseMkScope `sepBy` commaT)
+     -- Apply
+      params <- optionMaybe $ between
+                  oParenT
+                  cParenT
+                  (parseMkScope `sepBy` commaT) <|> many1 parseFactor
 
-  -- Braces
-  param <- optionMaybe $
-    between oBraceT cBraceT parseExp
+      -- Braces
+      param <- optionMaybe $ between oBracketT cBracketT parseExp
+
+      return $ \tok ->
+        case (params, param) of
+            (Just params', Just param') -> MkScope
+              [ VarExpr
+                  (Simple "parser_aux_2" tok)
+                  (Apply (Dot "parser_aux_0" acc tok) params' tok) tok
+              , Apply
+                  (Dot "parser_aux_2" (Simple "__at__" tok) tok)
+                  [param'] tok
+              ] tok
+
+            (Just params', Nothing)     ->
+              Apply (Dot "parser_aux_0" acc tok) params' tok
+
+            (Nothing, Just param')      -> MkScope
+              [ VarExpr
+                  (Simple "parser_aux_2" tok)
+                  (Identifier (Dot "parser_aux_0" acc tok) tok) tok
+              , Apply
+                  (Dot "parser_aux_2" (Simple "__at__" tok) tok)
+                  [param'] tok
+
+              ] tok
+
+            (Nothing, Nothing)          -> Identifier (Dot "parser_aux_0" acc tok) tok
+
+    , do
+      -- Apply
+      params <- between
+                  oParenT
+                  cParenT
+                  (parseExp `sepBy` commaT)
+      return $ \tok -> Apply (Simple "parser_aux_0" tok) params tok
+    , do
+      -- At
+      param <- between oBracketT cBracketT parseExp
+      return $ \tok -> Apply (Dot "parser_aux_0" (Simple "__at__" tok) tok) [param] tok
+    ]
 
   finalPos <- getPosition
+
   let tok = TokenInfo (toSrcPos initialPos) (toSrcPos finalPos)
   return $ MkScope
     [ VarExpr (Simple "parser_aux_0" tok) expr tok
-    , case (params, param) of
-        (Just params', Just param') -> MkScope
-          [ VarExpr
-              (Simple "parser_aux_2" tok)
-              (Apply (Dot "parser_aux_0" acc tok) params' tok) tok
-          , Apply
-              (Dot "parser_aux_2" (Simple "__bracket__" tok) tok)
-              [param'] tok
-          ] tok
-
-        (Just params', Nothing)     ->
-          Apply (Dot "parser_aux_0" acc tok) params' tok
-
-        (Nothing, Just param')      -> MkScope
-          [ VarExpr
-              (Simple "parser_aux_2" tok)
-              (Identifier (Dot "parser_aux_0" acc tok) tok) tok
-          , Apply
-              (Dot "parser_aux_2" (Simple "__bracket__" tok) tok)
-              [param'] tok
-
-          ] tok
-
-        (Nothing, Nothing)          -> Identifier (Dot "parser_aux_0" acc tok) tok
+    , nextExpr tok
     ] tok
 
 checkOperator :: Int -> TokenParser T.Text

@@ -86,6 +86,9 @@ lexerTest =
     it "Parses dic items" $
       tokenFlow "{a -> 5}" `shouldBe` Right [OBraceT,NameIdT "a",OperatorT "->",NumT 5,CBraceT]
 
+    it "Parses __brace__ items" $
+      tokenFlow "list[1]" `shouldBe` Right [NameIdT "list", OBracketT, NumT 1, CBracketT]
+
     it "TEST" $
       tokenFlow "for h in []:\n  hi\n" `shouldBe` Right [ForT,NameIdT "h", InT, OBracketT,CBracketT,OBraceT,NameIdT "hi",CBraceT]
 

@@ -236,6 +236,8 @@ instance Show Object where
     OClassDef{}     -> "[ClassDef]"
     ONone           -> "[None]"
 
+instance Default Object where
+  def = ONone
 
 -------------------------------------------------------------------------------
 -- * Instruction's Types

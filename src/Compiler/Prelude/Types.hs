@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes        #-}
 module Compiler.Prelude.Types where
 
 import           Control.Monad.Except
@@ -44,8 +45,21 @@ instance ToObject a => Normalize (StWorld a) where
       _  -> throw $ NumArgsMissmatch expected given
 
 instance (Normalize r, FromObject a) => Normalize (a -> r) where
-  normalize' fun expected given []     =
-    normalize' (fun undefined) (expected + 1) given [] -- It doesn't should be a problem
+  normalize' fun _ given []     =
+      throw $ NumArgsMissmatch (count fun 0) given
   normalize' fun expected given (a:xs) = do
     obj <- lift $ fromObject a
-    normalize' (fun obj) (expected+1) given xs
+    normalize' (fun obj) (expected + 1) given xs
+
+-- | Used to count params avoiding evaluate function
+class CountParams a where
+  count :: a -> Int -> Int
+
+instance CountParams a where
+  count _ n = n
+
+instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> b -> r) where
+  count fun n = count (fun undefined) (n + 1)
+
+instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> r) where
+  count _ n = (n + 1)

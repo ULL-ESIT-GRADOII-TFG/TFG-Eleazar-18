@@ -11,7 +11,7 @@ methods :: T.Text -> Maybe ([Object] -> Prog)
 methods name = case name of
   "length" -> Just $ normalizePure (V.length :: V.Vector Object -> Int)
   "null" -> Just $ normalizePure (V.null :: V.Vector Object -> Bool)
-  "__brace__" -> Just $ normalizePure' ((V.!?) :: V.Vector Object -> Int -> Maybe Object)
+  "__at__" -> Just $ normalizePure' ((V.!?) :: V.Vector Object -> Int -> Maybe Object)
   "head" -> Just $ normalizePure (V.head :: V.Vector Object -> Object)
   "last" -> Just $ normalizePure (V.last :: V.Vector Object -> Object)
   "slice" -> Just $ normalizePure'' (
