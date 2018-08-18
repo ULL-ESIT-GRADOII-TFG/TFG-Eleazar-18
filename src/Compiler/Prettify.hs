@@ -1,7 +1,8 @@
 module Compiler.Prettify where
 
-import           Text.PrettyPrint
+import           Data.Text.Prettyprint.Doc
 
 
 class Prettify a where
-  prettify :: a -> Int -> Doc
+  -- | Item to prettify with level of verbosity
+  prettify :: a -> Int -> Doc ()

@@ -1,16 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Compiler.Prelude.ONum where
 
-import qualified Data.Text              as T
-
-import           Compiler.Prelude.Utils
-import           Compiler.Types
+import qualified Data.Map            as M
+import qualified Data.Text           as T
 
   -- TODO: Add negate operator
-methods :: T.Text -> Maybe ([Object] -> Prog)
-methods name = case name of
-  "*" -> Just $ normalizePure' ((*) :: Int -> Int -> Int)
-  "/" -> Just $ normalizePure' (div :: Int -> Int -> Int)
-  "+" -> Just $ normalizePure' ((+) :: Int -> Int -> Int)
-  "-" -> Just $ normalizePure' ((-) :: Int -> Int -> Int)
-  _   -> Nothing
+import           Compiler.Object
+import           Compiler.Prelude.Th
+import           Compiler.Types
+
+methods
+  :: (MemoryManagement mm, RawObj mm ~ Object mm)
+  => M.Map T.Text ([Object mm] -> mm (Object mm))
+methods = M.fromList
+  [ ( "*"
+    , $(normalize [| (*) |] (\_ty -> [t| Int -> Int -> Int |])))
+  , ( "()"
+    , $(normalize [| div |] (\_ty -> [t| Int -> Int -> Int |])))
+  , ( "+"
+    , $(normalize [| (+) |] (\_ty -> [t| Int -> Int -> Int |])))
+  , ( "-"
+    , $(normalize [| (+) |] (\_ty -> [t| Int -> Int -> Int |])))
+ ]

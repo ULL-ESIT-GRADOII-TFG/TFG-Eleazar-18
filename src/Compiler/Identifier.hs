@@ -6,12 +6,12 @@ import           Data.IORef
 import           System.IO.Unsafe
 
 
-counterID :: IORef Word
+counterID :: IORef Int
 {-# NOINLINE counterID #-}
-counterID = unsafePerformIO $ newIORef (0 :: Word)
+counterID = unsafePerformIO $ newIORef (0 :: Int)
 
 -- | Generates a new ID
-getNewID :: IO Word
+getNewID :: IO Int
 getNewID = do
   val <- readIORef counterID
   writeIORef counterID (val + 1)

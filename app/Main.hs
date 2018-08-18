@@ -2,7 +2,6 @@ module Main where
 
 import           Compiler.Core.Methods
 import           Compiler.Core.Types
-import           Data.Monoid
 import           Options.Applicative
 
 

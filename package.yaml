@@ -1,5 +1,5 @@
 name: ScriptFlow
-version: '0.0.1'
+version: '0.0.2'
 synopsis: An easy scripting language
 description: Please see README.org
 category: Development, Languages
@@ -27,6 +27,7 @@ library:
     - filepath
     - free
     - haskeline
+    - HFuse
     - http-client
     - http-client-tls
     - include-file
@@ -35,7 +36,7 @@ library:
     - mtl
     - parsec
     - pcre-light
-    - pretty
+    - prettyprinter
     - process
     - template-haskell
     - text
@@ -43,22 +44,15 @@ library:
     - yaml
   exposed-modules:
     - Compiler.Ast
-    - Compiler.Config.Methods
-    - Compiler.Config.Types
+    - Compiler.Config
     - Compiler.Core.Methods
     - Compiler.Core.Types
-    - Compiler.Desugar.Types
     - Compiler.Error
     - Compiler.Identifier
-    - Compiler.Instruction.Methods
-    - Compiler.Instruction.Utils
-    - Compiler.Instruction.Types
-    - Compiler.Interpreter.Command.Methods
-    - Compiler.Interpreter.Methods
-    - Compiler.Interpreter.Types
-    - Compiler.Interpreter.Utils
-    - Compiler.Object.Methods
-    - Compiler.Object.Types
+    - Compiler.Instruction
+    - Compiler.Interpreter.Command
+    - Compiler.Interpreter.Evaluate
+    - Compiler.Object
     - Compiler.Parser.Methods
     - Compiler.Parser.Types
     - Compiler.Prelude.Methods
@@ -73,16 +67,13 @@ library:
     - Compiler.Prelude.Types
     - Compiler.Prelude.Utils
     - Compiler.Prettify
-    - Compiler.Scope.Methods
-    - Compiler.Scope.Types
-    - Compiler.Scope.Utils
+    - Compiler.Scope
     - Compiler.Token.Lexer
     - Compiler.Token.Methods
     - Compiler.Token.Types
     - Compiler.Types
     - Compiler.Utils
-    - Compiler.World.Methods
-    - Compiler.World.Types
+    - Compiler.World
 
 executables:
   scriptflow:

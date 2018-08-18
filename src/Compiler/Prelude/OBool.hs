@@ -1,15 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Compiler.Prelude.OBool where
 
-import qualified Data.Text              as T
+import qualified Data.Map            as M
+import qualified Data.Text           as T
 
-import           Compiler.Prelude.Utils
+import           Compiler.Object
+import           Compiler.Prelude.Th
 import           Compiler.Types
 
-methods :: T.Text -> Maybe ([Object] -> Prog)
-methods name = case name of
-  "!"   -> Just $ normalizePure not
-  "||"  -> Just $ normalizePure' (||)
-  "&&"  -> Just $ normalizePure' (&&)
-  "not" -> Just $ normalizePure not
-  _     -> Nothing
+methods
+  :: (MemoryManagement mm, RawObj mm ~ Object mm)
+  => M.Map T.Text ([Object mm] -> mm (Object mm))
+methods = M.fromList
+  [ ( "!"
+    , $(normalize [| not |] (\_ty -> [t| Bool -> Bool |])))
+  , (  "||"
+    , $(normalize [| (||) |] (\_ty -> [t| Bool -> Bool -> Bool |])))
+  , (  "&&"
+    , $(normalize [| (&&) |] (\_ty -> [t| Bool -> Bool -> Bool |])))
+  , (  "not"
+    , $(normalize [| (not) |] (\_ty -> [t| Bool -> Bool |])))
+  ]

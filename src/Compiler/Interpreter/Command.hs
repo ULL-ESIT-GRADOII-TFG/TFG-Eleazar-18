@@ -1,16 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Compiler.Interpreter.Command.Methods where
+module Compiler.Interpreter.Command where
 
 import           Control.Monad.Except
 import           Data.List
-import qualified Data.Map                   as M
-import qualified Data.Text                  as T
+import qualified Data.Map                              as M
+import qualified Data.Text                             as T
+import           Data.Text.Prettyprint.Doc.Render.Text
 import           Lens.Micro.Platform
 import           System.Exit
-import           Text.PrettyPrint
 
-import           Compiler.Instruction.Utils
-import           Compiler.Interpreter.Utils
+import           Compiler.Instruction ()
+import           Compiler.Interpreter
+import           Compiler.Object
 import           Compiler.Prettify
 import           Compiler.Types
 
@@ -28,8 +29,8 @@ commands = M.fromList
   [ ("mem", \_ -> do
       mem <- use memoryA
       verbosity <- use verboseLevelA
-      liftIO . putStrLn . renderStyle style . (`prettify` verbosity) $ mem)
-  , ("instr", showInstructions)
+      liftIO . putDoc . (`prettify` verbosity) $ mem)
+  , ("instr", showInstructions')
   , ("help", help)
   , ("quit", \_ -> liftIO exitSuccess)
   ]
@@ -43,16 +44,16 @@ help _ = liftIO . putStrLn $ intercalate "\n"
   , "   :help                -- print this help itself"
   , "   :mem                 -- Show current memory used"
   , "   :instr function_name -- Shows sequence of instruction a defined function"
-  , "   :quit                -- Exits immediately form REPl"
+  , "   :quit                -- Exits immediately form REPL"
   ]
 
-showInstructions :: [T.Text] -> Interpreter ()
-showInstructions [] = throwError $ Internal "Command just allow 1 arg"
-showInstructions (name:_) = do
+showInstructions' :: [T.Text] -> Interpreter ()
+showInstructions' [] = throwError $ Internal "Command just allow 1 arg"
+showInstructions' (name:_) = do
   -- Find into scope the ref -> search into world -> apply
-  object <- getVar name
+  object <- liftWorld $ unwrap <$> getVarWithName name
   case object of
     OFunc _ _ prog -> do
-      instrs <- liftWorld $ pprint (prog (repeat ONone))
-      liftIO . putStrLn $ renderStyle style instrs
+      instrs <- liftWorld $ showInstructions (prog (repeat ONone))
+      liftIO $ putDoc instrs
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

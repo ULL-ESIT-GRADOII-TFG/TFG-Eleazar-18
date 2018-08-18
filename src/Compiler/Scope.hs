@@ -1,16 +1,84 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TupleSections         #-}
-module Compiler.Scope.Methods where
+module Compiler.Scope where
 
 import           Control.Monad.Except
+import           Control.Monad.State.Strict
 import           Data.Default
+import qualified Data.List.NonEmpty         as NL
+import qualified Data.Map                   as M
+import qualified Data.Text                  as T
+import           Data.Text.Prettyprint.Doc
+import           Lens.Micro.Platform
 
 import           Compiler.Ast
-import           Compiler.Desugar.Types
-import           Compiler.Scope.Utils
+import           Compiler.Error
+import           Compiler.Identifier
+import           Compiler.Parser.Types
+import           Compiler.Prettify
 import           Compiler.Types
+import           Compiler.Utils
+
+
+newtype ScopeInfo = ScopeInfo
+  { _renameInfo :: M.Map T.Text PathVar
+  } deriving Show
+
+makeSuffixLenses ''ScopeInfo
+
+type ScopeM = ExceptT (ErrorInfo ScopeError) (StateT Scope IO)
+
+-- | Defines stack scope for program
+data Scope = Scope
+  { _currentScope :: ScopeInfo
+  -- ^ New variables declares in the current scope to be later added to
+  -- stackScope
+  , _stackScope   :: [ScopeInfo]
+  -- ^ All above scopes
+  } deriving Show
+
+makeSuffixLenses ''Scope
+
+data ScopeInfoAST = ScopeInfoAST
+  { _tokenInfo :: TokenInfo
+  , _scopeInfo :: ScopeInfo
+  } deriving Show
+
+makeSuffixLenses ''ScopeInfoAST
+
+instance Default Scope where
+  def = Scope
+    { _currentScope = ScopeInfo mempty
+    , _stackScope   = []
+    }
+
+instance Naming ScopeM where
+  newId name = addNewIdentifier (return name)
+  getNewId = liftIO getNewID
+  findAddress name = getIdentifier (return name)
+
+instance Default ScopeInfo where
+  def = ScopeInfo mempty
+
+instance Prettify ScopeInfo where
+  prettify (ScopeInfo hash) verbose =
+    "ScopeInfo { " <> line <>
+    nest 2 (vcat (map (\(k,v) ->
+      pretty k <+> "->" <+> prettify v verbose) $ M.toList hash)) <> line <>
+    "}"
+
+instance Default ScopeInfoAST where
+  def = ScopeInfoAST def def
+
+instance Prettify ScopeInfoAST where
+  prettify scopeInfoAST verbose =
+    "ScopeInfoAST {" <> line <>
+    nest 2 (prettify (_tokenInfo scopeInfoAST) verbose <> line <>
+            prettify (_scopeInfo scopeInfoAST) verbose) <> line <>
+    "}"
 
 
 instance Desugar Statement TokenInfo ScopeM Expression ScopeInfoAST where
@@ -151,3 +219,74 @@ instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
       info' <- getScopeInfoAST info
       return $ Dot text acc' info'
     Simple text info  -> return $ Simple text (def {_tokenInfo = info})
+
+flatScope :: Scope -> ScopeInfo
+flatScope scope = ScopeInfo (
+  (scope^.currentScopeA.renameInfoA) `mappend`
+  mconcat (map _renameInfo (_stackScope scope)))
+
+withScope :: ScopeInfo -> ScopeM a -> ScopeM a
+withScope scope body = do
+  currentScope <- use currentScopeA
+  stackScopeA %= (currentScope:)
+  currentScopeA .= scope
+  value <- body
+  (curScope:rest) <- use stackScopeA
+  currentScopeA .= curScope
+  stackScopeA   .= rest
+  return value
+
+-- | Create a temporal scope with a info
+withNewScope :: ScopeM a -> ScopeM a
+withNewScope = withScope def
+
+-- | Add new variable name to scope and return its ID
+addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM PathVar
+addNewIdentifier (name NL.:| names) = do
+  newID <- liftIO getNewID
+  let addr = PathVar newID names
+  currentScopeA.renameInfoA %= M.insert name addr
+  return addr
+
+-- | Get a specific ID from variable name
+getIdentifier :: NL.NonEmpty T.Text -> ScopeM PathVar
+getIdentifier (name NL.:| names) = do
+  renamer <- use $ currentScopeA.renameInfoA
+  case M.lookup name renamer of
+    Just ref' -> return $ PathVar (ref'^.refA) names
+    Nothing   -> do
+      stack <- use $ stackScopeA
+      -- maybe (throw $ NotDefinedObject name) return (findInStack stack)
+      maybe (undefined) return (findInStack stack) --TODO
+
+ where
+  findInStack :: [ScopeInfo] -> Maybe PathVar
+  findInStack []         = Nothing
+  findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & M.lookup name of
+    Just (PathVar word _) -> Just $ PathVar word names
+    Nothing               -> findInStack xs
+
+-- | Generate ScopeInfoAST using the current scope info
+getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
+getScopeInfoAST info = ScopeInfoAST info <$> use currentScopeA
+
+getPathVar :: Show a => Accessor a -> ScopeInfoAST -> ScopeM PathVar
+getPathVar acc scopeInfoAST =
+  case M.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
+    Just (PathVar addr _) -> return $ PathVar addr (tailName acc)
+    Nothing               -> undefined -- TODO throw NoSavedPathVar
+
+-- | Simplies accesor to non empty list
+simplifiedAccessor
+  :: Accessor a -> NL.NonEmpty T.Text
+simplifiedAccessor acc = case acc of
+  Simple id' _tok -> return id'
+  Dot id' acc' _  -> id' NL.<| simplifiedAccessor acc'
+
+mainName :: Accessor a -> T.Text
+mainName acc = case acc of
+  Simple name _ -> name
+  Dot name _ _  -> name
+
+tailName :: Accessor a -> [T.Text]
+tailName = NL.tail . simplifiedAccessor

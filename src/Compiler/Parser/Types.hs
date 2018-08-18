@@ -1,8 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Compiler.Parser.Types where
 
 import           Data.Default
-import           Text.PrettyPrint
+import           Data.Text.Prettyprint.Doc
 
 import           Compiler.Prettify
 import           Compiler.Utils
@@ -29,18 +30,18 @@ instance Default TokenInfo where
 
 instance Prettify SrcPos where
   prettify (SrcPos col row _offset) _ =
-    text "L" <>
-    text (show row) <>
-    text ":C" <>
-    text (show col)
+    "L" <>
+    pretty row <>
+    ":C" <>
+    pretty col
     -- text " >> " <>
     -- text (show offset)
 
 instance Prettify TokenInfo where
   prettify (TokenInfo st en) verbose =
-    text "TknInfo start " <>
-    prettify st verbose <>
-    text " end " <>
+    "TknInfo start" <+>
+    prettify st verbose <+>
+    "end" <+>
     prettify en verbose
 
 dummyTokenInfo :: TokenInfo

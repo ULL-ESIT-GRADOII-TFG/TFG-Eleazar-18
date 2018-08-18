@@ -1,32 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Compiler.Prelude.Utils where
 
-import           Control.Monad.Trans.Free
--- import qualified Data.IntMap                as IM
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 
--- import           Compiler.Interpreter.Utils
-import           Compiler.Object.Types
-import           Compiler.Prelude.Th
-import           Compiler.Prelude.Types
--- import           Compiler.Scope.Utils
-import           Compiler.Types
--- import           Compiler.World.Methods
+-- import           Compiler.Object
 
-
--- | Generate a new class, with name and methods/properties given
--- newClass :: T.Text -> [(T.Text, Object)] -> Interpreter Word
--- newClass name attributes = do
---   classId <- liftWorld $ liftScope getNewId
---   let classDef = ClassDefinition name (M.fromList attributes)
---   memory . scope . typeDefinitions %= IM.insert (fromIntegral classId) classDef
---   return classId
-
--- -- | Create a object instance from referenced class
--- instanceClass :: Word -> T.Text -> Interpreter AddressRef
--- instanceClass classId name = newVar name (OObject (Just classId) mempty)
+data Assoc = LeftAssoc | RightAssoc deriving (Show, Eq)
 
 -- | Dictionary of operators precedence order
 operatorsPrecedence :: M.Map T.Text (Int, Assoc, T.Text)
@@ -47,29 +28,30 @@ operatorsPrecedence = M.fromList
   , (">=", (4, LeftAssoc, "__ge__"))
   , ("&&", (3, RightAssoc, "__and__"))
   , ("||", (3, RightAssoc, "__or__"))
-  , ("??", (1, RightAssoc, "__err__")) -- I keep to manage errors
+  -- , ("??", (1, RightAssoc, "__err__")) -- I keep to manage errors
   , ("!" , (1, LeftAssoc, "__not__"))
+  , ("@" , (1, LeftAssoc, "__at__"))
   ]
 
 -------------------------------------------------------------------------------
 -- * Th generate functions
-normalizePure
-  :: (ToObject o, FromObject a)
-  => (a -> o)
-  -> [Object]
-  -> FreeT Instruction StWorld Object
-normalizePure fun = normalize (toObject . fun)
+-- normalizePure
+--   :: (ToObject o mm, FromObject a mm, MemoryManagement mm, RawObj mm ~ Object mm)
+--   => (a -> o)
+--   -> [Object mm]
+--   -> Prog mm mm (RawObj mm)
+-- normalizePure fun = normalize (toObject . fun)
 
-normalizePure'
-  :: (ToObject o, FromObject a, FromObject b)
-  => (a -> b -> o)
-  -> [Object]
-  -> FreeT Instruction StWorld Object
-normalizePure' = $(normalizeArity 2)
+-- normalizePure'
+--   :: (ToObject o mm, FromObject a mm, FromObject b mm, MemoryManagement mm)
+--   => (a -> b -> o)
+--   -> [Object mm]
+--   -> Prog mm mm (RawObj mm)
+-- normalizePure' = $(normalizeArity 2)
 
-normalizePure''
-  :: (ToObject o, FromObject a, FromObject b, FromObject c)
-  => (a -> b -> c -> o)
-  -> [Object]
-  -> FreeT Instruction StWorld Object
-normalizePure'' = $(normalizeArity 3)
+-- normalizePure''
+--   :: (ToObject o mm, FromObject a mm, FromObject b mm, FromObject c mm, MemoryManagement mm)
+--   => (a -> b -> c -> o)
+--   -> [Object mm]
+--   -> Prog mm mm (RawObj mm)
+-- normalizePure'' = $(normalizeArity 3)

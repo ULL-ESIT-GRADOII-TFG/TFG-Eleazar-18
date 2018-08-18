@@ -1,9 +1,10 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Compiler.Ast where
 
 import           Compiler.Parser.Types
-import qualified Data.Text             as T
-import           Text.PrettyPrint
+import qualified Data.Text                 as T
+import           Data.Text.Prettyprint.Doc
 
 import           Compiler.Prettify
 import           Compiler.Utils
@@ -78,98 +79,104 @@ data Atom a
 
 instance Prettify Repl where
   prettify repl verbose = case repl of
-    Command name args -> text (T.unpack name) <> text " " <> hsep (map (text . T.unpack) args)
-    Code exprs -> vcat $ map (`prettify` verbose) exprs
+    Command name args -> pretty name <+> hsep (map pretty args)
+    Code exprs        -> vcat $ map (`prettify` verbose) exprs
 
 instance Prettify a => Prettify (Statement a) where
   prettify statement verbose = case statement of
-    Import path _ -> text "Import { " <> text (T.unpack path) <> text " }"
-    ClassSt classDecl -> text "ClassSt {" $$ nest 2 (prettify classDecl verbose) $$ text "}"
-    FunSt funDecl -> text "FunSt {" $$ nest 2 (prettify funDecl verbose) $$ text "}"
-    Expr expr -> text "Expr {" $$ nest 2 (prettify expr verbose) $$ text "}"
+    Import path _     -> "Import {" <+> pretty path <+> "}"
+    ClassSt classDecl -> "ClassSt {" <> line <> nest 2 (prettify classDecl verbose) <> line <> "}"
+    FunSt funDecl     -> "FunSt {" <> line <> nest 2 (prettify funDecl verbose) <> line <> "}"
+    Expr expr         -> "Expr {" <> line <> nest 2 (prettify expr verbose) <> line <> "}"
 
 instance Prettify a => Prettify (ClassDecl a) where
   prettify (ClassDecl name methods a) verbose =
-    text "ClassDecl " <> text (T.unpack name) <> text " { " <>
-    prettify a verbose $$
-    nest 2 (
-             vcat (map (`prettify` verbose) methods)) $$
-    text "}"
+    "ClassDecl" <+> pretty name <+>  "{" <+>
+    prettify a verbose <> line <>
+    nest 2 (vcat (map (`prettify` verbose) methods)) <> line <>
+    "}"
 
 instance Prettify a => Prettify (FunDecl a) where
   prettify (FunDecl name args body a) verbose =
-    text "FunDecl " <> text (T.unpack name) <>
-    text " Args: " <> hsep (map (text . T.unpack) args) <> text " { " <>
-    prettify a verbose $$
-    nest 2 (prettify body verbose) $$ text "}"
+    "FunDecl" <+> pretty name <+>
+    "Args:" <+> hsep (map pretty args) <+> "{" <+>
+    prettify a verbose <> line <>
+    nest 2 (prettify body verbose) <> line <>
+    "}"
 
 instance Prettify a => Prettify (Expression a) where
   prettify expr verbose = case expr of
     FunExpr args body a ->
-      text "FunExpr " <> text " args: " <> hsep (map (text . T.unpack) args) <>
-      text " { " <> prettify a verbose $$
-      nest 2 (prettify body verbose) $$ text "}"
+      "FunExpr" <+>  "args:" <+> hsep (map pretty args) <+> "{" <+>
+      prettify a verbose <> line <>
+      nest 2 (prettify body verbose) <> line <>
+      "}"
     VarExpr acc expr' a ->
-      text "VarExpr " <> prettify acc verbose <> text " { " <>
-      prettify a verbose $$
-      nest 2 (prettify expr' verbose) $$
-      text "}"
+      "VarExpr" <+> prettify acc verbose <+> "{" <+>
+      prettify a verbose <> line <>
+      nest 2 (prettify expr' verbose) <> line <>
+      "}"
     MkScope exprs a ->
-      text "MkScope { " <> prettify a verbose $$
-      nest 2 (vcat (map (`prettify` verbose) exprs)) $$
-      text "}"
+      "MkScope {" <+> prettify a verbose <> line <>
+      nest 2 (vcat (map (`prettify` verbose) exprs)) <> line <>
+      "}"
     SeqExpr exprs a ->
-      text "SeqExpr { " <> prettify a verbose $$
-      nest 2 (vcat (map (`prettify` verbose) exprs)) $$
-      text "}"
+      "SeqExpr {" <+> prettify a verbose <> line <>
+      nest 2 (vcat (map (`prettify` verbose) exprs)) <> line <>
+      "}"
     If cond trueExpr a ->
-      text "If " <> prettify cond verbose <> text " { " <> prettify a verbose $$
-      nest 2 (prettify trueExpr verbose) $$ text "}"
+      "If" <+> prettify cond verbose <+>  "{" <+> prettify a verbose <> line <>
+      nest 2 (prettify trueExpr verbose) <> line <>
+      "}"
     IfElse cond trueExpr falseExpr a ->
-      text "IfElse " <> prettify cond verbose <> text " { " <>
-      prettify a verbose $$
-      nest 2 (prettify trueExpr verbose) $$ text "} Else {" $$
-      nest 2 (prettify falseExpr verbose) $$ text "}"
+      "IfElse" <+> prettify cond verbose <+>  "{" <+>
+      prettify a verbose <> line <>
+      nest 2 (prettify trueExpr verbose) <> line <>
+      "} Else {" <> line <>
+      nest 2 (prettify falseExpr verbose) <> line <>
+      "}"
     For name loopExpr body a ->
-      text "For " <> text (T.unpack name) <> prettify loopExpr verbose <>
-      text " { " <> prettify a verbose $$
-      nest 2 (prettify body verbose) $$ text "}"
+      "For" <+> pretty name <> prettify loopExpr verbose <+>
+      "{" <+> prettify a verbose <> line <>
+      nest 2 (prettify body verbose) <> line <>
+      "}"
     Apply acc exprs a ->
-      text "Apply " <> prettify acc verbose <> text " " <> prettify a verbose $$
+      "Apply" <+> prettify acc verbose <+> prettify a verbose <> line <>
       nest 2 (vcat (map (\(num, expr') ->
-        text (show (num :: Int))
-          <> text " -> "
-          <> prettify expr' verbose) (zip [1..] exprs)))
+         (pretty (num :: Int))
+          <+> "->"
+          <+> prettify expr' verbose) (zip [1..] exprs)))
     Identifier acc a ->
-      text "Identifier " <> prettify acc verbose <> text " " <> prettify a verbose
+       "Identifier" <+> prettify acc verbose <+> prettify a verbose
     Factor atom a ->
-      text "Factor " <> prettify atom verbose <> text " " <> prettify a verbose
+       "Factor" <+> prettify atom verbose <+> prettify a verbose
 
 instance Prettify a => Prettify (Accessor a) where
   prettify acc verbose = case acc of
     Dot name accessor _ ->
-      text (T.unpack name) <> text "." <> prettify accessor verbose
-    Simple name _ -> text (T.unpack name)
+      pretty name <>  "." <> prettify accessor verbose
+    Simple name _ ->  pretty name
 
 instance Prettify a => Prettify (Atom a) where
   prettify atom verbose = case atom of
-    ANum num _           -> text "Num " <> text (show num)
-    ADecimal num _       -> text "Decimal " <> text (show num)
-    ARegex reg _         -> text "Regex " <> text (T.unpack reg)
-    AShellCommand comm _ -> text "Command " <> text (T.unpack comm)
-    AStr str _           -> text "Str " <> text (T.unpack str)
-    ABool bool _        -> text "Bool " <> text (show bool)
-    AVector vec _       -> text "Vector " <> hsep (map (`prettify` verbose) vec)
+    ANum num _           -> "Num" <+> pretty num
+    ADecimal num _       -> "Decimal" <+> pretty num
+    ARegex reg _         -> "Regex" <+> pretty reg
+    AShellCommand comm _ -> "Command" <+> pretty comm
+    AStr str _           -> "Str" <+> pretty str
+    ABool bool _        -> "Bool" <+> pretty bool
+    AVector vec _       -> "Vector" <+> hsep (map (`prettify` verbose) vec)
     AClass nameClass dic _ ->
-      text "Class " <> text (T.unpack nameClass) <> text " {" <>
+      "Class" <+>  pretty nameClass <+> "{" <>
       nest 2 (vcat (map (\(name, expr) ->
-        text (T.unpack name) <> text ": " <> prettify expr verbose) dic))
-      <> text "}"
-    ADic dic _          -> text "Dic {" <>
+        pretty name <>  ":" <+> prettify expr verbose) dic))
+      <>  "}"
+    ADic dic _          ->
+      "Dic {" <>
       nest 2 (vcat (map (\(name, expr) ->
-        text (T.unpack name) <> text ": " <> prettify expr verbose) dic))
-      <> text "}"
-    ANone _             -> text "None"
+        pretty name <>  ":" <+> prettify expr verbose) dic))
+      <>  "}"
+    ANone _             ->  "None"
 
 makeSuffixLenses ''FunDecl
 makeSuffixLenses ''ClassDecl

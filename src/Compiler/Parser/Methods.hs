@@ -2,7 +2,6 @@
 module Compiler.Parser.Methods where
 
 import           Control.Monad
-import           Data.Bifunctor
 import qualified Data.Map               as M
 import qualified Data.Text              as T
 import qualified Data.Vector            as V
@@ -10,11 +9,9 @@ import           Text.Parsec
 
 import           Compiler.Ast
 import           Compiler.Parser.Types
-import           Compiler.Prelude.Types (Assoc (..))
-import           Compiler.Prelude.Utils (operatorsPrecedence)
-import           Compiler.Token.Lexer   (Lexeme, getTokens, scanner)
+import           Compiler.Prelude.Utils (Assoc (..), operatorsPrecedence)
+import           Compiler.Token.Lexer   (Lexeme)
 import           Compiler.Token.Methods
-import           Compiler.Types
 
 
 -- | List of reserved keywords
@@ -34,11 +31,6 @@ mkTokenInfo parser = do
 
 toSrcPos :: SourcePos -> SrcPos
 toSrcPos sourcePos = SrcPos (sourceLine sourcePos) (sourceColumn sourcePos) 0
-
-generateAST :: T.Text -> String -> Either InterpreterError Repl
-generateAST rawFile nameFile = do
-  tokenizer' <- first (Tokenizer . T.pack) . scanner True $ T.unpack rawFile
-  first Parsing . parserLexer nameFile $ getTokens tokenizer'
 
 parserLexer :: SourceName -> V.Vector Lexeme -> Either ParseError Repl
 parserLexer = parse parseInterpreter
@@ -81,7 +73,6 @@ parseExp :: TokenParser (Expression TokenInfo)
 parseExp = choice $ map
   try
   [ parseUnaryOperators
-  -- , parseFunDecl
   , parseLam
   , parseIfElse
   , parseIf
@@ -185,7 +176,7 @@ parseMethod expr = do
       params <- optionMaybe $ between
                   oParenT
                   cParenT
-                  (parseMkScope `sepBy` commaT) <|> many1 parseFactor
+                  (parseSeqExpr `sepBy` commaT) <|> many1 parseFactor
 
       -- Braces
       param <- optionMaybe $ between oBracketT cBracketT parseExp

@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 31f5b9a9e7b8a86801b96a87bce2d2de33d100e623348dc662b0cd86a3049824
+-- hash: eea35a97538552e94d3a336897465dd40d9ece382ff1fc68abc4f17e0619dc72
 
 name:           ScriptFlow
-version:        0.0.1
+version:        0.0.2
 synopsis:       An easy scripting language
 description:    Please see README.org
 category:       Development, Languages
@@ -31,7 +31,8 @@ library
       src
   ghc-options: -Wall -Wno-orphans
   build-depends:
-      aeson
+      HFuse
+    , aeson
     , array
     , base
     , bytestring
@@ -49,7 +50,7 @@ library
     , mtl
     , parsec
     , pcre-light
-    , pretty
+    , prettyprinter
     , process
     , template-haskell
     , text
@@ -59,22 +60,15 @@ library
       alex
   exposed-modules:
       Compiler.Ast
-      Compiler.Config.Methods
-      Compiler.Config.Types
+      Compiler.Config
       Compiler.Core.Methods
       Compiler.Core.Types
-      Compiler.Desugar.Types
       Compiler.Error
       Compiler.Identifier
-      Compiler.Instruction.Methods
-      Compiler.Instruction.Utils
-      Compiler.Instruction.Types
-      Compiler.Interpreter.Command.Methods
-      Compiler.Interpreter.Methods
-      Compiler.Interpreter.Types
-      Compiler.Interpreter.Utils
-      Compiler.Object.Methods
-      Compiler.Object.Types
+      Compiler.Instruction
+      Compiler.Interpreter.Command
+      Compiler.Interpreter.Evaluate
+      Compiler.Object
       Compiler.Parser.Methods
       Compiler.Parser.Types
       Compiler.Prelude.Methods
@@ -89,17 +83,16 @@ library
       Compiler.Prelude.Types
       Compiler.Prelude.Utils
       Compiler.Prettify
-      Compiler.Scope.Methods
-      Compiler.Scope.Types
-      Compiler.Scope.Utils
+      Compiler.Scope
       Compiler.Token.Lexer
       Compiler.Token.Methods
       Compiler.Token.Types
       Compiler.Types
       Compiler.Utils
-      Compiler.World.Methods
-      Compiler.World.Types
+      Compiler.World
   other-modules:
+      Compiler.Fuse
+      Compiler.Interpreter
       Paths_ScriptFlow
   default-language: Haskell2010
 
