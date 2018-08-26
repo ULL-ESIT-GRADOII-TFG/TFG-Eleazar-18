@@ -1,99 +1,81 @@
-{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Compiler.Object where
 
 import           Control.Applicative
 import           Control.Monad.Except
-import qualified Data.ByteString           as B
-import qualified Data.Map                  as M
-import qualified Data.Text                 as T
-import qualified Data.Text.Encoding        as TE
+import qualified Data.ByteString                as B
+import qualified Data.Map                       as M
+import qualified Data.Text                      as T
+import qualified Data.Text.Encoding             as TE
 import           Data.Text.Prettyprint.Doc
-import qualified Data.Vector               as V
-import           Lens.Micro.Platform       hiding (zoom)
+import qualified Data.Vector                    as V
+import           Lens.Micro.Platform
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
--- import qualified Compiler.Prelude.OVector  as OV
+import qualified Compiler.Prelude.OBool         as OB
+import qualified Compiler.Prelude.ODouble       as OD
+import qualified Compiler.Prelude.ONum          as ON
+import qualified Compiler.Prelude.ORegex        as OR
+import qualified Compiler.Prelude.OShellCommand as OC
+import qualified Compiler.Prelude.OStr          as OS
+import qualified Compiler.Prelude.OVector       as OV
 import           Compiler.Prelude.Utils
+import           Compiler.Prettify
 import           Compiler.Types
+import           Compiler.World                 ()
 
 
-data Object mm
-  = OStr T.Text
-  | OBool Bool
-  | ODouble Double
-  | ONum Int
-  | ORegex Regex
-  -- ^ Regex expression following PCRE syntax
-  | OShellCommand T.Text
-  -- ^ Shell command
-  | OVector (V.Vector Address)
-  -- ^ Sequence of objects
-  | OFunc (M.Map T.Text Address) [Address] ([Object mm] -> Prog mm mm (Object mm))
-  -- ^ Lambda with possible scope/vars attached
-  | OBound Address Address
-  -- ^ Used to Bound methods to variables
-  | OObject (Maybe Address) (M.Map T.Text Address)
-  -- ^ Object instance from class Address
-  | ONative ([Object mm] -> Prog mm mm (Object mm))
-  -- ^ Native object
-  | ORef Address
-  -- ^ Pointer reference
-  | OClassDef
-    { nameClass       :: T.Text
-    , refClass        :: Address
-    , attributesClass :: M.Map T.Text Address
-    }
-  | ONone
-
-class MemoryManagement mm => ToObject o mm where
-  toObject :: o -> mm (Object mm)
-
-class MemoryManagement mm => FromObject o mm where
-  fromObject :: Object mm -> mm o
-
-instance MemoryManagement mm => ToObject (Object mm) mm where
+instance ToObject Object where
   toObject = return
 
-instance MemoryManagement mm => FromObject (Object mm) mm where
+instance ToObject a => ToObject (StWorld a) where
+  toObject mObj = do
+    obj <- mObj
+    toObject obj
+
+instance FromObject Object where
   fromObject = return
 
-instance MemoryManagement mm => ToObject () mm where
+instance ToObject a => ToObject (IO a) where
+  toObject io = do
+    obj <- liftIO io
+    toObject obj
+
+instance ToObject () where
   toObject () = return ONone
 
-instance MemoryManagement mm => FromObject () mm where
+instance FromObject () where
   fromObject ONone = return ()
-  fromObject _     = throw NotImplicitConversion
+  fromObject o     = throw $ NotImplicitConversion (typeName o) "None"
 
-instance MemoryManagement mm => ToObject Bool mm where
+instance ToObject Bool where
   toObject = return . OBool
 
-instance MemoryManagement mm => FromObject Bool mm where
+instance FromObject Bool where
   fromObject (OBool bool) = return bool
-  fromObject _            = throw NotImplicitConversion
+  fromObject o            = throw $ NotImplicitConversion (typeName o) "Bool"
 
-instance MemoryManagement mm => ToObject Int mm where
+instance ToObject Int where
   toObject = return . ONum
 
-instance MemoryManagement mm => FromObject Int mm where
+instance FromObject Int where
   fromObject (ONum num) = return num
-  fromObject _          = throw NotImplicitConversion
+  fromObject o          = throw $ NotImplicitConversion (typeName o) "Num"
 
-instance MemoryManagement mm => ToObject Double mm where
+instance ToObject Double where
   toObject = return . ODouble
 
-instance MemoryManagement mm => FromObject Double mm where
+instance FromObject Double where
   fromObject (ODouble num) = return num
-  fromObject _             = throw NotImplicitConversion
+  fromObject o             = throw $ NotImplicitConversion (typeName o) "Double"
 
-instance (MemoryManagement mm, ToObject a mm, Object mm ~ RawObj mm) =>
-    ToObject (V.Vector a) mm where
+instance ToObject a =>
+    ToObject (V.Vector a) where
   toObject vec = do
     elems <- V.mapM (\el -> do
                         obj <- toObject el
@@ -101,25 +83,25 @@ instance (MemoryManagement mm, ToObject a mm, Object mm ~ RawObj mm) =>
                     ) vec
     return $ OVector elems
 
-instance (MemoryManagement mm, FromObject a mm, Object mm ~ RawObj mm) =>
-    FromObject (V.Vector a) mm where
+instance FromObject a =>
+    FromObject (V.Vector a) where
   fromObject (OVector vec) = mapM (\ref -> do
                                       obj <- unwrap <$> getVar ref
                                       fromObject obj
                                   ) vec
-  fromObject _             = throw NotImplicitConversion
+  fromObject o = throw $ NotImplicitConversion (typeName o) "Vector"
 
-instance (MemoryManagement mm, ToObject a mm, Object mm ~ RawObj mm) => ToObject [a] mm where
+instance ToObject a => ToObject [a] where
   toObject = toObject . V.fromList
 
-instance (MemoryManagement mm, FromObject a mm, Object mm ~ RawObj mm) => FromObject [a] mm where
+instance FromObject a => FromObject [a] where
   fromObject (OVector vec) = V.toList <$> mapM (\ref -> do
                                                    obj <- unwrap <$> getVar ref
                                                    fromObject obj
                                                ) vec
-  fromObject _             = throw NotImplicitConversion
+  fromObject o = throw $ NotImplicitConversion (typeName o) "Vector"
 
-instance (MemoryManagement mm, ToObject a mm, Object mm ~ RawObj mm) => ToObject (M.Map T.Text a) mm where
+instance ToObject a => ToObject (M.Map T.Text a) where
   toObject mmap = do
     oMap <- mapM (\el -> do
                      obj <- toObject el
@@ -127,69 +109,68 @@ instance (MemoryManagement mm, ToObject a mm, Object mm ~ RawObj mm) => ToObject
                  ) mmap
     return $ OObject Nothing oMap
 
-instance (MemoryManagement mm, FromObject a mm, Object mm ~ RawObj mm) => FromObject (M.Map T.Text a) mm where
+instance FromObject a => FromObject (M.Map T.Text a) where
   fromObject (OObject _ dic) =
     mapM (\ref -> do
              obj <- unwrap <$> getVar ref
              fromObject obj
          ) dic
-  fromObject _               = throw NotImplicitConversion
+  fromObject o = throw $ NotImplicitConversion (typeName o) "Object"
 
 -- There aren't a char type equivalent right now. Remind: Two paths [Char] String
 -- instance ToObject Char where
 --   toObject = OStr . T.singleton
 
-instance {-# OVERLAPPING #-} MemoryManagement mm => ToObject [Char] mm where
+instance {-# OVERLAPPING #-} ToObject [Char] where
   toObject = return . OStr . T.pack
 
-instance {-# OVERLAPPING #-} MemoryManagement mm => FromObject [Char] mm where
+instance {-# OVERLAPPING #-} FromObject [Char] where
   fromObject (OStr text) = return (T.unpack text)
-  fromObject _           = throw NotImplicitConversion
+  fromObject o           = throw $ NotImplicitConversion (typeName o) "Str"
 
-instance MemoryManagement mm => ToObject B.ByteString mm where
+instance ToObject B.ByteString where
   toObject = return . OStr . TE.decodeUtf8
 
-instance MemoryManagement mm => FromObject B.ByteString mm where
+instance FromObject B.ByteString where
   fromObject (OStr text) = return $ TE.encodeUtf8 text
-  fromObject _           = throw NotImplicitConversion
+  fromObject o           = throw $ NotImplicitConversion (typeName o) "Str"
 
-instance MemoryManagement mm => ToObject T.Text mm where
+instance FromObject ShellType where
+  fromObject (OShellCommand text) = return $ ShellType text
+  fromObject o = throw $ NotImplicitConversion (typeName o) "ShellCommand"
+
+instance ToObject T.Text where
   toObject = return . OStr
 
-instance MemoryManagement mm => FromObject T.Text mm where
+instance FromObject T.Text where
   fromObject (OStr text) = return text
-  fromObject _           = throw NotImplicitConversion
+  fromObject o           = throw $ NotImplicitConversion (typeName o) "Str"
 
-instance MemoryManagement mm => ToObject Regex mm where
+instance ToObject Regex where
   toObject = return . ORegex
 
-instance FromObject a mm => FromObject (Maybe a) mm where
+instance FromObject Regex where
+  fromObject (ORegex regex) = return regex
+  fromObject o              = throw $ NotImplicitConversion (typeName o) "Regex"
+
+instance FromObject a => FromObject (Maybe a) where
   fromObject ONone = return Nothing
   fromObject obj   = Just <$> fromObject obj
 
-instance (MemoryManagement mm, ToObject a mm) => ToObject (Maybe a) mm where
+instance ToObject a => ToObject (Maybe a) where
   toObject = maybe (return ONone) toObject
 
-instance MemoryManagement mm => FromObject Regex mm where
-  fromObject (ORegex regex) = return regex
-  fromObject _              = throw NotImplicitConversion
 
-instance
-  ( InstructionsLike mm
-  , MemoryManagement mm
-  , Wrapper (Store mm)
-  , MonadTrans (Prog mm)
-  , Object mm ~ RawObj mm)
-  => ObjectOperations mm (Object mm) where
-
+instance Callable StWorld Object where
   -- | From memory address, check if object callable and call it with given arguments
   call pathVar args = do
+    objCaller <- unwrap <$> getVar (pathVar^.refA)
     (obj, _address) <- findPathVar pathVar
     let obj' = unwrap obj
     if null (pathVar ^. dynPathA) then
       directCall obj' args
     else
-      directCall obj' (obj':args)
+      directCall obj' (objCaller:args)
 
   directCall obj objs = case obj of
     OFunc _ ids prog ->
@@ -199,7 +180,7 @@ instance
         runProgram $ prog objs
 
     ONative native ->
-      runProgram $ native objs
+      native objs
 
     OBound self method ->
       directCall (ORef method) (ORef self:objs)
@@ -226,6 +207,7 @@ instance
 
     t -> throw $ NotCallable (typeName t)
 
+instance Iterable StWorld Object where
   -- | Iterate over a object if it is iterable
   mapOver obj func = case obj of
     OStr str -> do
@@ -242,11 +224,12 @@ instance
           case M.lookup "__map__" methods of
             Just func' -> do
               func'' <- follow func'
-              directCall func'' [obj, ONative $ \obs -> lift $ func (head obs)]
+              directCall func'' [obj, ONative $ \obs -> func (head obs)]
             Nothing -> return ONone
         o -> throw $ NotIterable (typeName o)
     o -> throw $ NotIterable (typeName o)
 
+instance Booleanable StWorld Object where
   -- | Check truthfulness of an object
   checkBool obj = case obj of
     OBool bool                     -> return bool
@@ -261,6 +244,7 @@ instance
         o -> throw $ NotBoolean (typeName o)
     _ -> throw $ NotBoolean (typeName obj)
 
+instance Showable StWorld Object where
   showObject obj = case obj of
     OStr          str  -> return $ "\"" <> pretty str <> "\""
     ORegex        _str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
@@ -276,16 +260,16 @@ instance
       obj' <- follow rfs
       showObject obj' <&> ("*" <>) -- TODO: Remove when the project turn it more stable
     ONone                -> return "None"
-    OFunc _env args body -> do
-      body' <- showInstructions (body (repeat ONone))
-      return
-        $   "Function with args:"
-        <+> pretty args
-        <>  "{"
-        <>  line
-        <>  nest 2 body'
-        <>  line
-        <>  "}"
+    OFunc _env _args _body -> return "Function"
+      -- body' <- prettify verbose (body (repeat ONone))
+      -- return
+      --   $   "Function with args:"
+      --   <+> pretty args
+      --   <>  "{"
+      --   <>  line
+      --   <>  nest 2 body'
+      --   <>  line
+      --   <>  "}"
     ONative _          -> return "Native Function"
     OClassDef name _ _ -> return $ "class" <+> pretty name
     OObject _ methods  -> do
@@ -300,14 +284,12 @@ instance
 
       -------------------------------------------------------
 
-  -- redirect :: Address -> mm Address
-  redirect w = follow'' w 50
+instance Redirection StWorld where
+  -- | Follow reference pointer until and not reference object.
+  -- It throws a exception when reaches the limit 50
+  follow' w = follow'' w 50
     where
-      follow''
-        :: (MemoryManagement mm, MonadError (ErrorInfo WorldError) mm, RawObj mm ~ (Object mm))
-        => Address
-        -> Int
-        -> mm Address
+      follow'' :: Address -> Int -> StWorld Address
       follow'' word times
         | times <= 0 = throw ExcededRecursiveLimit
         | otherwise = do
@@ -316,13 +298,14 @@ instance
             ORef word' -> follow'' word' (times - 1)
             _          -> return word
 
+instance AccessHierarchy StWorld Object where
     -- zoom :: RawObj mm -> T.Text -> mm Address
-  zoom obj acc = case obj of
+  access obj acc = case obj of
     OObject mClassId dicObj -> attemps
       -- Local search
       [
         case M.lookup acc dicObj of
-          Just addr -> redirect addr
+          Just addr -> follow' addr
           Nothing   -> notFound
 
       , do
@@ -340,10 +323,18 @@ instance
           _ -> notFound
 
       -- Internal search
-      , return $ undefined obj acc -- TODO getMethods
+      , do
+        methods <- internalMethods obj
+        case M.lookup acc methods of
+          Just addr -> return addr
+          Nothing   -> notFound
       ]
-    ORef addr        -> follow addr >>= (`zoom` acc)
-    _                -> throw $ NotFoundObject 0
+    ORef addr        -> follow addr >>= (`access` acc)
+    _                -> do
+      methods <- internalMethods obj
+      case M.lookup acc methods of
+        Just addr -> return addr
+        Nothing   -> notFound
     where
       notFound = throw $ NotPropertyFound [] acc []
 
@@ -356,15 +347,9 @@ instance
           NotPropertyFound{} -> attemps xs
           err -> throw err) . _errorInternal)
 
---getMethods = undefined
--- methods =
---   mapM (\(name, func) ->
---       newVarWithName name (wrap . ONative . lift . func)
---   ) OV.methods
 
 
-
-instance TypeName (Object mm) where
+instance TypeName Object where
   typeName obj = case obj of
     OClassDef{}     -> "ClassDef"
     ONative{}       -> "Native"
@@ -381,41 +366,41 @@ instance TypeName (Object mm) where
     ONone           -> "None"
     OObject{}       -> "Object"
 
--- | Follow reference pointer until and not reference object.
--- It throws a exception when reaches the limit 50
-follow'
-  :: ( MemoryManagement mm
-     , MonadError (ErrorInfo WorldError) mm
-     , RawObj mm ~ (Object mm)
-     )
-  => Address
-  -> mm Address
-follow' w = follow'' w 50
-  where
-    follow''
-      :: ( MemoryManagement mm
-         , MonadError (ErrorInfo WorldError) mm
-         , RawObj mm ~ (Object mm)
-         )
-      => Address
-      -> Int
-      -> mm Address
-    follow'' word times
-      | times <= 0 = throw ExcededRecursiveLimit
-      | otherwise = do
-        obj <- unwrap <$> getVar word
-        case obj of
-          ORef word' -> follow'' word' (times - 1)
-          _          -> return word
+instance Prettify Object where
+  prettify obj _verbose = pretty $ typeName obj
 
--- | Assure to an Object different from a `ORef`
-follow
-  :: ( MemoryManagement mm
-     , MonadError (ErrorInfo WorldError) mm
-     , RawObj mm ~ (Object mm)
-     )
-  => Address
-  -> mm (Object mm)
-follow word = do
-  word' <- follow' word
-  unwrap <$> getVar word'
+-- -- | Assure to an Object different from a `ORef`
+-- follow :: Address -> StWorld Object
+-- follow word = do
+--   word' <- follow' word
+--   unwrap <$> getVar word'
+
+
+internalMethods :: Object -> StWorld (M.Map T.Text Address)
+internalMethods obj = case obj of
+  OStr{}          -> mkMethods OS.methods
+  OBool{}         -> mkMethods OB.methods
+  ODouble{}       -> mkMethods OD.methods
+  ONum{}          -> mkMethods ON.methods
+  OVector{}       -> mkMethods OV.methods
+  ORegex{}        -> mkMethods OR.methods
+  OShellCommand{} -> mkMethods OC.methods
+  OFunc{}         -> return mempty -- TODO: Add methods mappend -> monoid instance
+  ONative{}       -> return mempty
+  OBound{}        -> return mempty
+  OObject{}       -> return mempty
+  OClassDef{}     -> return mempty
+  ORef{}          -> return mempty
+  ONone           -> return mempty
+  where
+    mkMethods
+      :: [(T.Text, [Object] -> StWorld Object)]
+      -> StWorld (M.Map T.Text Address)
+    mkMethods methods =
+      M.fromList
+        <$> mapM
+              (\(name, func) -> do
+                ref <- newVarWithName name (ONative func)
+                return (name, ref)
+              )
+              methods

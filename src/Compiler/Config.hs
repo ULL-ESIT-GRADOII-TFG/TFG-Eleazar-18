@@ -11,9 +11,10 @@ import           Data.Maybe
 import qualified Data.Text               as T
 import qualified Data.Yaml               as Y
 import           Development.IncludeFile
-import           Lens.Micro.Platform
 import           System.Directory
 import           System.FilePath
+
+import           Compiler.Utils
 
 
 data Config = Config
@@ -42,16 +43,8 @@ instance FromJSON Config where
 
   parseJSON _ = mzero
 
--- instance FromJSON Prompt where
---   parseJSON (String text) =
---     case compileSourcePure text "**Config File**" of
---       Left e  -> fail $ show e
---       Right p -> return $ Prompt $ do
---         p' <- p
---         return $ OFunc mempty [] (const p')
---   parseJSON _ = mzero
 
-makeLenses ''Config
+makeSuffixLenses ''Config
 
 $(includeFileInSource "prelude.sf" "preludeScript")
 $(includeFileInSource "defaultConfig.yaml" "defaultConfig")

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Compiler.Error where
 
 import           Control.Monad.Except
@@ -9,6 +10,7 @@ import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
 
 import           Compiler.Parser.Types
+import           Compiler.Utils
 
 
 data ErrorLevel = Critical | Warning | Error deriving (Show, Eq)
@@ -18,6 +20,7 @@ data ErrorInfo a = ErrorInfo
   , _errorInternal :: a
   } deriving Show
 
+makeSuffixLenses ''ErrorInfo
 
 data ScopeError
   = NotDefinedObject T.Text
@@ -39,19 +42,20 @@ instance ReadeableError ScopeError where
 
 data WorldError
   = NotFoundObject Int
-  | NotPropertyFound { initial :: [T.Text], propertyNotFound :: T.Text, last :: [T.Text] }
+  | NotPropertyFound { initialLeftover :: [T.Text], propertyNotFound :: T.Text, finalLeftover :: [T.Text] }
   -- ^ Object access initial accessor, failed access identifier, everything else
   | NotIterable T.Text
   | NotBoolean T.Text
   | NotCallable T.Text
   | NumArgsMissmatch Int Int
   -- ^ Expected and given
-  | NotImplicitConversion
+  | NotImplicitConversion T.Text T.Text
+  | NotHaskellConversion T.Text T.Text
   | ExcededRecursiveLimit
   | DropVariableAlreadyDropped
   | NotExtensibleObject
   | WorldError T.Text
-  | ScopeError (ErrorInfo ScopeError)
+  | ScopeError ScopeError
   deriving Show
 
 instance ReadeableError WorldError where
@@ -69,8 +73,8 @@ instance ReadeableError WorldError where
       "No a boolean object `" <> ty <> "` it should implement __bool__"
     NumArgsMissmatch expected given -> (,) Error $
       "It was expected to get " <> T.pack (show expected) <> " args given " <> T.pack (show given)
-    NotImplicitConversion      -> (,) Error $
-      "No implicit conversion from `type`  to `type`"
+    NotImplicitConversion from to -> (,) Error $
+      "No implicit conversion from `" <>  from <> "`  to `" <> to <> "`"
     ExcededRecursiveLimit      -> (,) Critical $
       "Exceded recursion limit with internal references"
     DropVariableAlreadyDropped -> (,) Critical $
@@ -108,6 +112,9 @@ throw :: (GetInfo m, MonadError (ErrorInfo a) m, ReadeableError a) => a -> m b
 throw err = do
   info <- getInfo
   throwError (ErrorInfo info err)
+
+throwWithInfo :: MonadError (ErrorInfo a) m => TokenInfo -> a -> m b
+throwWithInfo info err = throwError (ErrorInfo info err)
 
 -- | Render a error adding location of code (line) and file name
 renderErrorWithSource :: ReadeableError a => ErrorInfo a -> T.Text -> T.Text -> Doc ()

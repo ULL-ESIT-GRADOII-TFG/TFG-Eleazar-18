@@ -1,23 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
 module Compiler.Prelude.ORegex where
 
 import qualified Data.ByteString       as B
-import qualified Data.Map              as M
-import qualified Data.Text             as T
-import           Text.Regex.PCRE.Light
+import qualified Text.Regex.PCRE.Light as R
 
-import           Compiler.Object
+import {-# SOURCE #-} Compiler.Object       ()
 import           Compiler.Prelude.Th
-import           Compiler.Types
+import           Compiler.World        ()
 
-methods
-  :: (MemoryManagement mm, RawObj mm ~ Object mm)
-  => M.Map T.Text ([Object mm] -> mm (Object mm))
-methods = M.fromList
-  [ ( "match"
-    , $(normalize [| \reg str -> match reg str [] |] (\_ty -> [t| Regex -> B.ByteString -> T.Text |])))
-  , (  "capture_count"
-    , $(normalize [| captureCount |] (\_ty -> [t| Regex -> Int |])))
- ]
+methodsTh
+  [ fn "match" [| (\reg str -> R.match reg str []) :: R.Regex -> B.ByteString -> Maybe [B.ByteString] |]
+  , fn "capture_count" [| R.captureCount :: R.Regex -> Int |]
+  ]

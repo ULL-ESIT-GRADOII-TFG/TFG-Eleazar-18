@@ -5,14 +5,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Compiler.Instruction where
 
 import           Control.Monad
+import           Control.Monad.Free        hiding (wrap)
 import           Control.Monad.Free.TH
-import           Control.Monad.Trans
-import           Control.Monad.Trans.Free
 import qualified Data.IntMap               as IM
 import qualified Data.Map                  as M
 import qualified Data.Text                 as T
@@ -21,45 +19,52 @@ import qualified Data.Vector               as V
 import           Lens.Micro.Platform       hiding (assign)
 
 import           Compiler.Ast
-import           Compiler.Object
+import           Compiler.Object           ()
 import           Compiler.Parser.Types
+import           Compiler.Prettify
 import           Compiler.Scope
 import           Compiler.Types
-import           Compiler.World
+import           Compiler.World            ()
 
 
-type Prog = ProgInstr StWorld
 
 data Info = Info
   { _retrieveName :: IM.IntMap T.Text
   , _srcInfo      :: TokenInfo
   } deriving Show
 
-type ProgInstr mm = FreeT (Instruction mm) mm (RawObj mm)
+type ProgInstr = Free Instruction
 
 -- | Intermediate set of instructions.
-data Instruction mm next
-  = CallCommand !Info !PathVar ![RawObj mm] (RawObj mm -> next)
+data Instruction next
+  = CreateVar !Info !(ProgInstr Object) !(Address -> next)
+  -- ^ Build basic types
+  | CallCommand !Info !PathVar ![Object] (Object -> next)
   -- ^ Make a call to and defined function
-  | Assign !Info !PathVar !(RawObj mm) (RawObj mm -> next)
+  | Assign !Info !PathVar !Object (Object -> next)
   -- ^ Assign an object to local variable
   | DropVar !Info !PathVar next
   -- ^ Remove a var from memory
-  | GetVal !Info !PathVar (RawObj mm -> next)
+  | GetVal !Info !PathVar (Object -> next)
   -- ^ Retrieve a object from a memory reference
-  | Loop !Info !(RawObj mm) (RawObj mm -> ProgInstr mm) next
+  | Loop !Info !Object (Object -> ProgInstr Object) next
   -- ^ Loop over a object
-  | Cond !Info !(RawObj mm) (ProgInstr mm) (ProgInstr mm) (RawObj mm -> next)
+  | Cond !Info !Object (ProgInstr Object) (ProgInstr Object) (Object -> next)
   -- ^ If sentence given a object
   deriving Functor
 
 makeFree ''Instruction
 
-instance InstructionsLike StWorld where
-  type Prog StWorld = FreeT (Instruction StWorld)
+instance Runnable ProgInstr StWorld Object where
 -- | Execute a sequence of instructions
   --runProgram :: Prog mm mm (RawObj mm) -> mm (RawObj mm)
-  runProgram = iterT $ \case
+  runProgram = iterM $ \case
+    -- Used to create complex basic objects
+    CreateVar _ builder next -> do
+      obj <- runProgram builder
+      addr <- newVar (wrap obj)
+      next addr
+
     -- Find into world function and correspondent objects
     CallCommand _ idFun args next -> do
       retObj  <- call idFun args
@@ -90,37 +95,39 @@ instance InstructionsLike StWorld where
       ref' <- unwrap . fst <$> findPathVar idObj
       next ref'
 
-  --showInstructions :: Prog mm mm (RawObj mm) -> mm (Doc ())
-  --pprint :: FreeT Instruction StWorld Object -> StWorld (Doc ())
-  showInstructions instrs = (\f -> iterT f (fmap (const mempty) instrs)) $ \case
-    CallCommand _ idFun args next -> do
+instance Prettify (ProgInstr Object) where
+  prettify instrs verbose = flip iter (fmap (\obj -> prettify obj verbose) instrs) $ \case
+    CreateVar _ builder next ->
+      let createVarPP = "CreateVar" <+> (prettify builder verbose)
+      in createVarPP <> line <> next 0
+
+    CallCommand _ idFun args next ->
       let callDoc = "Call" <+> pAddr idFun <+> "With:" <+> pretty (map typeName args)
-      docs <- next ONone
-      return $ callDoc <> line <> docs
+          docs = next ONone
+      in callDoc <> line <> docs
 
-    Assign _ idObj accObject next -> do
+    Assign _ idObj accObject next ->
       let assignPP = "Assign" <+> pAddr idObj <+> pretty (typeName accObject)
-      docs <- next ONone
-      return $ assignPP <> line <> docs
+          docs = next ONone
+      in assignPP <> line <> docs
 
-    DropVar _ idObj next -> do
+    DropVar _ idObj next ->
       let dropVarPP = "Drop" <+> pAddr idObj
-      docs <- next
-      return $ dropVarPP <> line <> docs
+          docs = next
+      in dropVarPP <> line <> docs
 
-    Loop _ accObject prog next -> do
+    Loop _ accObject prog next ->
       let loopPP = "Loop" <+> pretty (typeName accObject)
-      bodyLoop <- showInstructions $ prog ONone
-      docs     <- next
-      return $ loopPP <> line <> nest 2 bodyLoop <> line <> docs
+          bodyLoop = prettify (prog ONone) verbose
+          docs     = next
+      in loopPP <> line <> nest 2 bodyLoop <> line <> docs
 
-    Cond _ objectCond trueNext falseNext next -> do
+    Cond _ objectCond trueNext falseNext next ->
       let condPP = "Cond" <+> pretty (typeName objectCond)
-      trueBody  <- showInstructions trueNext
-      falseBody <- showInstructions falseNext
-      docs      <- next ONone
-      return
-        $  condPP
+          trueBody  = prettify trueNext verbose
+          falseBody = prettify falseNext verbose
+          docs      = next ONone
+      in condPP
         <> line
         <> "True Case:"
         <> line
@@ -132,19 +139,19 @@ instance InstructionsLike StWorld where
         <> line
         <> docs
 
-    GetVal _ idObj next -> do
+    GetVal _ idObj next ->
       let getValPP = "GetVal " <+> pAddr idObj
-      docs <- next ONone
-      return $ getValPP <> line <> docs
+          docs = next ONone
+      in getValPP <> line <> docs
 
 newtype ExprSeq a = ExprSeq [Expression a]
 
-instance Desugar ExprSeq ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StWorld) (Object StWorld) where
+instance Desugar ExprSeq ScopeInfoAST ScopeM ProgInstr Object where
   transform (ExprSeq exprs) = foldl (>>) (return $ return ONone) (map transform exprs)
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
-instance Desugar Expression ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StWorld) (Object StWorld) where
+instance Desugar Expression ScopeInfoAST ScopeM ProgInstr Object where
   -- transform :: Expression ScopeInfoAST -> ScopeM (FreeT Instruction StWorld) Object
   transform expr = case expr of
     FunExpr args prog info -> withScope (info^.scopeInfoA) $ do
@@ -152,7 +159,7 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StW
       info' <- infoASTToInfo info
       body <- transform prog
       addresses <- mapM (\acc -> do
-                            addr <- getIdentifier (return acc)
+                            addr <- getIdentifier (return acc) (info^.tokenInfoA)
                             return $ addr^.refA
                         ) args
 
@@ -167,7 +174,7 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StW
     VarExpr acc exprValue info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
       instr <- transform exprValue
-      addr <- getIdentifier $ simplifiedAccessor acc
+      addr <- getIdentifier (simplifiedAccessor acc) (info^.tokenInfoA)
       return $
         instr >>= assign info' addr
 
@@ -215,7 +222,7 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StW
       instrsIter <- transform iterExpr
       instrsBody <- transform prog
       -- Drop current scope defined vars and simple iter
-      addr <- getIdentifier (return acc)
+      addr <- getIdentifier (return acc) (info^.tokenInfoA)
       return $ do
         iter' <- instrsIter
         loop info' iter' (\val -> assign info' addr val >> instrsBody)
@@ -224,21 +231,21 @@ instance Desugar Expression ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StW
     Apply acc argsExpr info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
       instrArgs <- mapM transform argsExpr
-      addr <- getIdentifier (simplifiedAccessor acc)
+      addr <- getIdentifier (simplifiedAccessor acc) (info^.tokenInfoA)
       return $ do
         args <- sequence instrArgs
         callCommand info' addr args
 
     Identifier acc info -> withScope (info^.scopeInfoA) $ do
       info' <- infoASTToInfo info
-      addr <- getIdentifier (simplifiedAccessor acc)
+      addr <- getIdentifier (simplifiedAccessor acc) (info^.tokenInfoA)
       return $ getVal info' addr
 
     Factor atom _info -> transform atom
 
 -- | Transform literal data from AST to an object
-instance Desugar Atom ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StWorld) (Object StWorld) where
-  -- transform :: Atom ScopeInfoAST -> ScopeM (FreeT Instruction StWorld) Object
+instance Desugar Atom ScopeInfoAST ScopeM ProgInstr Object where
+  -- transform :: Atom ScopeInfoAST -> ScopeM (Free Instruction) Object
   transform atom = case atom of
     ANone _            -> return $ return ONone
     ANum num _         -> return . return $ ONum num
@@ -247,24 +254,24 @@ instance Desugar Atom ScopeInfoAST ScopeM (FreeT (Instruction StWorld) StWorld) 
     ARegex _reg _        -> return . return $ ORegex undefined
     AShellCommand cmd _ -> return . return $ OShellCommand cmd
     ABool bool _        -> return . return $ OBool bool
-    AVector items _     -> do
+    AVector items info     -> do
+      info' <- infoASTToInfo info
       instrs <- mapM transform items
       return $ do
-        objs <- sequence instrs
-        addrs <- lift $ mapM (newVar . pure) objs
-        return . OVector $ V.fromList addrs
-    ADic items _      -> do
+        objs <- mapM (createVar info') instrs
+        return . OVector $ V.fromList objs
+    ADic items info      -> do
+      info' <- infoASTToInfo info
       values <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) items
       return $ do
-        objs <- mapM snd values
-        addrs <- lift $ mapM (newVar . pure) objs
+        addrs <- mapM (createVar info' . snd) values
         return $ OObject Nothing . M.fromList $ zip (map fst values) addrs
-    AClass name methods _ -> do
-      methods' <- mapM (transform . snd) methods
-      addr <- getIdentifier (return name)
+    AClass name methods info -> do
+      info' <- infoASTToInfo info
+      methods' <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) methods
+      addr <- getIdentifier (return name) (info^.tokenInfoA)
       return $ do
-        oFuncs <- sequence methods'
-        refFuncs <- lift $ mapM (newVar . pure) oFuncs
+        refFuncs <- mapM (createVar info' . snd) methods'
         return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) refFuncs)
 
 -------------------------------------------------------------------------------

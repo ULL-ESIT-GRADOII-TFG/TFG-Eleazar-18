@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eea35a97538552e94d3a336897465dd40d9ece382ff1fc68abc4f17e0619dc72
+-- hash: 9590f2787efac478007257eb42a5a1e1c3d0765f530a1e5d73f4706a155ef0a7
 
 name:           ScriptFlow
 version:        0.0.2
@@ -61,8 +61,7 @@ library
   exposed-modules:
       Compiler.Ast
       Compiler.Config
-      Compiler.Core.Methods
-      Compiler.Core.Types
+      Compiler.Core
       Compiler.Error
       Compiler.Identifier
       Compiler.Instruction

@@ -45,8 +45,7 @@ library:
   exposed-modules:
     - Compiler.Ast
     - Compiler.Config
-    - Compiler.Core.Methods
-    - Compiler.Core.Types
+    - Compiler.Core
     - Compiler.Error
     - Compiler.Identifier
     - Compiler.Instruction

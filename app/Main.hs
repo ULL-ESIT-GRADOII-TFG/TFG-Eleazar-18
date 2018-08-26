@@ -1,7 +1,6 @@
 module Main where
 
-import           Compiler.Core.Methods
-import           Compiler.Core.Types
+import           Compiler.Core
 import           Options.Applicative
 
 

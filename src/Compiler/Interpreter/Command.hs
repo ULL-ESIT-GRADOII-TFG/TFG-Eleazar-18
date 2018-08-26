@@ -9,9 +9,8 @@ import           Data.Text.Prettyprint.Doc.Render.Text
 import           Lens.Micro.Platform
 import           System.Exit
 
-import           Compiler.Instruction ()
+import           Compiler.Instruction                  ()
 import           Compiler.Interpreter
-import           Compiler.Object
 import           Compiler.Prettify
 import           Compiler.Types
 
@@ -53,7 +52,6 @@ showInstructions' (name:_) = do
   -- Find into scope the ref -> search into world -> apply
   object <- liftWorld $ unwrap <$> getVarWithName name
   case object of
-    OFunc _ _ prog -> do
-      instrs <- liftWorld $ showInstructions (prog (repeat ONone))
-      liftIO $ putDoc instrs
+    OFunc _ _ prog ->
+      liftIO $ putDoc $ prettify (prog (repeat ONone)) 3
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

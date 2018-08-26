@@ -5,15 +5,16 @@ module Compiler.Interpreter where
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
 import           Data.Default
-import qualified Data.Text                             as T
+import qualified Data.Text                  as T
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 import           Text.Parsec
 
 import           Compiler.Config
 import           Compiler.Error
+import           Compiler.Types
 import           Compiler.Utils
-import           Compiler.World
+import           Compiler.World             ()
 
 
 data InterpreterError
@@ -31,14 +32,13 @@ data IState = IState
   { _multiline    :: !(Maybe T.Text)
    -- ^ When multiline mode is enable the interpreter storage all code
    --   until found a multiline close token. Then load text to compiler.
-  , _memory       :: !World
+  , _memory       :: !(World Object)
   -- , _docs :: Docs -- Map Text DocFormatted
   , _config       :: !Config
   , _verboseLevel :: !Int
   }
 
 makeSuffixLenses ''IState
-
 
 instance Default IState where
   def = IState
@@ -74,20 +74,3 @@ catchEither errorMsg m = do
   case option' of
     Right a  -> return a
     Left err -> throwError $ errorMsg err
-
-{- -- | Internal use. To create native objects
-
-newVar :: T.Text -> Object StWorld -> Interpreter PathVar
-newVar idName obj = do
-
-  addr <- liftWorld . liftScope . addNewIdentifier $ return idName
-  _ <- liftWorld $ addObjeccwit addr obj
-  return addr
-
--- | Internal use to get specific interpreter variables
-getVar :: T.Text -> Interpreter (Object StWorld)
-getVar idName = do
-  addr <- liftWorld $ liftScope . getIdentifier $ return idName
-  liftWorld $ findObject addr
-
- -}

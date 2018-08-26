@@ -1,41 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
 module Compiler.Prelude.OStr where
 
-import qualified Data.Map            as M
 import qualified Data.Text           as T
 
-import           Compiler.Object
+import {-# SOURCE #-} Compiler.Object     ()
 import           Compiler.Prelude.Th
-import           Compiler.Types
+import           Compiler.World      ()
 
-methods
-  :: (MemoryManagement mm, RawObj mm ~ Object mm)
-  => M.Map T.Text ([Object mm] -> mm (Object mm))
-methods = M.fromList
-  [ ( "++"
-    , $(normalize [| T.append |] (\_ty -> [t| T.Text -> T.Text -> T.Text |])))
-  , ( "=="
-    , $(normalize [| (==) |] (\_ty -> [t| T.Text -> T.Text -> Bool |])))
-  , ( "!="
-    , $(normalize [| (/=) |] (\_ty -> [t| T.Text -> T.Text -> Bool |])))
-  , ( "/="
-    , $(normalize [| (/=) |] (\_ty -> [t| T.Text -> T.Text -> Bool |])))
- ]
-  -- "intercalate" -> Just $ normalizePure' T.intercalate
-  -- "reverse"     -> Just $ normalizePure T.reverse
-  -- "to_lower"    -> Just $ normalizePure T.toLower
-  -- "to_upper"    -> Just $ normalizePure T.toUpper
-  -- "to_title"    -> Just $ normalizePure T.toTitle
-  -- -- Just when char type it been implemented
-  -- -- "center"      -> Just $ normalizePure'' T.center
-  -- "take"        -> Just $ normalizePure' (flip T.take)
-  -- "drop"        -> Just $ normalizePure' (flip T.drop)
-  -- "strip"       -> Just $ normalizePure T.strip
-  -- "strip_end"   -> Just $ normalizePure T.stripEnd
-  -- "strip_start" -> Just $ normalizePure T.stripStart
-  -- "length"      -> Just $ normalizePure T.length
-  -- "tail"        -> Just $ normalizePure T.tail
-  -- "init"        -> Just $ normalizePure T.init
-  -- "null"        -> Just $ normalizePure T.null
+methodsTh
+  [ fn "++" [| T.append :: T.Text -> T.Text -> T.Text |]
+  , fn "==" [| (==) :: T.Text -> T.Text -> Bool |]
+  , fn "!=" [| (/=) :: T.Text -> T.Text -> Bool |]
+  , fn "/=" [| (/=) :: T.Text -> T.Text -> Bool |]
+  , fn "intercalate" [| T.intercalate :: T.Text -> [T.Text] -> T.Text |]
+  , fn "reverse" [| T.reverse :: T.Text -> T.Text |]
+  , fn "to_lower" [| T.toLower :: T.Text -> T.Text |]
+  , fn "to_upper" [| T.toUpper :: T.Text -> T.Text |]
+  , fn "to_title" [| T.toTitle :: T.Text -> T.Text |]
+  , fn "take" [| flip T.take :: T.Text -> Int -> T.Text |]
+  , fn "drop" [| flip T.drop :: T.Text -> Int -> T.Text |]
+  -- Just when char type, it been implemented
+  -- fn "center"      -> Just $ normalizePure'' T.center
+  , fn "strip" [| T.strip :: T.Text -> T.Text |]
+  , fn "strip_end" [| T.stripEnd :: T.Text -> T.Text |]
+  , fn "strip_start" [| T.stripStart :: T.Text -> T.Text |]
+  , fn "length" [| T.length :: T.Text -> Int |]
+  , fn "tail" [| T.tail :: T.Text -> T.Text |]
+  , fn "init" [| T.init :: T.Text -> T.Text |]
+  , fn "null" [| T.null :: T.Text -> Bool |]
+  ]

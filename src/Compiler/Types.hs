@@ -1,21 +1,69 @@
-{-# LANGUAGE FlexibleContexts       #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE OverloadedStrings      #-}
-{-# LANGUAGE TemplateHaskell        #-}
-{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE FunctionalDependencies    #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
 module Compiler.Types where
 
 import           Control.Monad.Except
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Control.Monad.State.Strict
+import qualified Data.IntMap                as IM
+import qualified Data.List.NonEmpty         as NL
+import qualified Data.Map                   as M
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Data.Text.Prettyprint.Doc
+import qualified Data.Vector                as V
+import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
+import           Compiler.Parser.Types
 import           Compiler.Prettify
 import           Compiler.Utils
 
+
+newtype ShellType = ShellType { unShell :: T.Text }
+
+-- | Allows generation of new names, with its ids associated
+class Monad sc => Naming sc where
+  newId :: T.Text -> sc PathVar
+  getNewId :: sc Address
+  findAddress :: T.Text -> sc (Maybe PathVar)
+  findAddress = findAddress' . return
+  findAddress' :: NL.NonEmpty T.Text -> sc (Maybe PathVar)
+  {-# MINIMAL newId, getNewId, findAddress' #-}
+
+-- | Mainly used for debug propurses or type info display
+class TypeName o where
+  typeName :: o -> Text
+
+newtype ScopeInfo = ScopeInfo
+  { _renameInfo :: M.Map T.Text PathVar
+  } deriving Show
+
+type ScopeM = ExceptT (ErrorInfo ScopeError) (StateT Scope IO)
+
+-- | Defines stack scope for program
+data Scope = Scope
+  { _currentScope :: ScopeInfo
+  -- ^ New variables declares in the current scope to be later added to
+  -- stackScope
+  , _stackScope   :: [ScopeInfo]
+  -- ^ All above scopes
+  } deriving Show
+
+
+data ScopeInfoAST = ScopeInfoAST
+  { _tokenInfo :: TokenInfo
+  , _scopeInfo :: ScopeInfo
+  } deriving Show
+
+-------------------------------------------------------------------------------
+-- * Memory relate types
 
 type Address = Int
 
@@ -32,90 +80,196 @@ instance Prettify PathVar where
   prettify (PathVar r p) _verbose =
     "ADDR#" <> pretty r <> "." <> pretty (T.intercalate "." p)
 
--- | Allows generation of new names, with its ids associated
-class Monad sc => Naming sc where
-  newId :: T.Text -> sc PathVar
-  getNewId :: sc Address
-  findAddress :: T.Text -> sc PathVar
-
--- | Mainly used for debug propurses or type info display
-class TypeName o where
-  typeName :: o -> Text
-
 class Applicative r => Wrapper r where
   wrap :: a -> r a
   wrap = pure
   unwrap :: r a -> a
 
-class (Naming mm, Wrapper (Store mm), MonadError (ErrorInfo WorldError) mm, GetInfo mm, MonadIO mm)
-    => MemoryManagement mm where
+class (Naming mm, Wrapper (Store mm))
+    => MemoryAccessor (mm :: * -> *) o | mm -> o where
   type Store mm :: * -> *
-  type RawObj mm :: *
-
-  getVar :: Address -> mm (Store mm (RawObj mm))
-  setVar :: Address -> Store mm (RawObj mm)-> mm ()
-  deleteVar :: Address -> mm Bool
-  deleteUnsafe :: Address -> mm ()
+  getVar :: Address -> mm (Store mm o)
+  setVar :: Address -> Store mm o -> mm ()
   -- | Look into memory to find the final object pointed, and returns also its address
   -- Fails in case of not found the object `NotFoundObject`
-  findPathVar :: PathVar -> mm (Store mm (RawObj mm), Address)
-  setPathVar :: PathVar -> Store mm (RawObj mm) -> mm ()
+  findPathVar :: PathVar -> mm (Store mm o, Address)
+  setPathVar :: PathVar -> Store mm o -> mm ()
 
-newVar :: MemoryManagement mm => Store mm (RawObj mm) -> mm Address
+
+class Deallocate mm where
+  deleteVar :: Address -> mm Bool
+  deleteUnsafe :: Address -> mm ()
+
+newVar :: MemoryAccessor mm Object => Store mm Object -> mm Address
 newVar var = do
   addr <- getNewId
   setVar addr var
   return addr
 
-newVarWithName :: MemoryManagement mm => T.Text -> RawObj mm -> mm Address
+newVarWithName :: MemoryAccessor mm Object => T.Text -> Object -> mm Address
 newVarWithName nameId obj = do
   ref <- _ref <$> newId nameId
   setVar ref (pure obj)
   return ref
 
-getVarWithName :: MemoryManagement mm => T.Text -> mm (Store mm (RawObj mm))
-getVarWithName nameId = fst <$> (findAddress nameId >>= findPathVar)
+getVarWithName :: (MonadError (ErrorInfo WorldError) mm, GetInfo mm, MemoryAccessor mm Object) => T.Text -> mm (Store mm Object)
+getVarWithName nameId = do
+  mPathVar <- findAddress nameId
+  case mPathVar of
+    Just pathVar -> fst <$> findPathVar pathVar
+    Nothing      -> throw (ScopeError (NotDefinedObject nameId))
 
-class (InstructionsLike mm, MemoryManagement mm, o ~ RawObj mm)
-    => ObjectOperations mm o where
+type StWorld = StateT (World Object) (ExceptT (ErrorInfo WorldError) IO)
+
+data Rc o = Rc
+  { _refCounter :: !Address
+  , _rawObj     :: !o
+  }
+  deriving Show
+
+
+-- | Keeps all information of running program (memory, debugging info ...)
+data World o = World
+  { _table         :: IM.IntMap (Rc o)
+  -- ^ Generic table to storage all vars/objects
+  , _scope         :: Scope
+  -- ^ Root Scope.
+  , _lastTokenInfo :: TokenInfo
+  -- ^ Used to generate precise errors locations
+  }
+
+
+-------------------------------------------------------------------------------
+-- * Object relate type classes
+
+class Callable mm o where
   call :: PathVar -> [o] -> mm o
-  directCall :: RawObj mm -> [RawObj mm] -> mm (RawObj mm)
-  mapOver :: RawObj mm -> (RawObj mm -> mm (RawObj mm)) -> mm (RawObj mm)
-  checkBool :: RawObj mm -> mm Bool
-  showObject :: RawObj mm -> mm (Doc ())
-  -- | Redirect if the object is a reference to another object, it returns the last object address
-  -- without be a reference. It should/could throw an exception of redirection limit.
-  redirect :: Address -> mm Address
-  zoom :: RawObj mm -> T.Text -> mm Address
+  directCall :: o -> [o] -> mm o
 
-class InstructionsLike mm where
-  type Prog mm :: (* -> *) -> * -> *
-  runProgram :: Prog mm mm (RawObj mm) -> mm (RawObj mm)
+class Iterable mm o where
+  mapOver :: o -> (o -> mm o) -> mm o
 
-  showInstructions :: Prog mm mm (RawObj mm) -> mm (Doc ())
+class Booleanable mm o where
+  checkBool :: o -> mm Bool
 
--- type TkState st m = StateT (TkSt st) m
+class Showable mm o where
+  showObject :: o -> mm (Doc ())
 
--- | Intermediate data type to keeps tracks of current TokenInfo
--- data TkSt a = TkSt
---   { _innerState       :: a
---   , _currentTokenInfo :: TokenInfo
---   -- ^ Used to generate precise errors locations
---   } deriving Show
+class Redirection mm where
+  follow' :: Address -> mm Address
+
+follow :: (MemoryAccessor mm o, Redirection mm) => Address -> mm o
+follow word = do
+  word' <- follow' word
+  unwrap <$> getVar word'
+
+class AccessHierarchy mm o where
+  access :: o -> T.Text -> mm Address
+
+class GetInnerRefs o where
+  innerRefs :: o -> [Address]
+
+class ToObject o where
+  toObject :: o -> StWorld Object
+
+class FromObject o where
+  fromObject :: Object -> StWorld o
+
+type BasicObjectOps mm o = (Callable mm o, Iterable mm o, Booleanable mm o, Redirection mm, AccessHierarchy mm o)
+
+data Object
+  = OStr T.Text
+  | OBool Bool
+  | ODouble Double
+  | ONum Int
+  | ORegex Regex
+  -- ^ Regex expression following PCRE syntax
+  | OShellCommand T.Text
+  -- ^ Shell command
+  | OVector (V.Vector Address)
+  -- ^ Sequence of objects
+  | forall prog. (Runnable prog StWorld Object, Prettify (prog Object))
+    => OFunc (M.Map T.Text Address) [Address] ([Object] -> prog Object)
+  -- ^ Lambda with possible scope/vars attached
+  | OBound Address Address
+  -- ^ Used to Bound methods to variables
+  | OObject (Maybe Address) (M.Map T.Text Address)
+  -- ^ Object instance from class Address
+  | ONative ([Object] -> StWorld Object)
+  -- ^ Native object
+  | ORef Address
+  -- ^ Pointer reference
+  | OClassDef
+    { nameClass       :: T.Text
+    , refClass        :: Address
+    , attributesClass :: M.Map T.Text Address
+    }
+  | ONone
 
 
--- instance Default a => Default (TkSt a) where
---   def = TkSt def def
-
--- instance Monad m => GetInfo (StateT (TkSt st) m) where
---   getInfo = _currentTokenInfo <$> get
-
+class Runnable prog mm o where
+  runProgram :: prog o -> mm o
 
 -- | Apply a transformation into AST, it can varies internal info type of ast.
 -- This transformation be able to carry out in monad typed
 class Monad m => Desugar ast a m ast' b | a ast -> b, a ast -> ast' where
   transform :: ast a -> m (ast' b)
 
+-- class Normalize a where
+--   {-# MINIMAL normalize' #-}
+--   normalize :: a -> [Object] -> StWorld Object
+--   normalize a objs = normalize' a 0 (length objs) objs
+--   -- | Same to normalize but take account of numbers of args expected and given
+--   normalize' :: a -> Int -> Int -> [Object] -> StWorld Object
+
+-- instance Normalize (StWorld Object)  where
+--   normalize' f expected given ls =
+--     case ls of
+--       [] -> f
+--       _  -> throw $ NumArgsMissmatch expected given
+
+-- instance Normalize Object where
+--   normalize' f expected given ls =
+--     case ls of
+--       [] -> return f
+--       _  -> throw $ NumArgsMissmatch expected given
+
+-- instance ToObject a => Normalize (IO a) where
+--   normalize' f expected given ls =
+--     case ls of
+--       [] -> toObject <$> liftIO f
+--       _  -> throw $ NumArgsMissmatch expected given
+
+-- instance ToObject a => Normalize (StWorld a) where
+--   normalize' f expected given ls =
+--     case ls of
+--       [] -> toObject <$> lift f
+--       _  -> throw $ NumArgsMissmatch expected given
+
+-- instance (Normalize r, FromObject a) => Normalize (a -> r) where
+--   normalize' fun _ given []     =
+--       throw $ NumArgsMissmatch (count fun 0) given
+--   normalize' fun expected given (a:xs) = do
+--     obj <- lift $ fromObject a
+--     normalize' (fun obj) (expected + 1) given xs
+
+-- -- | Used to count params avoiding evaluate function
+-- class CountParams a where
+--   count :: a -> Int -> Int
+
+-- instance CountParams a where
+--   count _ n = n
+
+-- instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> b -> r) where
+--   count fun n = count (fun undefined) (n + 1)
+
+-- instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> r) where
+--   count _ n = (n + 1)
 
 makeSuffixLenses ''PathVar
 --makeSuffixLenses ''TkSt
+makeSuffixLenses ''Rc
+makeSuffixLenses ''World
+makeSuffixLenses ''ScopeInfoAST
+makeSuffixLenses ''ScopeInfo
+makeSuffixLenses ''Scope
