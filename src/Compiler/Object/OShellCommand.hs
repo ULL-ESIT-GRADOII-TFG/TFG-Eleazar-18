@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.OShellCommand where
+module Compiler.Object.OShellCommand where
 
 import qualified Data.Text           as T
 import qualified Data.Text.IO        as T

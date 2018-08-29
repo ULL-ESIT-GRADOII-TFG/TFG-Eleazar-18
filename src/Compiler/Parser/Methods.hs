@@ -2,7 +2,7 @@
 module Compiler.Parser.Methods where
 
 import           Control.Monad
-import qualified Data.Map               as M
+import qualified Data.HashMap.Strict    as HM
 import qualified Data.Text              as T
 import qualified Data.Vector            as V
 import           Text.Parsec
@@ -231,7 +231,7 @@ parseMethod expr = do
 checkOperator :: Int -> TokenParser T.Text
 checkOperator level = do
   op <- operatorT
-  case M.lookup op operatorsPrecedence of
+  case HM.lookup op operatorsPrecedence of
     Just (levelOP, _assoc, _special) -> if levelOP == level
       then return op
       else parserFail ("Operator in wrong level " ++ show level)
@@ -251,7 +251,7 @@ treeOperators
   -> [(T.Text, Expression TokenInfo)]
   -> Expression TokenInfo
 treeOperators expr []               = expr
-treeOperators expr list@((op, _):_) = case M.lookup op operatorsPrecedence of
+treeOperators expr list@((op, _):_) = case HM.lookup op operatorsPrecedence of
   Just (_, LeftAssoc, _) -> foldl
     (\acc (_, expr') -> Apply (Simple op dummyTokenInfo) [acc, expr'] dummyTokenInfo)
     expr

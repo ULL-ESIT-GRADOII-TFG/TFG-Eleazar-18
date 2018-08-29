@@ -17,17 +17,18 @@ library:
   build-tools: alex
   ghc-options: -Wall -Wno-orphans
   dependencies:
+    - HFuse
     - aeson
     - array
     - base
     - bytestring
     - containers
+    - unordered-containers
     - data-default
     - directory
     - filepath
     - free
     - haskeline
-    - HFuse
     - http-client
     - http-client-tls
     - include-file
@@ -38,6 +39,7 @@ library:
     - pcre-light
     - prettyprinter
     - process
+    - scientific
     - template-haskell
     - text
     - vector
@@ -52,18 +54,17 @@ library:
     - Compiler.Interpreter.Command
     - Compiler.Interpreter.Evaluate
     - Compiler.Object
+    - Compiler.Object.OBool
+    - Compiler.Object.ODouble
+    - Compiler.Object.ONum
+    - Compiler.Object.ORegex
+    - Compiler.Object.OShellCommand
+    - Compiler.Object.OStr
+    - Compiler.Object.OVector
     - Compiler.Parser.Methods
     - Compiler.Parser.Types
-    - Compiler.Prelude.Methods
-    - Compiler.Prelude.OBool
-    - Compiler.Prelude.ODouble
-    - Compiler.Prelude.ONum
-    - Compiler.Prelude.ORegex
-    - Compiler.Prelude.OShellCommand
-    - Compiler.Prelude.OStr
-    - Compiler.Prelude.OVector
+    - Compiler.Prelude
     - Compiler.Prelude.Th
-    - Compiler.Prelude.Types
     - Compiler.Prelude.Utils
     - Compiler.Prettify
     - Compiler.Scope

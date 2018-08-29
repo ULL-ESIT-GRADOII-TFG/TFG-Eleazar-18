@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.ORegex where
+module Compiler.Object.ORegex where
 
 import qualified Data.ByteString       as B
 import qualified Text.Regex.PCRE.Light as R

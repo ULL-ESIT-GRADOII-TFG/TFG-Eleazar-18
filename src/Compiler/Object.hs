@@ -7,27 +7,67 @@ module Compiler.Object where
 
 import           Control.Applicative
 import           Control.Monad.Except
-import qualified Data.ByteString                as B
-import qualified Data.Map                       as M
-import qualified Data.Text                      as T
-import qualified Data.Text.Encoding             as TE
+import qualified Data.ByteString               as B
+import qualified Data.HashMap.Strict           as HM
+import           Data.Scientific
+import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as TE
 import           Data.Text.Prettyprint.Doc
-import qualified Data.Vector                    as V
+import qualified Data.Vector                   as V
+import qualified Data.Yaml                     as Y
 import           Lens.Micro.Platform
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
-import qualified Compiler.Prelude.OBool         as OB
-import qualified Compiler.Prelude.ODouble       as OD
-import qualified Compiler.Prelude.ONum          as ON
-import qualified Compiler.Prelude.ORegex        as OR
-import qualified Compiler.Prelude.OShellCommand as OC
-import qualified Compiler.Prelude.OStr          as OS
-import qualified Compiler.Prelude.OVector       as OV
+import qualified Compiler.Object.OBool         as OB
+import qualified Compiler.Object.ODouble       as OD
+import qualified Compiler.Object.ONum          as ON
+import qualified Compiler.Object.ORegex        as OR
+import qualified Compiler.Object.OShellCommand as OC
+import qualified Compiler.Object.OStr          as OS
+import qualified Compiler.Object.OVector       as OV
 import           Compiler.Prelude.Utils
 import           Compiler.Prettify
 import           Compiler.Types
-import           Compiler.World                 ()
+import           Compiler.World                ()
+
+
+instance ToObject Y.Value where
+  toObject yamlType = case yamlType of
+    Y.Object hashmap   -> do
+      oMap <- mapM (\el -> do
+                       obj <- toObject el
+                       newVar $ pure obj
+                   ) hashmap
+      return $ OObject Nothing oMap
+    Y.Array vector     -> toObject vector
+    Y.String text      -> toObject text
+    Y.Number number -> return $ case floatingOrInteger number of
+      Left double -> ODouble double
+      Right num   -> ONum num
+    Y.Bool bool        -> toObject bool
+    Y.Null             -> return ONone
+
+instance FromObject Y.Value where
+  fromObject obj = case obj of
+    OStr text -> return $ Y.String text
+    OBool bool -> return $ Y.Bool bool
+    ODouble double -> return . Y.Number $ fromFloatDigits double
+    ONum num -> return . Y.Number $scientific (toInteger num) 0
+    OVector vector -> do
+      vec <- mapM (\ref -> do
+                      obj' <- unwrap <$> getVar ref
+                      fromObject obj'
+                  ) vector
+      return $ Y.Array vec
+    OObject _ hashmap -> do
+      hashmap' <- mapM (\ref -> do
+                           obj' <- unwrap <$> getVar ref
+                           fromObject obj'
+                       ) hashmap
+      return $ Y.Object hashmap'
+    ONone -> return Y.Null
+    o -> throw $ NotImplicitConversion (typeName o) "JSON_Value"
 
 
 instance ToObject Object where
@@ -101,7 +141,7 @@ instance FromObject a => FromObject [a] where
                                                ) vec
   fromObject o = throw $ NotImplicitConversion (typeName o) "Vector"
 
-instance ToObject a => ToObject (M.Map T.Text a) where
+instance ToObject a => ToObject (HM.HashMap T.Text a) where
   toObject mmap = do
     oMap <- mapM (\el -> do
                      obj <- toObject el
@@ -109,7 +149,7 @@ instance ToObject a => ToObject (M.Map T.Text a) where
                  ) mmap
     return $ OObject Nothing oMap
 
-instance FromObject a => FromObject (M.Map T.Text a) where
+instance FromObject a => FromObject (HM.HashMap T.Text a) where
   fromObject (OObject _ dic) =
     mapM (\ref -> do
              obj <- unwrap <$> getVar ref
@@ -117,9 +157,14 @@ instance FromObject a => FromObject (M.Map T.Text a) where
          ) dic
   fromObject o = throw $ NotImplicitConversion (typeName o) "Object"
 
--- There aren't a char type equivalent right now. Remind: Two paths [Char] String
--- instance ToObject Char where
---   toObject = OStr . T.singleton
+instance ToObject Char where
+  toObject = return . OStr . T.singleton
+
+instance FromObject Char  where
+  fromObject (OStr text) | T.length text == 1 = return (T.head text)
+                         | otherwise = throw $ WorldError "Expect a single char string"
+  fromObject o           = throw $ NotImplicitConversion (typeName o) "Char"
+
 
 instance {-# OVERLAPPING #-} ToObject [Char] where
   toObject = return . OStr . T.pack
@@ -187,7 +232,7 @@ instance Callable StWorld Object where
 
     OClassDef _name refCls methods -> do
       self <- newVar . wrap $ OObject (Just refCls) mempty
-      case M.lookup "__init__" methods of
+      case HM.lookup "__init__" methods of
         Just method -> do
           _ <- directCall (ORef method) (ORef self : objs)
           obj' <- follow self
@@ -221,7 +266,7 @@ instance Iterable StWorld Object where
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
         OClassDef _name _ref methods ->
-          case M.lookup "__map__" methods of
+          case HM.lookup "__map__" methods of
             Just func' -> do
               func'' <- follow func'
               directCall func'' [obj, ONative $ \obs -> func (head obs)]
@@ -236,7 +281,7 @@ instance Booleanable StWorld Object where
     OObject (Just classRef) _attrs -> do
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
-        OClassDef _name _ref methods -> case M.lookup "__bool__" methods of
+        OClassDef _name _ref methods -> case HM.lookup "__bool__" methods of
           Just func' -> do
             func'' <- follow func'
             directCall func'' [obj] >>= checkBool
@@ -279,8 +324,9 @@ instance Showable StWorld Object where
               objDoc <- showObject (ORef obj')
               return $ pretty key <+> "->" <+> objDoc
             )
-          $ M.toList methods
+          $ HM.toList methods
       return $ "{" <> line <> nest 2 (vcat dic) <> line <> "}"
+    ONativeObject _ -> return "Native Object"
 
       -------------------------------------------------------
 
@@ -304,7 +350,7 @@ instance AccessHierarchy StWorld Object where
     OObject mClassId dicObj -> attemps
       -- Local search
       [
-        case M.lookup acc dicObj of
+        case HM.lookup acc dicObj of
           Just addr -> follow' addr
           Nothing   -> notFound
 
@@ -313,26 +359,26 @@ instance AccessHierarchy StWorld Object where
         cls <- unwrap <$> getVar clsId
         case cls of
           OClassDef _ _ attrs -> maybe notFound return (
-            M.lookup acc attrs
+            HM.lookup acc attrs
             <|>
             -- Find into share methods (operators) too
             (do
-              (_, _, name) <- M.lookup acc operatorsPrecedence
-              M.lookup name attrs
+              (_, _, name) <- HM.lookup acc operatorsPrecedence
+              HM.lookup name attrs
             ))
           _ -> notFound
 
       -- Internal search
       , do
         methods <- internalMethods obj
-        case M.lookup acc methods of
+        case HM.lookup acc methods of
           Just addr -> return addr
           Nothing   -> notFound
       ]
     ORef addr        -> follow addr >>= (`access` acc)
     _                -> do
       methods <- internalMethods obj
-      case M.lookup acc methods of
+      case HM.lookup acc methods of
         Just addr -> return addr
         Nothing   -> notFound
     where
@@ -347,12 +393,19 @@ instance AccessHierarchy StWorld Object where
           NotPropertyFound{} -> attemps xs
           err -> throw err) . _errorInternal)
 
-
+instance GetInnerRefs Object where
+  innerRefs obj = case obj of
+    OVector       vec     -> V.toList vec
+    OBound _addr1 _addr2  -> []
+    ORef rfs              -> [rfs]
+    OFunc env _args _body -> HM.elems env
+    OObject _ methods     -> HM.elems methods
+    _                     -> []
 
 instance TypeName Object where
   typeName obj = case obj of
     OClassDef{}     -> "ClassDef"
-    ONative{}       -> "Native"
+    ONative{}       -> "NativeFunction"
     OFunc{}         -> "Function"
     OStr{}          -> "Str"
     ORegex{}        -> "Regex"
@@ -365,18 +418,12 @@ instance TypeName Object where
     ORef{}          -> "Ref"
     ONone           -> "None"
     OObject{}       -> "Object"
+    ONativeObject{} -> "NativeObject"
 
 instance Prettify Object where
   prettify obj _verbose = pretty $ typeName obj
 
--- -- | Assure to an Object different from a `ORef`
--- follow :: Address -> StWorld Object
--- follow word = do
---   word' <- follow' word
---   unwrap <$> getVar word'
-
-
-internalMethods :: Object -> StWorld (M.Map T.Text Address)
+internalMethods :: Object -> StWorld (HM.HashMap T.Text Address)
 internalMethods obj = case obj of
   OStr{}          -> mkMethods OS.methods
   OBool{}         -> mkMethods OB.methods
@@ -388,16 +435,17 @@ internalMethods obj = case obj of
   OFunc{}         -> return mempty -- TODO: Add methods mappend -> monoid instance
   ONative{}       -> return mempty
   OBound{}        -> return mempty
-  OObject{}       -> return mempty
+  OObject{}       -> return mempty -- TODO: any string should return ONone
   OClassDef{}     -> return mempty
   ORef{}          -> return mempty
   ONone           -> return mempty
+  ONativeObject{} -> return mempty
   where
     mkMethods
       :: [(T.Text, [Object] -> StWorld Object)]
-      -> StWorld (M.Map T.Text Address)
+      -> StWorld (HM.HashMap T.Text Address)
     mkMethods methods =
-      M.fromList
+      HM.fromList
         <$> mapM
               (\(name, func) -> do
                 ref <- newVarWithName name (ONative func)

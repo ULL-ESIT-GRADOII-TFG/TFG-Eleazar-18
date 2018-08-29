@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.ODouble where
+module Compiler.Object.ODouble where
 
 
   -- TODO: Add negate operator

@@ -13,7 +13,7 @@ import           Lens.Micro.Platform
 import           Compiler.Config
 import           Compiler.Interpreter
 import           Compiler.Interpreter.Evaluate
-import           Compiler.Prelude.Methods
+import           Compiler.Prelude
 import           Compiler.Types
 
 import           Paths_ScriptFlow

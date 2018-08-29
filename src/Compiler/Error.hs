@@ -50,7 +50,6 @@ data WorldError
   | NumArgsMissmatch Int Int
   -- ^ Expected and given
   | NotImplicitConversion T.Text T.Text
-  | NotHaskellConversion T.Text T.Text
   | ExcededRecursiveLimit
   | DropVariableAlreadyDropped
   | NotExtensibleObject
@@ -73,8 +72,8 @@ instance ReadeableError WorldError where
       "No a boolean object `" <> ty <> "` it should implement __bool__"
     NumArgsMissmatch expected given -> (,) Error $
       "It was expected to get " <> T.pack (show expected) <> " args given " <> T.pack (show given)
-    NotImplicitConversion from to -> (,) Error $
-      "No implicit conversion from `" <>  from <> "`  to `" <> to <> "`"
+    NotImplicitConversion fromTy toTy -> (,) Error $
+      "No implicit conversion from `" <> fromTy <> "`  to `" <> toTy <> "`"
     ExcededRecursiveLimit      -> (,) Critical $
       "Exceded recursion limit with internal references"
     DropVariableAlreadyDropped -> (,) Critical $

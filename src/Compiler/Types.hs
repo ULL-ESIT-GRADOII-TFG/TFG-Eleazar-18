@@ -11,13 +11,14 @@ module Compiler.Types where
 
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
+import qualified Data.HashMap.Strict        as HM
 import qualified Data.IntMap                as IM
 import qualified Data.List.NonEmpty         as NL
-import qualified Data.Map                   as M
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Text.Prettyprint.Doc
 import qualified Data.Vector                as V
+import           GHC.Exts
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
@@ -42,7 +43,7 @@ class TypeName o where
   typeName :: o -> Text
 
 newtype ScopeInfo = ScopeInfo
-  { _renameInfo :: M.Map T.Text PathVar
+  { _renameInfo :: HM.HashMap T.Text PathVar
   } deriving Show
 
 type ScopeM = ExceptT (ErrorInfo ScopeError) (StateT Scope IO)
@@ -189,85 +190,40 @@ data Object
   | OVector (V.Vector Address)
   -- ^ Sequence of objects
   | forall prog. (Runnable prog StWorld Object, Prettify (prog Object))
-    => OFunc (M.Map T.Text Address) [Address] ([Object] -> prog Object)
+    => OFunc (HM.HashMap T.Text Address) [Address] ([Object] -> prog Object)
   -- ^ Lambda with possible scope/vars attached
   | OBound Address Address
   -- ^ Used to Bound methods to variables
-  | OObject (Maybe Address) (M.Map T.Text Address)
+  | OObject (Maybe Address) (HM.HashMap T.Text Address)
   -- ^ Object instance from class Address
   | ONative ([Object] -> StWorld Object)
-  -- ^ Native object
+  -- ^ Native function
+  | ONativeObject Any
+  -- ^ Native object. It can't be interacted by scriptflow directly, no copy or move
+  -- this object. It is just a read only (Seg faults could happend it isn't handle corretly)
+  -- See Unsafe.Coerce
   | ORef Address
   -- ^ Pointer reference
   | OClassDef
     { nameClass       :: T.Text
     , refClass        :: Address
-    , attributesClass :: M.Map T.Text Address
+    , attributesClass :: HM.HashMap T.Text Address
     }
   | ONone
 
-
+-------------------------------------------------------------------------------
+-- * Instruction relate type classes
 class Runnable prog mm o where
   runProgram :: prog o -> mm o
 
+-------------------------------------------------------------------------------
+-- * AST relate type classes
 -- | Apply a transformation into AST, it can varies internal info type of ast.
 -- This transformation be able to carry out in monad typed
 class Monad m => Desugar ast a m ast' b | a ast -> b, a ast -> ast' where
   transform :: ast a -> m (ast' b)
 
--- class Normalize a where
---   {-# MINIMAL normalize' #-}
---   normalize :: a -> [Object] -> StWorld Object
---   normalize a objs = normalize' a 0 (length objs) objs
---   -- | Same to normalize but take account of numbers of args expected and given
---   normalize' :: a -> Int -> Int -> [Object] -> StWorld Object
-
--- instance Normalize (StWorld Object)  where
---   normalize' f expected given ls =
---     case ls of
---       [] -> f
---       _  -> throw $ NumArgsMissmatch expected given
-
--- instance Normalize Object where
---   normalize' f expected given ls =
---     case ls of
---       [] -> return f
---       _  -> throw $ NumArgsMissmatch expected given
-
--- instance ToObject a => Normalize (IO a) where
---   normalize' f expected given ls =
---     case ls of
---       [] -> toObject <$> liftIO f
---       _  -> throw $ NumArgsMissmatch expected given
-
--- instance ToObject a => Normalize (StWorld a) where
---   normalize' f expected given ls =
---     case ls of
---       [] -> toObject <$> lift f
---       _  -> throw $ NumArgsMissmatch expected given
-
--- instance (Normalize r, FromObject a) => Normalize (a -> r) where
---   normalize' fun _ given []     =
---       throw $ NumArgsMissmatch (count fun 0) given
---   normalize' fun expected given (a:xs) = do
---     obj <- lift $ fromObject a
---     normalize' (fun obj) (expected + 1) given xs
-
--- -- | Used to count params avoiding evaluate function
--- class CountParams a where
---   count :: a -> Int -> Int
-
--- instance CountParams a where
---   count _ n = n
-
--- instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> b -> r) where
---   count fun n = count (fun undefined) (n + 1)
-
--- instance {-# OVERLAPPING #-} (CountParams r) => CountParams (a -> r) where
---   count _ n = (n + 1)
-
 makeSuffixLenses ''PathVar
---makeSuffixLenses ''TkSt
 makeSuffixLenses ''Rc
 makeSuffixLenses ''World
 makeSuffixLenses ''ScopeInfoAST

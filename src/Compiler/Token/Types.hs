@@ -3,7 +3,7 @@ module Compiler.Token.Types where
 import           Data.Text
 
 
--- ! Tokens available
+-- | Tokens available
 data Token
   = OBraceT
   -- ^ "{"

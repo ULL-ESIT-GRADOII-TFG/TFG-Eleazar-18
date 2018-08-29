@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.OStr where
+module Compiler.Object.OStr where
 
 import qualified Data.Text           as T
 

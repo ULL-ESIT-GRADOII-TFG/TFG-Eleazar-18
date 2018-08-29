@@ -7,8 +7,8 @@ module Compiler.Scope where
 
 import           Control.Monad.Except
 import           Data.Default
+import qualified Data.HashMap.Strict       as HM
 import qualified Data.List.NonEmpty        as NL
-import qualified Data.Map                  as M
 import qualified Data.Text                 as T
 import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
@@ -33,7 +33,7 @@ instance Naming ScopeM where
   getNewId = liftIO getNewID
   findAddress' (name NL.:| names) = do
     renamer <- use $ currentScopeA.renameInfoA
-    case M.lookup name renamer of
+    case HM.lookup name renamer of
       Just ref' -> return . Just $ PathVar (ref'^.refA) names
       Nothing   -> do
         stack <- use $ stackScopeA
@@ -42,7 +42,7 @@ instance Naming ScopeM where
      where
       findInStack :: [ScopeInfo] -> Maybe PathVar
       findInStack []         = Nothing
-      findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & M.lookup name of
+      findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & HM.lookup name of
         Just (PathVar word _) -> Just $ PathVar word names
         Nothing               -> findInStack xs
 
@@ -55,7 +55,7 @@ instance Prettify ScopeInfo where
   prettify (ScopeInfo hash) verbose =
     "ScopeInfo { " <> line <>
     nest 2 (vcat (map (\(k,v) ->
-      pretty k <+> "->" <+> prettify v verbose) $ M.toList hash)) <> line <>
+      pretty k <+> "->" <+> prettify v verbose) $ HM.toList hash)) <> line <>
     "}"
 
 instance Default ScopeInfoAST where
@@ -215,14 +215,22 @@ flatScope scope = ScopeInfo (
 
 withScope :: ScopeInfo -> ScopeM a -> ScopeM a
 withScope scope body = do
+  addTopScope scope
+  value <- body
+  removeTopScope
+  return value
+
+addTopScope :: ScopeInfo -> ScopeM ()
+addTopScope scope = do
   currentScope <- use currentScopeA
   stackScopeA %= (currentScope:)
   currentScopeA .= scope
-  value <- body
+
+removeTopScope :: ScopeM ()
+removeTopScope = do
   (curScope:rest) <- use stackScopeA
   currentScopeA .= curScope
   stackScopeA   .= rest
-  return value
 
 -- | Create a temporal scope with a info
 withNewScope :: ScopeM a -> ScopeM a
@@ -233,14 +241,14 @@ addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM PathVar
 addNewIdentifier (name NL.:| names) = do
   newID <- liftIO getNewID
   let addr = PathVar newID names
-  currentScopeA.renameInfoA %= M.insert name addr
+  currentScopeA.renameInfoA %= HM.insert name addr
   return addr
 
 -- | Get a specific ID from variable name
 getIdentifier :: NL.NonEmpty T.Text -> TokenInfo -> ScopeM PathVar
 getIdentifier (name NL.:| names) info = do
   renamer <- use $ currentScopeA.renameInfoA
-  case M.lookup name renamer of
+  case HM.lookup name renamer of
     Just ref' -> return $ PathVar (ref'^.refA) names
     Nothing   -> do
       stack <- use $ stackScopeA
@@ -249,7 +257,7 @@ getIdentifier (name NL.:| names) info = do
  where
   findInStack :: [ScopeInfo] -> Maybe PathVar
   findInStack []         = Nothing
-  findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & M.lookup name of
+  findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & HM.lookup name of
     Just (PathVar word _) -> Just $ PathVar word names
     Nothing               -> findInStack xs
 
@@ -259,7 +267,7 @@ getScopeInfoAST info = ScopeInfoAST info <$> use currentScopeA
 
 getPathVar :: Show a => Accessor a -> ScopeInfoAST -> ScopeM PathVar
 getPathVar acc scopeInfoAST =
-  case M.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
+  case HM.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
     Just (PathVar addr _) -> return $ PathVar addr (tailName acc)
     Nothing               -> throwWithInfo (scopeInfoAST^.tokenInfoA) NoSavedPathVar
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.OVector where
+module Compiler.Object.OVector where
 
 import qualified Data.Vector         as V
 

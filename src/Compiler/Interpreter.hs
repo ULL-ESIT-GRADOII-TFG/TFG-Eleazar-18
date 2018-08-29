@@ -27,6 +27,7 @@ data InterpreterError
 -- | Used to control flow of all interpreter
 type Interpreter = ExceptT InterpreterError (StateT IState (InputT IO))
 
+
 -- | Represent internal state of compiler
 data IState = IState
   { _multiline    :: !(Maybe T.Text)

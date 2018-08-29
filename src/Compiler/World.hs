@@ -11,8 +11,8 @@ module Compiler.World where
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
 import           Data.Default
+import qualified Data.HashMap.Strict        as HM
 import qualified Data.IntMap                as IM
-import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform        hiding (zoom)
@@ -56,7 +56,7 @@ instance Default (World o) where
 
 instance TypeName o => Prettify (World o) where
   prettify (World tb scope _) verbose =
-    let aux = leftInnerJoin ((M.toList (_renameInfo $ _currentScope scope)) & each._2 %~ _ref) (IM.toList tb)
+    let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ _ref) (IM.toList tb)
     in
       "World {" <> line <>
       -- Do a cross joint
@@ -85,12 +85,24 @@ instance MemoryAccessor StWorld Object where
     addr' <- buildFollowingPath addr dyns
     setVar addr' var
 
--- TODO  Intentar eliminar en funcion del tipo de objecto que contiene la memoria para ello se requiere GetInnersRefs
 instance Deallocate StWorld where
-  deleteVar _addr = return False -- TODO: undefined
+  deleteVar addr = do
+    obj <- unwrap <$> getVar addr
+    mapM_ deleteVar (innerRefs obj)
+    dropVarWorld addr
 
   deleteUnsafe addr = void $ IM.delete addr <$> use tableA
 
+dropVarWorld :: Address -> StWorld Bool
+dropVarWorld addrRef = do
+  val <- getVar addrRef
+  let var' = val & refCounterA %~ (\ct -> (-) ct 1)
+  if var'^.refCounterA == 0 then do
+    deleteUnsafe addrRef
+    return True
+  else do
+    setVar addrRef var'
+    return False
 
 -- | Build objects following a given path `path` from initial address `addr`.
 -- It returns last object following path.
@@ -120,10 +132,10 @@ addSubObject word acc obj = do
 
   case var ^. rawObjA of
     ONone -> do
-      setVar word (var & rawObjA .~ OObject Nothing (M.singleton acc addr))
+      setVar word (var & rawObjA .~ OObject Nothing (HM.singleton acc addr))
       setVar addr (pure obj)
     OObject parent attrs -> do
-      setVar word (var & rawObjA .~ OObject parent (M.insert acc addr attrs))
+      setVar word (var & rawObjA .~ OObject parent (HM.insert acc addr attrs))
       setVar addr (pure obj)
     _ -> throw NotExtensibleObject
   return addr

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.ONum where
+module Compiler.Object.ONum where
 
   -- TODO: Add negate operator
 import {-# SOURCE #-} Compiler.Object     ()

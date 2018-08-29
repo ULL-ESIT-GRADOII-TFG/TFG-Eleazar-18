@@ -4,7 +4,7 @@ module Compiler.Config where
 
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Data.Aeson
+import qualified Data.Aeson              as A
 import qualified Data.ByteString         as BS
 import           Data.Default
 import           Data.Maybe
@@ -14,6 +14,8 @@ import           Development.IncludeFile
 import           System.Directory
 import           System.FilePath
 
+import           Compiler.Object         ()
+import           Compiler.Types
 import           Compiler.Utils
 
 
@@ -34,12 +36,12 @@ instance Default Config where
     , _modules =  []
 }
 
-instance FromJSON Config where
-  parseJSON (Object v) = Config <$>
-                            (v .: "command_shell") <*>
-                            (v .: "repl" >>= (.: "default_path")) <*>
-                            (v .: "repl" >>= (.: "prompt")) <*>
-                            (v .: "modules")
+instance A.FromJSON Config where
+  parseJSON (A.Object v) = Config <$>
+                            (v A..: "command_shell") <*>
+                            (v A..: "repl" >>= (A..: "default_path")) <*>
+                            (v A..: "repl" >>= (A..: "prompt")) <*>
+                            (v A..: "modules")
 
   parseJSON _ = mzero
 
@@ -60,56 +62,54 @@ configFile = (</> "scriptflow.yaml") <$> configPath
 setupConfig :: Maybe FilePath -> IO (Maybe Config)
 setupConfig mCfgFile = do
   mCfgFile' <- getConfigFilePath mCfgFile
-  loaded <- loadConfigFile mCfgFile'
-  if isNothing loaded then do
-    putStrLn "Creating a default configuration"
-    createDefaultConfig
-    configFile' <- configFile
-    loadConfigFile $ Just configFile'
-  else
-    return loaded
+  loaded    <- loadConfigFile mCfgFile'
+  if isNothing loaded
+    then do
+      putStrLn "Creating a default configuration"
+      createDefaultConfig
+      configFile' <- configFile
+      loadConfigFile $ Just configFile'
+    else return loaded
 
 getConfigFilePath :: Maybe FilePath -> IO (Maybe FilePath)
-getConfigFilePath mCfgFile =
-  case mCfgFile of
-    Just cfgFile -> do
-      exist <- liftIO $ doesFileExist cfgFile
-      if exist
-        then
-          return $ Just cfgFile
-        else do
-          liftIO $ putStrLn
-            "Specified config file doesn't exist or it can't be accessed"
-          liftIO $ putStrLn "Using XDG File"
-          findConfigXDG
-    Nothing -> findConfigXDG
+getConfigFilePath mCfgFile = case mCfgFile of
+  Just cfgFile -> do
+    exist <- liftIO $ doesFileExist cfgFile
+    if exist
+      then return $ Just cfgFile
+      else do
+        liftIO
+          $ putStrLn
+              "Specified config file doesn't exist or it can't be accessed"
+        liftIO $ putStrLn "Using XDG File"
+        findConfigXDG
+  Nothing -> findConfigXDG
   where
     findConfigXDG = do
       configFile' <- liftIO configFile
       exist       <- liftIO $ doesFileExist configFile'
-      if exist then
-        return $ Just configFile'
-      else do
-        liftIO $ putStrLn "XDG config file doesn't exist or it can't be accessed"
-        return Nothing
+      if exist
+        then return $ Just configFile'
+        else do
+          liftIO
+            $ putStrLn "XDG config file doesn't exist or it can't be accessed"
+          return Nothing
 
 
 -- | Try get configuration from default XDG directory. It get a file named
 -- "scriptflow.yaml" in yaml format if file isn't found it returns False, True
 -- in otherwise
-loadConfigFile :: Maybe FilePath -> IO (Maybe Config)
-loadConfigFile mCfgFile =
-  case mCfgFile of
-    Just cfgFile -> do
-      contents <-
-        Y.decodeFileEither cfgFile :: IO (Either Y.ParseException Config)
-      case contents of
-        Right cFile ->
-          return $ Just cFile
-        Left parserError -> do
-          liftIO $ putStrLn (Y.prettyPrintParseException parserError)
-          return Nothing
-    Nothing -> return Nothing
+loadConfigFile :: Y.FromJSON a => Maybe FilePath -> IO (Maybe a)
+loadConfigFile mCfgFile = case mCfgFile of
+  Just cfgFile -> do
+    contents <-
+      Y.decodeFileEither cfgFile -- :: IO (Either Y.ParseException Config)
+    case contents of
+      Right cFile       -> return $ Just cFile
+      Left  parserError -> do
+        liftIO $ putStrLn (Y.prettyPrintParseException parserError)
+        return Nothing
+  Nothing -> return Nothing
 
 createDefaultConfig :: IO ()
 createDefaultConfig = do
@@ -117,11 +117,22 @@ createDefaultConfig = do
   createDirectoryIfMissing False configPath'
   configFile' <- configFile
   exist       <- doesFileExist configFile'
-  if exist then do
-    putStr "Are you sure of overwrite your configuration? (Y/n) "
-    response <- getLine
-    when (response == "Y") $ BS.writeFile
-      configFile'
-      defaultConfig
-  else
-    BS.writeFile configFile' defaultConfig
+  if exist
+    then do
+      putStr "Are you sure of overwrite your configuration? (Y/n) "
+      response <- getLine
+      when (response == "Y") $ BS.writeFile configFile' defaultConfig
+    else BS.writeFile configFile' defaultConfig
+
+-- | Allows load a specific configuration for object
+loadSubConfig :: String -> StWorld Object
+loadSubConfig name = do
+  configPath' <- liftIO configPath
+  mVal <- liftIO $ loadConfigFile (Just (configPath' </> name)) :: StWorld (Maybe Y.Object)
+  case mVal of
+    Just val -> toObject val
+    Nothing  -> return ONone
+
+-- TODO
+saveSubConfig :: String -> StWorld Object
+saveSubConfig = undefined

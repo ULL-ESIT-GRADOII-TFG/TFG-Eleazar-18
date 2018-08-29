@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Compiler.Prelude.OBool where
+module Compiler.Object.OBool where
 
 
 import {-# SOURCE #-} Compiler.Object     ()

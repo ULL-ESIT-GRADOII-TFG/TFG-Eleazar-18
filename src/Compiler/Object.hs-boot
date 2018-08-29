@@ -1,12 +1,12 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Compiler.Object where
 
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import qualified Data.Map as M
+import qualified Data.HashMap.Strict as HM
 import qualified Data.ByteString           as B
 import           Text.Regex.PCRE.Light
 
@@ -14,6 +14,7 @@ import Compiler.Types
 
 instance AccessHierarchy StWorld Object
 instance Redirection StWorld
+instance GetInnerRefs Object
 
 instance ToObject a => ToObject (IO a)
 instance FromObject ShellType
@@ -31,8 +32,8 @@ instance ToObject a => ToObject (V.Vector a)
 instance FromObject a => FromObject (V.Vector a)
 instance ToObject a => ToObject [a]
 instance FromObject a => FromObject [a]
-instance ToObject a => ToObject (M.Map T.Text a)
-instance FromObject a => FromObject (M.Map T.Text a)
+instance ToObject a => ToObject (HM.HashMap T.Text a)
+instance FromObject a => FromObject (HM.HashMap T.Text a)
 instance {-# OVERLAPPING #-} ToObject [Char]
 instance {-# OVERLAPPING #-} FromObject [Char]
 instance ToObject B.ByteString

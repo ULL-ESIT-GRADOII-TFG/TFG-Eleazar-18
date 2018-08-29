@@ -11,8 +11,8 @@ module Compiler.Instruction where
 import           Control.Monad
 import           Control.Monad.Free        hiding (wrap)
 import           Control.Monad.Free.TH
+import qualified Data.HashMap.Strict       as HM
 import qualified Data.IntMap               as IM
-import qualified Data.Map                  as M
 import qualified Data.Text                 as T
 import           Data.Text.Prettyprint.Doc
 import qualified Data.Vector               as V
@@ -56,8 +56,7 @@ data Instruction next
 makeFree ''Instruction
 
 instance Runnable ProgInstr StWorld Object where
--- | Execute a sequence of instructions
-  --runProgram :: Prog mm mm (RawObj mm) -> mm (RawObj mm)
+  -- | Execute a sequence of instructions
   runProgram = iterM $ \case
     -- Used to create complex basic objects
     CreateVar _ builder next -> do
@@ -195,7 +194,7 @@ instance Desugar Expression ScopeInfoAST ScopeM ProgInstr Object where
         ) (return $ return ONone) exprs
       return $ do
         val <- instrs
-        mapM_ (dropVar info') (M.elems $ info^.scopeInfoA.renameInfoA)
+        mapM_ (dropVar info') (HM.elems $ info^.scopeInfoA.renameInfoA)
         return val
 
     If condExpr prog info -> withScope (info^.scopeInfoA) $ do
@@ -265,14 +264,14 @@ instance Desugar Atom ScopeInfoAST ScopeM ProgInstr Object where
       values <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) items
       return $ do
         addrs <- mapM (createVar info' . snd) values
-        return $ OObject Nothing . M.fromList $ zip (map fst values) addrs
+        return $ OObject Nothing . HM.fromList $ zip (map fst values) addrs
     AClass name methods info -> do
       info' <- infoASTToInfo info
       methods' <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) methods
       addr <- getIdentifier (return name) (info^.tokenInfoA)
       return $ do
         refFuncs <- mapM (createVar info' . snd) methods'
-        return $ OClassDef name (addr^.refA) (M.fromList $ zip (map fst methods) refFuncs)
+        return $ OClassDef name (addr^.refA) (HM.fromList $ zip (map fst methods) refFuncs)
 
 -------------------------------------------------------------------------------
 -- * Utils
