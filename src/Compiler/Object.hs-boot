@@ -13,6 +13,7 @@ import           Text.Regex.PCRE.Light
 import Compiler.Types
 
 instance AccessHierarchy StWorld Object
+instance GetRef StWorld Object
 instance Redirection StWorld
 instance GetInnerRefs Object
 

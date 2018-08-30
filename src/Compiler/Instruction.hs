@@ -91,8 +91,8 @@ instance Runnable ProgInstr StWorld Object where
         else runProgram falseNext >>= next
 
     GetVal _ idObj next -> do
-      ref' <- unwrap . fst <$> findPathVar idObj
-      next ref'
+      (o, _addr) <- mkRef idObj
+      next o
 
 instance Prettify (ProgInstr Object) where
   prettify instrs verbose = flip iter (fmap (\obj -> prettify obj verbose) instrs) $ \case

@@ -26,15 +26,13 @@ data Config = Config
   , _modules      :: [T.Text]
   }
 
--- newtype Prompt = Prompt { _unPrompt :: ScopeM Object }
-
 instance Default Config where
   def = Config
     { _commandShell = Nothing
     , _defaultPath = Nothing
-    , _prompt = Nothing -- Prompt . return $ OStr ">>> "
+    , _prompt = Nothing
     , _modules =  []
-}
+    }
 
 instance A.FromJSON Config where
   parseJSON (A.Object v) = Config <$>
@@ -48,7 +46,7 @@ instance A.FromJSON Config where
 
 makeSuffixLenses ''Config
 
-$(includeFileInSource "prelude.sf" "preludeScript")
+-- $(includeFileInSource "prelude.sf" "preludeScript")
 $(includeFileInSource "defaultConfig.yaml" "defaultConfig")
 
 -- |
@@ -102,8 +100,7 @@ getConfigFilePath mCfgFile = case mCfgFile of
 loadConfigFile :: Y.FromJSON a => Maybe FilePath -> IO (Maybe a)
 loadConfigFile mCfgFile = case mCfgFile of
   Just cfgFile -> do
-    contents <-
-      Y.decodeFileEither cfgFile -- :: IO (Either Y.ParseException Config)
+    contents <- Y.decodeFileEither cfgFile -- :: IO (Either Y.ParseException Config)
     case contents of
       Right cFile       -> return $ Just cFile
       Left  parserError -> do
@@ -128,11 +125,16 @@ createDefaultConfig = do
 loadSubConfig :: String -> StWorld Object
 loadSubConfig name = do
   configPath' <- liftIO configPath
-  mVal <- liftIO $ loadConfigFile (Just (configPath' </> name)) :: StWorld (Maybe Y.Object)
+  mVal        <-
+    liftIO $ loadConfigFile (Just (configPath' </> name <.> "yaml")) :: StWorld
+      (Maybe Y.Value)
   case mVal of
     Just val -> toObject val
     Nothing  -> return ONone
 
--- TODO
-saveSubConfig :: String -> StWorld Object
-saveSubConfig = undefined
+-- | Save sub configuration
+saveSubConfig :: String -> Object -> StWorld ()
+saveSubConfig name obj = do
+  configPath' <- liftIO configPath
+  val <- fromObject obj :: StWorld Y.Value
+  liftIO $ Y.encodeFile  (configPath' </> name <.> "yaml") val

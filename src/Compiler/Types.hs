@@ -156,6 +156,10 @@ class Booleanable mm o where
 class Showable mm o where
   showObject :: o -> mm (Doc ())
 
+-- | Creates reference to address specified
+class GetRef mm o where
+  mkRef :: PathVar -> mm (o, Address)
+
 class Redirection mm where
   follow' :: Address -> mm Address
 

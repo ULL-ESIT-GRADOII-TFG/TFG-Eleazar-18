@@ -165,3 +165,12 @@ liftScope scopeM = do
   case value of
     Right val -> return val
     Left  err -> throwWithInfo (err^.errorInfoA) $ ScopeError (err^.errorInternalA)
+
+liftScope' :: ScopeM b -> StWorld b
+liftScope' scopeM = do
+  scope <- use scopeA
+  (value, newScope) <- liftIO $ runStateT (runExceptT scopeM) scope
+  scopeA .= newScope
+  case value of
+    Right val -> return val
+    Left  err -> throwWithInfo (err^.errorInfoA) $ ScopeError (err^.errorInternalA)

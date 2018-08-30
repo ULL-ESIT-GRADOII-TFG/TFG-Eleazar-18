@@ -10,13 +10,14 @@ import qualified Data.Text                             as T
 import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
 import qualified Data.Vector                           as V
+import           Lens.Micro.Platform
 import           System.Console.Haskeline
 import           System.Directory
 
 import           Compiler.Config
 import           Compiler.Error
 import           Compiler.Interpreter
-import           Compiler.Object                       ()
+import           Compiler.Object
 import           Compiler.Prelude.Github
 import           Compiler.Prelude.Th
 import           Compiler.Prelude.Utils
@@ -24,7 +25,6 @@ import           Compiler.Types
 
 
 -- | Prelude load action
--- TODO: Create a class to interact with http connections
 loadPrelude :: Interpreter ()
 loadPrelude = do
   -- Basic functions available on start
@@ -32,7 +32,6 @@ loadPrelude = do
   void githubClassSC
 
 -- | Build a method for metaclass (Specific use)
--- TODO: Revise error paths
 internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
@@ -43,8 +42,7 @@ internalMethod name =
       call (simple addr) objs
   )
 
--- |
--- TODO: Add specific functions to modify internal interpreter variables. Like prompt, or path options ...
+-- | A set of basic functions avaialable in the base scope
 baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
   [ ("print", ONative $(normalize [| printObj :: Object -> StWorld () |]))
@@ -53,13 +51,11 @@ baseBasicFunctions =
   , ("get_line", ONative $(normalize [| getLineWithAsk :: String -> IO (Maybe String) |]))
   , ("ask_password", ONative $(normalize [| askPassword :: Maybe Char -> String -> IO (Maybe String) |]))
   , ("__call__", ONative internalCall)
-  , ("save_config", ONative $(normalize [| saveSubConfig :: String -> StWorld Object |]))
-  , ("load_config", ONative $(normalize [| loadSubConfig :: String -> StWorld Object |])) -- __config__
+  , ("save_config", ONative $(normalize [| saveSubConfig :: String -> Object -> StWorld () |]))
+  , ("load_config", ONative $(normalize [| loadSubConfig :: String -> StWorld Object |]))
   , ("use"        , ONative $(normalize [| layerObjectIntoScope :: Object -> StWorld Object |]))
   , ("unuse"      , ONative $(normalize [| unlayerObjectIntoScope :: StWorld () |]))
   , ("dir"        , ONative $(normalize [| (fmap (fmap fst) . exploreObjectAttributes) :: Object -> StWorld (V.Vector T.Text)|]))
-  -- , ("docs"       , ONative (normalize TODO))
-  -- , ("self"       , ONative (normalize TODO))
   ]
     ++ map internalMethod (HM.keys operatorsPrecedence)
 
@@ -100,22 +96,45 @@ getLineWithAsk ask = runInputT defaultSettings $ getInputLine ask
 askPassword :: Maybe Char -> String -> IO (Maybe String)
 askPassword mChar ask = runInputT defaultSettings $ getPassword mChar ask
 
--- TODO
-exploreObjectAttributes :: Object -> StWorld (V.Vector (T.Text, Address))
-exploreObjectAttributes = undefined
+-- | Explore all accessors from a given object
+exploreObjectAttributes :: Object -> StWorld [(T.Text, Address)]
+exploreObjectAttributes obj = case obj of
+  OObject mClassId properties -> do
+    let objProperties = HM.toList properties
+    case mClassId of
+      Just ref -> do
+        classObj <- unwrap <$> getVar ref
+        classProperties <- exploreObjectAttributes classObj
+        return $ objProperties ++ classProperties
+      Nothing -> return objProperties
+  ORef ref -> do
+    obj' <- unwrap <$> getVar ref
+    exploreObjectAttributes obj'
+  OClassDef _name _refClass attrs -> return $ HM.toList attrs
+  _ -> do
+    methods <- internalMethods obj
+    return $ HM.toList methods
 
--- TODO:
+-- | Adds a layer into scope
 layerObjectIntoScope :: Object -> StWorld Object
-layerObjectIntoScope obj = undefined
-  -- -- It must generate OBound objects
-  -- set <- getObjectIdentifiers obj :: StWorld [(T.Text, Object)]
-  -- newVarWithName
-  -- addTopScope def
+layerObjectIntoScope obj@(ORef address) = do
+  dic <- exploreObjectAttributes obj
+  lAddress <- mapM (\(name, _addr) -> do
+                       addr' <- snd <$> (mkRef (PathVar address [name]) :: StWorld (Object, Address))
+                       return (name, PathVar addr' [])
+                   ) dic
+  let objScope = ScopeInfo (HM.fromList lAddress)
+  scopeA.stackScopeA %= (++ [objScope])
+  return obj
+layerObjectIntoScope _ = undefined
 
--- TODO
+-- | Remove a module layer from scope
 unlayerObjectIntoScope :: StWorld ()
-unlayerObjectIntoScope = undefined
-  -- if scopeNumber > 1 then
-  --   addrs <- getAllObjects
-
-  -- else
+unlayerObjectIntoScope = do
+  stackScope <- use $ scopeA.stackScopeA
+  if length stackScope >  0 then do
+    mapM_ (\pathVar -> deleteVar (pathVar^.refA)) (last stackScope ^. renameInfoA & HM.elems)
+    scopeA.stackScopeA .= take (length stackScope - 1) stackScope
+  else do
+    liftIO $ putStrLn "No layered object to be unlayered"
+    return ()

@@ -322,6 +322,7 @@ instance Showable StWorld Object where
         mapM
             (\(key, obj') -> do
               objDoc <- showObject (ORef obj')
+
               return $ pretty key <+> "->" <+> objDoc
             )
           $ HM.toList methods
@@ -329,6 +330,28 @@ instance Showable StWorld Object where
     ONativeObject _ -> return "Native Object"
 
       -------------------------------------------------------
+
+instance GetRef StWorld Object where
+  mkRef (PathVar addr accessors) =
+    if accessors == [] then do
+      let ref = ORef addr
+      addr' <- newVar $ wrap ref
+      return (ref, addr')
+    else do
+      let (initials, rest) = splitAt (length accessors - 1) accessors
+      (rcParent, addrParent) <- findPathVar (PathVar addr initials)
+      (rcChild, addrChild) <- findPathVar (PathVar addrParent rest)
+      setVar addrChild (rcChild & refCounterA %~ (+1))
+      case (unwrap rcParent, unwrap rcChild) of
+        (OObject{}, OFunc{} ) -> do
+          let boundMethod = OBound addrParent addrChild
+          setVar addrParent (rcParent & refCounterA %~ (+1))
+          address <- newVar $ wrap boundMethod
+          return (boundMethod, address)
+        (_, _) -> do
+          let ref = ORef addrChild
+          addr' <- newVar $ wrap ref
+          return (ref, addr')
 
 instance Redirection StWorld where
   -- | Follow reference pointer until and not reference object.
@@ -396,7 +419,7 @@ instance AccessHierarchy StWorld Object where
 instance GetInnerRefs Object where
   innerRefs obj = case obj of
     OVector       vec     -> V.toList vec
-    OBound _addr1 _addr2  -> []
+    OBound addr1 addr2    -> [addr1, addr2]
     ORef rfs              -> [rfs]
     OFunc env _args _body -> HM.elems env
     OObject _ methods     -> HM.elems methods
