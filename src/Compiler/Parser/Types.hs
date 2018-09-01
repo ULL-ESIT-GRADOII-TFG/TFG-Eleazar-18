@@ -39,9 +39,9 @@ instance Prettify SrcPos where
 
 instance Prettify TokenInfo where
   prettify (TokenInfo st en) verbose =
-    "TknInfo start" <+>
+    "Tok" <+>
     prettify st verbose <+>
-    "end" <+>
+    "- to -" <+>
     prettify en verbose
 
 dummyTokenInfo :: TokenInfo

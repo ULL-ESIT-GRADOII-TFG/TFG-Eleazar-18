@@ -66,7 +66,17 @@ quoteExpr code = do
   names <- showError $ getIdentifiers code
   funcs <- mapM (normalize . getSigE) names
   [| do
-    ids <- liftWorld $ sequence $(listE $ map (\expr -> [| (newVar . wrap $ ONative $(return expr) :: StWorld Address) |]) funcs)
+    ids <- liftWorld $
+      sequence $(listE
+                 $ map (\expr ->
+                          [|
+                           newVar $ wrap (ONative $ \addrs -> do
+                                               objs <- mapM (fmap unwrap . getVar) addrs
+                                               obj <- $(return expr) objs
+                                               newVar $ wrap obj
+                                         ) :: StWorld Address
+                           |]) funcs
+                )
 
     let replacer x = show $ fromJust $ M.lookup x (M.fromList (zip names (ids :: [Address])))
     case rebuiltWithReplace code replacer of

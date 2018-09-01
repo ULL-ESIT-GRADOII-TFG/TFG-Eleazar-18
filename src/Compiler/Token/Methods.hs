@@ -88,6 +88,9 @@ commaT = match CommaT
 assignT :: TokenParser ()
 assignT = match AssignT
 
+endStmtT :: TokenParser ()
+endStmtT = match EndStmtT
+
 noneT :: TokenParser ()
 noneT = match NoneT
 

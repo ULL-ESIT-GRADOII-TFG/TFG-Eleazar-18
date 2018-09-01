@@ -53,5 +53,5 @@ showInstructions' (name:_) = do
   object <- liftWorld $ unwrap <$> getVarWithName name
   case object of
     OFunc _ _ prog ->
-      liftIO $ putDoc $ prettify (prog (repeat ONone)) 3
+      liftIO $ putDoc $ prettify (prog (repeat 0)) 3
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

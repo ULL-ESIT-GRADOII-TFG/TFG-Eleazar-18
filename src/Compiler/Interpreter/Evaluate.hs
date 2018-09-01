@@ -69,7 +69,11 @@ getPrompt = do
             return $ replicate (T.length text - 4) ' ' ++ "... "
           else return $ T.unpack text
         OFunc{} -> do
-          ostr <- liftWorld $ directCall value []
+          ostr <- liftWorld $ do
+            addr <- directCall value []
+            val <- unwrap <$> getVar addr
+            deleteVar addr
+            return val
           case ostr of
             OStr text ->
               if isMultiline then
@@ -93,11 +97,18 @@ handleREPLError err = case err of
 -- | Compile source code
 compileSource :: T.Text -> String -> Interpreter Object
 compileSource rawFile nameFile = do
-  ast <- catchEither id . return $ generateAST rawFile nameFile
   verbosity <- use verboseLevelA
+  tokenizer' <- catchEither id . return . first (Tokenizer . T.pack) . scanner True $ T.unpack rawFile
+  when (verbosity > 2) $ do
+    liftIO $ putStrLn "** Tokens **"
+    liftIO $ print tokenizer'
+    liftIO $ putStr "\n"
+  ast <- catchEither id . return . first Parsing . parserLexer nameFile $ getTokens tokenizer'
+  -- ast <- catchEither id . return $ generateAST rawFile nameFile
   when (verbosity > 2) $ do
     liftIO $ putStrLn "** AST **"
     liftIO $ putDoc $ prettify ast verbosity
+    liftIO $ putStr "\n"
   case ast of
     Command cmd args -> executeCommand cmd args >> return ONone
     Code statements  -> do
@@ -106,6 +117,7 @@ compileSource rawFile nameFile = do
       when (verbosity >= 2) $ do
         liftIO $ putStrLn "** SCOPED AST **"
         mapM_ (liftIO . putDoc . flip prettify verbosity) astScoped
+        liftIO $ putStr "\n"
       foldM (\_ ast' -> evaluateScopedProgram ast') ONone astScoped
 
 -- | Evaluate program with AST already scoped
@@ -116,7 +128,11 @@ evaluateScopedProgram astScoped = do
   when (verbosity >= 2) $ do
     liftIO $ putStrLn "** Instructions **"
     liftIO $ putDoc $ prettify instrs verbosity
-  liftWorld (runProgram instrs)
+    liftIO $ putStr "\n"
+  liftWorld $ do
+    address <- runProgram instrs
+    val <- unwrap <$> getVar address
+    return val
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer

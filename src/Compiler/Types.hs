@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ConstraintKinds           #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
@@ -29,10 +31,15 @@ import           Compiler.Utils
 
 newtype ShellType = ShellType { unShell :: T.Text }
 
+newtype IdName = IdName { unIdName :: Int } deriving (Show, Eq, Num, Pretty, Ord)
+
+pattern ID :: Int -> IdName
+pattern ID i = IdName i
+
 -- | Allows generation of new names, with its ids associated
 class Monad sc => Naming sc where
   newId :: T.Text -> sc PathVar
-  getNewId :: sc Address
+  getNewId :: sc IdName
   findAddress :: T.Text -> sc (Maybe PathVar)
   findAddress = findAddress' . return
   findAddress' :: NL.NonEmpty T.Text -> sc (Maybe PathVar)
@@ -66,7 +73,10 @@ data ScopeInfoAST = ScopeInfoAST
 -------------------------------------------------------------------------------
 -- * Memory relate types
 
-type Address = Int
+newtype Address = Address { unAddr :: Int } deriving (Show, Eq, Num, Pretty, Ord)
+
+pattern Adr :: Int -> Address
+pattern Adr i = Address i
 
 data PathVar = PathVar
   { _ref     :: Address
@@ -101,9 +111,12 @@ class Deallocate mm where
   deleteVar :: Address -> mm Bool
   deleteUnsafe :: Address -> mm ()
 
+idToAdr :: IdName -> Address
+idToAdr (IdName i) = Adr i
+
 newVar :: MemoryAccessor mm Object => Store mm Object -> mm Address
 newVar var = do
-  addr <- getNewId
+  addr <- idToAdr <$> getNewId
   setVar addr var
   return addr
 
@@ -143,15 +156,15 @@ data World o = World
 -------------------------------------------------------------------------------
 -- * Object relate type classes
 
-class Callable mm o where
-  call :: PathVar -> [o] -> mm o
-  directCall :: o -> [o] -> mm o
+class Callable mm o | mm -> o where
+  call :: PathVar -> [Address] -> mm Address
+  directCall :: o -> [Address] -> mm Address
 
-class Iterable mm o where
-  mapOver :: o -> (o -> mm o) -> mm o
+class Iterable mm where
+  mapOver :: Address -> (Address -> mm ()) -> mm ()
 
-class Booleanable mm o where
-  checkBool :: o -> mm Bool
+class Booleanable mm where
+  checkBool :: Address -> mm Bool
 
 class Showable mm o where
   showObject :: o -> mm (Doc ())
@@ -180,7 +193,7 @@ class ToObject o where
 class FromObject o where
   fromObject :: Object -> StWorld o
 
-type BasicObjectOps mm o = (Callable mm o, Iterable mm o, Booleanable mm o, Redirection mm, AccessHierarchy mm o)
+-- type BasicObjectOps mm o = (Callable mm o, Iterable mm o, Booleanable mm o, Redirection mm, AccessHierarchy mm o)
 
 data Object
   = OStr T.Text
@@ -193,14 +206,14 @@ data Object
   -- ^ Shell command
   | OVector (V.Vector Address)
   -- ^ Sequence of objects
-  | forall prog. (Runnable prog StWorld Object, Prettify (prog Object))
-    => OFunc (HM.HashMap T.Text Address) [Address] ([Object] -> prog Object)
+  | forall prog. (Runnable prog StWorld Address, Prettify (prog Address))
+    => OFunc (HM.HashMap T.Text Address) [Address] ([Address] -> prog Address)
   -- ^ Lambda with possible scope/vars attached
   | OBound Address Address
   -- ^ Used to Bound methods to variables
   | OObject (Maybe Address) (HM.HashMap T.Text Address)
   -- ^ Object instance from class Address
-  | ONative ([Object] -> StWorld Object)
+  | ONative ([Address] -> StWorld Address)
   -- ^ Native function
   | ONativeObject Any
   -- ^ Native object. It can't be interacted by scriptflow directly, no copy or move

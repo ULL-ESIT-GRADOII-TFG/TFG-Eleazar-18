@@ -20,7 +20,8 @@ $operators = [\\\/\>\<\!\@\=\$\%\&\?\+\-\*\.\^\|]
 @nameId = $alpha $alphaDigit*
 @classId = [A-Z] @nameId?
 
-@emptyLines = ([ \t]*\n)+
+@emptyLines = ([\ \t]*("#".*)?\n)+
+@comments = ([\ \t]*"#".*\n)+
 @number = $digit+
 @decimal = @number "." $digit+
 
@@ -32,15 +33,18 @@ tokens :-
     $white*       { begin code_st }
   }
 
+  <empty_lines> {
+    @emptyLines    { begin inc_indent}
+  }
+
   <inc_indent> {
-    @emptyLines   ;
     [\ \t]*       { newIndent `andBegin` code_st }
   }
 
   <code_st> {
     "#".*         ;  -- Comment Line
     [\ \t]+       ;
-    ":"           { mkL OBraceT `andBegin` inc_indent }
+    ":"           { mkL OBraceT `andBegin` empty_lines }
     \n            { begin dec_indent }
     fun           { mkL FunT }
     lam           { mkL LamT }
@@ -57,6 +61,7 @@ tokens :-
     "("           { mkL OParenT }
     ")"           { mkL CParenT }
     ","           { mkL CommaT }
+    ";"           { mkL EndStmtT }
     "="           { mkL AssignT }
     "none"        { mkL NoneT }
     "true"        { mkL (BoolT True) }
@@ -75,7 +80,7 @@ tokens :-
   }
 
   <dec_indent> {
-    -- @emptyLines   ;
+    @emptyLines   ;
     [\ \t]*       { checkDecrement `andBegin` code_st }
   }
 
@@ -196,25 +201,22 @@ checkDecrement input len = do
   userState <- alexGetUserState
   case indentStack userState of
     []            -> mkL SkipT input len -- alexError "No hay indentacion anterior"
-    stack@(x:_)
-      | x == len  -> mkL SkipT input len
-      | x < len   -> mkL SkipT input len
-      | otherwise -> getDedent len stack
-  where
-    getDedent :: Int -> [Int] -> Alex Lexeme
-    getDedent currIndent [] =
-      if currIndent == 0 then do
+      {-if len == 0 then do
         alexSetUserState alexInitUserState
         mkL CBraceT input len
       else do
         userState <- alexGetUserState
         alexSetUserState (userState { indentStack = [] })
-        mkL SkipT input len
-    getDedent currIndent xs = do
-      let (removes, rest) = break (< currIndent) xs
-      userState <- alexGetUserState
-      alexSetUserState (userState { indentStack = rest })
-      mkL (DedentT $ length removes) input len
+        mkL SkipT input len-}
+    stack@(x:_)
+      | x == len  -> mkL EndStmtT input len
+      | x < len   -> mkL SkipT input len
+      | otherwise -> do -- getDedent len stack
+          let (removes, rest) = break (<= len) stack
+          userState <- alexGetUserState
+          alexSetUserState (userState { indentStack = rest })
+          mkL (DedentT $ length removes) input len
+
 
 -- | Run tokenizer over string
 scanner

@@ -30,7 +30,7 @@ instance Default Scope where
 
 instance Naming ScopeM where
   newId name = addNewIdentifier (return name)
-  getNewId = liftIO getNewID
+  getNewId = liftIO $ ID <$> getNewID
   findAddress' (name NL.:| names) = do
     renamer <- use $ currentScopeA.renameInfoA
     case HM.lookup name renamer of
@@ -46,28 +46,27 @@ instance Naming ScopeM where
         Just (PathVar word _) -> Just $ PathVar word names
         Nothing               -> findInStack xs
 
-
-
 instance Default ScopeInfo where
   def = ScopeInfo mempty
 
 instance Prettify ScopeInfo where
   prettify (ScopeInfo hash) verbose =
-    "ScopeInfo { " <> line <>
-    nest 2 (vcat (map (\(k,v) ->
-      pretty k <+> "->" <+> prettify v verbose) $ HM.toList hash)) <> line <>
-    "}"
+    vsep [ "ScopeInfo { "
+         , indent 2 (vcat (map (\(k,v) ->
+                                  pretty k <+> "->" <+> prettify v verbose) $ HM.toList hash))
+         , "}"
+         ]
 
 instance Default ScopeInfoAST where
   def = ScopeInfoAST def def
 
 instance Prettify ScopeInfoAST where
   prettify scopeInfoAST verbose =
-    "ScopeInfoAST {" <> line <>
-    nest 2 (prettify (_tokenInfo scopeInfoAST) verbose <> line <>
-            prettify (_scopeInfo scopeInfoAST) verbose) <> line <>
-    "}"
-
+    vsep [ "ScopeInfoAST {"
+         , indent 2 (prettify (_tokenInfo scopeInfoAST) verbose <> line <>
+                     prettify (_scopeInfo scopeInfoAST) verbose)
+         , "}"
+         ]
 
 instance Desugar Statement TokenInfo ScopeM Expression ScopeInfoAST where
   -- transform :: Statement a -> ScopeM (Statement a)
@@ -239,10 +238,11 @@ withNewScope = withScope def
 -- | Add new variable name to scope and return its ID
 addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM PathVar
 addNewIdentifier (name NL.:| names) = do
-  newID <- liftIO getNewID
-  let addr = PathVar newID names
-  currentScopeA.renameInfoA %= HM.insert name addr
-  return addr
+  idName <- getNewId
+  let addr = idToAdr idName
+  let pathVar = PathVar addr names
+  currentScopeA.renameInfoA %= HM.insert name pathVar
+  return pathVar
 
 -- | Get a specific ID from variable name
 getIdentifier :: NL.NonEmpty T.Text -> TokenInfo -> ScopeM PathVar

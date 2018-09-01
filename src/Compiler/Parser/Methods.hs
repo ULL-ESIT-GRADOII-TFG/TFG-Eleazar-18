@@ -82,10 +82,20 @@ parseExp = choice $ map
   ]
 
 parseSeqExpr :: TokenParser (Expression TokenInfo)
-parseSeqExpr = mkTokenInfo $ SeqExpr <$> many1 parseExp
+parseSeqExpr =
+  mkTokenInfo $ SeqExpr <$> many1 (do
+                                      expr <- parseExp
+                                      void $ many endStmtT
+                                      return expr
+                                  )
 
 parseMkScope :: TokenParser (Expression TokenInfo)
-parseMkScope = mkTokenInfo $ MkScope <$> many1 parseExp
+parseMkScope =
+  mkTokenInfo $ MkScope <$> many1 (do
+                                      expr <- parseExp
+                                      void $ many endStmtT
+                                      return expr
+                                  )
 
 parseBody :: TokenParser (Expression TokenInfo)
 parseBody = try (mkTokenInfo $ do
@@ -152,7 +162,7 @@ parseUnaryOperators = mkTokenInfo $ do
 parseApply :: TokenParser (Expression TokenInfo)
 parseApply = mkTokenInfo $ do
   name   <- parseAccessor
-  params <- between oParenT cParenT (parseMkScope `sepBy` commaT) <|> many1 parseFactor
+  params <- between oParenT cParenT (parseExp `sepBy` commaT) <|> many1 parseFactor
   return $ Apply name params
 
 parseMethodChain :: TokenParser (Expression TokenInfo)
@@ -176,7 +186,7 @@ parseMethod expr = do
       params <- optionMaybe $ between
                   oParenT
                   cParenT
-                  (parseSeqExpr `sepBy` commaT) <|> many1 parseFactor
+                  (parseExp `sepBy` commaT) <|> many1 parseFactor
 
       -- Braces
       param <- optionMaybe $ between oBracketT cBracketT parseExp

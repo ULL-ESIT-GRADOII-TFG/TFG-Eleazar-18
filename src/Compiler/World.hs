@@ -56,7 +56,7 @@ instance Default (World o) where
 
 instance TypeName o => Prettify (World o) where
   prettify (World tb scope _) verbose =
-    let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ _ref) (IM.toList tb)
+    let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ unAddr . _ref) (IM.toList tb)
     in
       "World {" <> line <>
       -- Do a cross joint
@@ -73,11 +73,11 @@ instance MemoryAccessor StWorld Object where
 
   getVar addr = do
     table <- use tableA
-    case IM.lookup addr table of
+    case IM.lookup (unAddr addr) table of
       Just val -> return val
-      Nothing  -> throw $ NotFoundObject addr
+      Nothing  -> throw $ NotFoundObject (unAddr addr)
 
-  setVar addr var = tableA %= IM.insert addr var
+  setVar addr var = tableA %= IM.insert (unAddr addr) var
 
   findPathVar (PathVar addr accessors) = through addr accessors
 
@@ -91,7 +91,7 @@ instance Deallocate StWorld where
     mapM_ deleteVar (innerRefs obj)
     dropVarWorld addr
 
-  deleteUnsafe addr = void $ IM.delete addr <$> use tableA
+  deleteUnsafe addr = void $ IM.delete (unAddr addr) <$> use tableA
 
 dropVarWorld :: Address -> StWorld Bool
 dropVarWorld addrRef = do
@@ -128,7 +128,8 @@ addSubObject word acc obj = do
   var <- do
     lastAddr <- follow' word
     getVar lastAddr `catchError` const (throw NotExtensibleObject)
-  addr <- getNewId
+  idName <- getNewId
+  let addr = idToAdr idName
 
   case var ^. rawObjA of
     ONone -> do

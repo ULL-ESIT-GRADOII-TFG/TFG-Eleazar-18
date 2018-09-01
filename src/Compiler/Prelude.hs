@@ -36,43 +36,56 @@ internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
   , ONative $ \case
-    []             -> throw $ NumArgsMissmatch 0 1 -- It shouldnt happend
-    objs@(obj : _) -> do
-      addr <- access obj name
-      call (simple addr) objs
+      []             -> throw $ NumArgsMissmatch 0 1 -- It shouldnt happend
+      addresses@(addr : _) -> do
+        obj <- unwrap <$> getVar addr
+        addr' <- access obj name
+        call (simple addr') addresses
   )
 
 -- | A set of basic functions avaialable in the base scope
 baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
-  [ ("print", ONative $(normalize [| printObj :: Object -> StWorld () |]))
-  , ("cd"   , ONative $(normalize [| setCurrentDirectory :: String -> IO () |]))
-  , ("not"  , ONative $(normalize [| not :: Bool -> Bool |]))
-  , ("get_line", ONative $(normalize [| getLineWithAsk :: String -> IO (Maybe String) |]))
-  , ("ask_password", ONative $(normalize [| askPassword :: Maybe Char -> String -> IO (Maybe String) |]))
+  [ ("print", ONative printWrapper)
+  , ("cd"   , createONative $(normalize [| setCurrentDirectory :: String -> IO () |]))
+  , ("not"  , createONative $(normalize [| not :: Bool -> Bool |]))
+  , ("get_line", createONative $(normalize [| getLineWithAsk :: String -> IO (Maybe String) |]))
+  , ("ask_password", createONative $(normalize [| askPassword :: Maybe Char -> String -> IO (Maybe String) |]))
   , ("__call__", ONative internalCall)
-  , ("save_config", ONative $(normalize [| saveSubConfig :: String -> Object -> StWorld () |]))
-  , ("load_config", ONative $(normalize [| loadSubConfig :: String -> StWorld Object |]))
-  , ("use"        , ONative $(normalize [| layerObjectIntoScope :: Object -> StWorld Object |]))
-  , ("unuse"      , ONative $(normalize [| unlayerObjectIntoScope :: StWorld () |]))
-  , ("dir"        , ONative $(normalize [| (fmap (fmap fst) . exploreObjectAttributes) :: Object -> StWorld (V.Vector T.Text)|]))
+  , ("save_config", createONative $(normalize [| saveSubConfig :: String -> Object -> StWorld () |]))
+  , ("load_config", createONative $(normalize [| loadSubConfig :: String -> StWorld Object |]))
+  , ("use"        , createONative $(normalize [| layerObjectIntoScope :: Object -> StWorld Object |]))
+  , ("unuse"      , createONative $(normalize [| unlayerObjectIntoScope :: StWorld () |]))
+  , ("dir"        , createONative $(normalize [| (fmap (fmap fst) . exploreObjectAttributes) :: Object -> StWorld (V.Vector T.Text)|]))
   ]
     ++ map internalMethod (HM.keys operatorsPrecedence)
 
-internalCall :: [Object] -> StWorld Object
-internalCall [] = throw $ WorldError "Report Error: Internal Call without args"
-internalCall (ONum val:args) = call (simple val) args
-internalCall _ = throw $ WorldError "Report Error: Internal Call doesn't recieve an int"
+createONative :: ([Object] -> StWorld Object) -> Object
+createONative func = ONative $ \addrs -> do
+  objs <- mapM (fmap unwrap . getVar) addrs
+  obj <- func objs
+  newVar $ wrap obj
 
-printObj :: Object -> StWorld ()
-printObj obj = case obj of
-  OObject (Just classRef) _attrs -> do
+internalCall :: [Address] -> StWorld Address
+internalCall [] = throw $ WorldError "Report Error: Internal Call without args"
+internalCall (arg:args) = call (simple arg) args
+
+printWrapper :: [Address] -> StWorld Address
+printWrapper [addr] = do
+  printObj addr
+  newVar $ wrap ONone
+printWrapper ls = throw $ NumArgsMissmatch 1 (length ls)
+
+printObj :: Address -> StWorld ()
+printObj addr = unwrap <$> getVar addr >>= \case
+  obj@(OObject (Just classRef) _attrs) -> do
     clsObj <- unwrap . fst <$> findPathVar (simple classRef)
     case clsObj of
       OClassDef name _ref methods -> case HM.lookup "__print__" methods of
         Just func' -> do
           func'' <- follow func'
-          obj'   <- directCall func'' [obj]
+          retAddr   <- directCall func'' [addr]
+          obj' <- unwrap <$> getVar retAddr
           docs   <- showObject obj'
           liftIO $ putDoc docs
           liftIO $ putStr "\n"
@@ -84,7 +97,7 @@ printObj obj = case obj of
         docs   <- showObject obj
         liftIO $ putDoc docs
         liftIO $ putStr "\n"
-  _ -> do
+  obj -> do
     docs   <- showObject obj
     liftIO $ putDoc docs
     liftIO $ putStr "\n"

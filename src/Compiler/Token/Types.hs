@@ -63,6 +63,8 @@ data Token
   -- ^ Aux Token
   | DedentT Int
   -- ^ Dedent `x` levels
+  | EndStmtT
+  -- ^ End of an expression
   | EosT
   -- ^ End of source
   deriving (Eq, Ord)
@@ -97,5 +99,6 @@ instance Show Token where
     OperatorT _     -> "'operator'"
     ICommandT _ _   -> "'interpreter command'"
     SkipT           -> "'skip'"
+    EndStmtT        -> "'endStmt'"
     DedentT _       -> "'dedent'"
     EosT            -> "'eof'"
