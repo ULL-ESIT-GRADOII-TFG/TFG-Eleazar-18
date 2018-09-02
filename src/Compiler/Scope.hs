@@ -18,6 +18,7 @@ import           Compiler.Error
 import           Compiler.Identifier
 import           Compiler.Parser.Types
 import           Compiler.Prettify
+import           Compiler.Scope.Ast
 import           Compiler.Types
 
 
@@ -49,163 +50,166 @@ instance Naming ScopeM where
 instance Default ScopeInfo where
   def = ScopeInfo mempty
 
-instance Prettify ScopeInfo where
-  prettify (ScopeInfo hash) verbose =
+instance Pretty ScopeInfo where
+  pretty (ScopeInfo hash) =
     vsep [ "ScopeInfo { "
          , indent 2 (vcat (map (\(k,v) ->
-                                  pretty k <+> "->" <+> prettify v verbose) $ HM.toList hash))
+                                  pretty k <+> "->" <+> pretty v) $ HM.toList hash))
          , "}"
          ]
 
 instance Default ScopeInfoAST where
   def = ScopeInfoAST def def
 
-instance Prettify ScopeInfoAST where
-  prettify scopeInfoAST verbose =
+instance Pretty ScopeInfoAST where
+  pretty scopeInfoAST =
     vsep [ "ScopeInfoAST {"
-         , indent 2 (prettify (_tokenInfo scopeInfoAST) verbose <> line <>
-                     prettify (_scopeInfo scopeInfoAST) verbose)
+         , indent 2 (pretty (_tokenInfo scopeInfoAST) <> line <>
+                     pretty (_scopeInfo scopeInfoAST))
          , "}"
          ]
 
-instance Desugar Statement TokenInfo ScopeM Expression ScopeInfoAST where
+instance Desugar Statement Tok ScopeM Expression Rn where
   -- transform :: Statement a -> ScopeM (Statement a)
   transform ast = case ast of
-    Import _ _  -> error "Not implemented yet"
     ClassSt cls -> transform cls
     FunSt fun   -> transform fun
     Expr expr   -> transform expr
 
 -- Convert to a constructor function
-instance Desugar ClassDecl TokenInfo ScopeM Expression ScopeInfoAST where
+instance Desugar ClassDecl Tok ScopeM Expression Rn where
   -- transform :: ClassDecl a -> ScopeM (ClassDecl a)
-  -- TODO: Methods replicate warning
   -- | Class renaming scope
   transform (ClassDecl name methds info) = do
     -- Generate class definition into scope
-    _address <- addNewIdentifier $ return name
-    methds' <- withNewScope $ mapM (transform . funcToMethod) methds
-    info' <- getScopeInfoAST info
-    return $ VarExpr
-      (Simple name info')
-      (Factor (AClass name (zip (map _funName methds) methds') info') info') info'
+    RnVarExpr
+      <$> (addNewIdentifier $ pure name)
+      <*> (RnFactor
+            <$> (AClass
+                  <$> pure name
+                  <*> (do
+                          methds' <- withNewScope $ mapM (transform . funcToMethod) methds
+                          -- TODO: Methods replicate warning
+                          pure $ zip (map _funName methds) methds'
+                      )
+                  <*> pure info)
+            <*> pure info)
+      <*> pure info
 
 
-funcToMethod :: FunDecl a -> FunDecl a
+funcToMethod :: FunDecl Tok -> FunDecl Tok
 funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 
 
-instance Desugar FunDecl TokenInfo ScopeM Expression ScopeInfoAST where
+instance Desugar FunDecl Tok ScopeM Expression Rn where
   -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
   transform (FunDecl name args body info) = do
-      _addr <- catchError (getIdentifier (return name) info) $
-        \_ -> addNewIdentifier (return name)
-      info' <- getScopeInfoAST info
-      body' <- withNewScope $ do
-        mapM_ (addNewIdentifier . return) args
-        info'' <- getScopeInfoAST info
-        scopeBody <- transform body
-        return $ FunExpr args scopeBody info''
-
-      return $ VarExpr (Simple name info') body' info'
+      RnVarExpr
+        <$> (catchError (getIdentifier (return name) info) $
+              \_ -> addNewIdentifier (return name))
+        <*> transform (TokFunExpr args body info)
+        <*> pure info
 
 
 -- | Make a translation of variable names from AST, convert all to IDs and
 -- check rules of scoping
-instance Desugar Expression TokenInfo ScopeM Expression ScopeInfoAST where
+instance Desugar Expression Tok ScopeM Expression Rn where
   -- transform :: Expression TokenInfo -> ScopeM (Expression ScopeInfoAST)
   transform ast = case ast of
-    FunExpr args body info -> withNewScope $ do
-      mapM_ (addNewIdentifier . return) args
-      info' <- getScopeInfoAST info
-      scopeBody <- transform body
-      return $ FunExpr args scopeBody info'
+    TokFunExpr args body info -> withNewScope $ do
+      RnFunExpr
+        <$> mapM (\arg -> do
+                     pathArg <- addNewIdentifier $ return arg
+                     return $ pathArg^.refA & adrToId
+                 ) args
+        <*> transform body
+        <*> pure info
 
-    VarExpr name expr' info -> do
-      let accSimple = simplifiedAccessor name
-      _addr <- catchError (getIdentifier accSimple info) $
-           \_ -> addNewIdentifier accSimple
-      info' <- getScopeInfoAST info
-      withNewScope $ do
-        expr'' <- transform expr'
-        name' <- transform name
-        return $ VarExpr name' expr'' info'
+    TokVarExpr name expr' info -> do
+      RnVarExpr
+        <$> (do
+                let accSimple = simplifiedAccessor name
+                catchError (getIdentifier accSimple info) $
+                  \_ -> addNewIdentifier accSimple
+            )
+        <*> withNewScope (transform expr')
+        <*> pure info
 
-    SeqExpr exprs info -> do
-      expr' <- mapM transform exprs
-      info' <- getScopeInfoAST info
-      return $ SeqExpr expr' info'
+    TokSeqExpr exprs info -> do
+      RnSeqExpr
+        <$> mapM transform exprs
+        <*> pure info
 
-    MkScope exprs info -> withNewScope $ do
-      expr' <- mapM transform exprs
-      info' <- getScopeInfoAST info
-      return $ MkScope expr' info'
+    TokMkScope exprs info -> withNewScope $ do
+      exprs' <- mapM transform exprs
+      scopeInfo <- use currentScopeA
+      return $ RnMkScope scopeInfo exprs' info
 
-    If condExpr trueExpr info -> do
-      condExpr' <- withNewScope $ transform condExpr
-      trueExpr' <- withNewScope $ transform trueExpr
-      info' <- getScopeInfoAST info
-      return $ If condExpr' trueExpr' info'
+    TokIf condExpr trueExpr info ->
+      RnIf
+        <$> withNewScope (transform condExpr)
+        <*> withNewScope (transform trueExpr)
+        <*> pure info
 
-    IfElse condExpr trueExpr falseExpr info -> do
-      condExpr'  <- withNewScope $ transform condExpr
-      trueExpr'  <- withNewScope $ transform trueExpr
-      falseExpr' <- withNewScope $ transform falseExpr
-      info' <- getScopeInfoAST info
-      return $ IfElse condExpr' trueExpr' falseExpr' info'
+    TokIfElse condExpr trueExpr falseExpr info ->
+      RnIfElse
+        <$> withNewScope (transform condExpr)
+        <*> withNewScope (transform trueExpr)
+        <*> withNewScope (transform falseExpr)
+        <*> pure info
 
-    For name iterExpr body info -> do
+    TokFor name iterExpr body info -> do
       iterExpr' <- withNewScope $ transform iterExpr
-      _         <- addNewIdentifier $ return name
+      pathVar   <- addNewIdentifier $ return name
       body'     <- withNewScope $ transform body
-      info' <- getScopeInfoAST info
-      return $ For name iterExpr' body' info'
+      return $ RnFor (pathVar^.refA & adrToId) iterExpr' body' info
 
-    Apply name args info -> do
-      args' <- withNewScope $ mapM transform args
-      let accSimple = simplifiedAccessor name
-      _addrRef <- getIdentifier accSimple info
-      info' <- getScopeInfoAST info
-      name' <- transform name
-      return $ Apply name' args' info'
+    TokApply name args info -> do
+      RnApply
+        <$> (do
+                let accSimple = simplifiedAccessor name
+                getIdentifier accSimple info
+            )
+        <*> withNewScope (mapM transform args)
+        <*> pure info
 
-    Identifier name info -> do
-      let accSimple = simplifiedAccessor name
-      _addrRef <- getIdentifier accSimple info
-      name' <- transform name
-      info' <- getScopeInfoAST info
-      return $ Identifier name' info'
+    TokIdentifier name info -> do
+      RnIdentifier
+        <$> (do
+                let accSimple = simplifiedAccessor name
+                getIdentifier accSimple info
+            )
+        <*> pure info
 
-    Factor atom info -> do
-      info' <- getScopeInfoAST info
-      (`Factor` info') <$> transform atom
+    TokFactor atom info -> do
+      RnFactor <$> transform atom <*> pure info
 
-instance Desugar Atom TokenInfo ScopeM Atom ScopeInfoAST where
+instance Desugar Atom Tok ScopeM Atom Rn where
   -- transform :: Expression a -> ScopeM (Expression a)
   transform atom = case atom of
-    ANone i -> ANone <$> getScopeInfoAST i
-    ANum val i -> ANum val <$> getScopeInfoAST i
-    ADecimal val i -> ADecimal val <$> getScopeInfoAST i
-    ARegex val i -> ARegex val <$> getScopeInfoAST i
-    AShellCommand val i ->  AShellCommand val <$> getScopeInfoAST i
-    AStr str i -> AStr str <$> getScopeInfoAST i
-    ABool bool i-> ABool bool <$> getScopeInfoAST i
-    AVector vals i -> AVector <$> mapM transform vals <*> getScopeInfoAST i
-    AClass name vals i -> AClass name
+    ANone loc -> return $ ANone loc
+    ANum val loc -> return $ ANum val loc
+    ADecimal val loc -> return $ ADecimal val loc
+    ARegex val loc -> return $ ARegex val loc
+    AShellCommand val loc -> return $ AShellCommand val loc
+    AStr str loc -> return $ AStr str loc
+    ABool bool loc -> return $ ABool bool loc
+    AVector vals loc -> AVector <$> mapM transform vals <*> pure loc
+    AClass name vals loc -> AClass name
       <$> mapM (\(key, val) -> (key,) <$> transform val) vals
-      <*> getScopeInfoAST i
-    ADic vals i -> ADic
+      <*> pure loc
+    ADic vals loc -> ADic
       <$> mapM (\(key, val) -> (key,) <$> transform val) vals
-      <*> getScopeInfoAST i
+      <*> pure loc
 
-instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
-  -- transform :: Expression a -> ScopeM (Expression a)
-  transform ast = case ast of
-    Dot text acc info -> do
-      acc' <- transform acc
-      info' <- getScopeInfoAST info
-      return $ Dot text acc' info'
-    Simple text info  -> return $ Simple text (def {_tokenInfo = info})
+-- instance Desugar Accessor TokenInfo ScopeM Accessor ScopeInfoAST where
+--   -- transform :: Expression a -> ScopeM (Expression a)
+--   transform ast = case ast of
+--     Dot text acc info -> do
+--       acc' <- transform acc
+--       info' <- getScopeInfoAST info
+--       return $ Dot text acc' info'
+--     Simple text info  -> return $ Simple text (def {_tokenInfo = info})
 
 flatScope :: Scope -> ScopeInfo
 flatScope scope = ScopeInfo (

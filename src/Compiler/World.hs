@@ -35,8 +35,8 @@ instance Applicative Rc where
 instance Wrapper Rc where
   unwrap (Rc _ o) = o
 
-instance TypeName o => Prettify (Rc o) where
-  prettify (Rc c o) _verbose = "RC" <+> pretty c <+> pretty (typeName o)
+instance TypeName o => Pretty (Rc o) where
+  pretty (Rc c o) = "RC" <+> pretty c <+> pretty (typeName o)
 
 instance GetInfo StWorld where
   getInfo = _lastTokenInfo <$> get
@@ -54,8 +54,8 @@ instance Default (World o) where
     , _lastTokenInfo = def
     }
 
-instance TypeName o => Prettify (World o) where
-  prettify (World tb scope _) verbose =
+instance TypeName o => Pretty (World o) where
+  pretty (World tb scope _) =
     let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ unAddr . _ref) (IM.toList tb)
     in
       "World {" <> line <>
@@ -65,7 +65,7 @@ instance TypeName o => Prettify (World o) where
         <+> " -> "
         <+> "#"
         <> pretty (show address)
-        <+> prettify value verbose) aux)) <> line <>
+        <+> pretty value) aux)) <> line <>
       "}"
 
 instance MemoryAccessor StWorld Object where
@@ -84,6 +84,7 @@ instance MemoryAccessor StWorld Object where
   setPathVar (PathVar addr dyns) var = do
     addr' <- buildFollowingPath addr dyns
     setVar addr' var
+    return addr'
 
 instance Deallocate StWorld where
   deleteVar addr = do

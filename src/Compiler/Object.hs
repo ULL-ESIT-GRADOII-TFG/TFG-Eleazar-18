@@ -13,7 +13,6 @@ import           Data.Scientific
 import qualified Data.Text                             as T
 import qualified Data.Text.Encoding                    as TE
 import           Data.Text.Prettyprint.Doc
-import           Data.Text.Prettyprint.Doc.Render.Text
 import qualified Data.Vector                           as V
 import qualified Data.Yaml                             as Y
 import           Lens.Micro.Platform
@@ -36,7 +35,7 @@ import           Compiler.World                        ()
 
 followRef :: FromObject b => Object -> T.Text -> StWorld b
 followRef (ORef ref) _val = follow ref >>= fromObject
-followRef o val = throw $ NotImplicitConversion (typeName o) val
+followRef o val           = throw $ NotImplicitConversion (typeName o) val
 
 
 instance ToObject Y.Value where
@@ -188,7 +187,7 @@ instance FromObject B.ByteString where
 
 instance FromObject ShellType where
   fromObject (OShellCommand text) = return $ ShellType text
-  fromObject o = followRef o "ShellCommand"
+  fromObject o                    = followRef o "ShellCommand"
 
 instance ToObject T.Text where
   toObject = return . OStr
@@ -212,7 +211,7 @@ instance ToObject a => ToObject (Maybe a) where
   toObject = maybe (return ONone) toObject
 
 
-instance Callable StWorld Object where
+instance Callable StWorld where
   -- | From memory address, check if object callable and call it with given arguments
   call pathVar args =
     if null (pathVar ^. dynPathA) then do
@@ -223,51 +222,45 @@ instance Callable StWorld Object where
       let addr = pathVar ^. refA
       objCaller <- unwrap <$> getVar addr
       directCall objCaller (addr:args)
+    where
+      directCall :: Object -> [Address] -> StWorld Address
+      directCall obj args = case obj of
+        OFunc _ ids prog ->
+          if length ids /= length args then
+            throw $ NumArgsMissmatch (length ids) (length args)
+          else do
+            mAddr <- runProgram $ prog args
+            case mAddr of
+              Just addr -> return addr
+              Nothing   -> newVar $ wrap ONone
 
-  directCall obj args = case obj of
-    OFunc _ ids prog ->
-      if length ids /= length args then
-        throw $ NumArgsMissmatch (length ids) (length args)
-      else
-        runProgram $ prog args
+        ONative native ->
+          native args
 
-    ONative native ->
-      native args
+        OBound self method ->
+          directCall (ORef method) (self:args)
 
-    OBound self method ->
-      directCall (ORef method) (self:args)
+        OClassDef _name methods -> do
+          self <- newVar . wrap $ OObject (Just (pathVar^.refA)) mempty
+          selfRef <- newVar . wrap $ ORef self
+          case HM.lookup "__init__" methods of
+            Just method -> do
+              method' <- follow method
+              _ <- directCall method' (selfRef:args)
+              deleteUnsafe selfRef
+              return self
+            Nothing ->
+              if null args then do
+                deleteUnsafe selfRef
+                return self
+              else
+                throw $ NumArgsMissmatch 0 (length args)
 
-    OClassDef _name refCls methods -> do
-      objs <- mapM (\arg -> unwrap <$> getVar arg) args
-      mapM_ (\o -> liftIO $ putDoc $ prettify o 0) objs
-      self <- newVar . wrap $ OObject (Just refCls) mempty
-      case HM.lookup "__init__" methods of
-        Just method -> do
-          obj <- follow method
-          doc <- showObject obj
-          liftIO $ do
-            putStrLn "CALLED{"
-            putDoc doc
-            putStrLn "CALLED}"
+        ORef ref' -> do
+          obj' <- follow ref'
+          directCall obj' args
 
-          _ <- directCall obj (self:args)
-          -- obj' <- follow self
-          -- deleteUnsafe self
-          return self
-        Nothing ->
-          if null objs then do
-            return self
-            -- obj' <- follow self
-            -- deleteUnsafe self
-            -- return obj'
-          else
-            throw $ NumArgsMissmatch 0 (length args)
-
-    ORef ref' -> do
-      obj' <- follow ref'
-      directCall obj' args
-
-    t -> throw $ NotCallable (typeName t)
+        t -> throw $ NotCallable (typeName t)
 
 instance Iterable StWorld where
   -- | Iterate over a object if it is iterable
@@ -284,15 +277,14 @@ instance Iterable StWorld where
     OObject (Just classRef) _attrs -> do
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
-        OClassDef _name _ref methods ->
+        OClassDef _name methods ->
           case HM.lookup "__map__" methods of
             Just mapMethod -> do
               let fixParams :: (Address -> StWorld ()) -> [Address] -> StWorld Address
                   fixParams f [adr] = f adr >> newVar (wrap ONone)
-                  fixParams _ ls = throw $ NumArgsMissmatch 1 (length ls)
+                  fixParams _ ls    = throw $ NumArgsMissmatch 1 (length ls)
               funcAddr <- newVar . wrap $ ONative (fixParams func)
-              mapMethod' <- unwrap <$> getVar mapMethod
-              _ <- directCall mapMethod'  [addr, funcAddr]
+              _ <- call (PathVar mapMethod []) [addr, funcAddr]
               deleteUnsafe funcAddr
               return ()
             Nothing -> return ()
@@ -306,10 +298,9 @@ instance Booleanable StWorld where
     OObject (Just classRef) _attrs -> do
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
-        OClassDef _name _ref methods -> case HM.lookup "__bool__" methods of
+        OClassDef _name methods -> case HM.lookup "__bool__" methods of
           Just func' -> do
-            func'' <- follow func'
-            directCall func'' [addr] >>= checkBool
+            call (PathVar func' []) [addr] >>= checkBool
           Nothing -> throw $ NotBoolean "Object"
         o -> throw $ NotBoolean (typeName o)
     o -> throw $ NotBoolean (typeName o)
@@ -331,7 +322,7 @@ instance Showable StWorld Object where
       showObject obj' <&> (\o -> "#"<> pretty rfs <> ":" <> o) -- TODO: Remove when the project turn it more stable
     ONone                -> return "none"
     OFunc _env _args _body -> return "Function"
-      -- body' <- prettify verbose (body (repeat ONone))
+      -- body' <- pretty (body (repeat ONone))
       -- return
       --   $   "Function with args:"
       --   <+> pretty args
@@ -341,7 +332,7 @@ instance Showable StWorld Object where
       --   <>  line
       --   <>  "}"
     ONative _          -> return "Native Function"
-    OClassDef name _ _ -> return $ "class" <+> pretty name
+    OClassDef name _ -> return $ "class" <+> pretty name
     OObject _ methods  -> do
       dic <-
         mapM
@@ -351,7 +342,7 @@ instance Showable StWorld Object where
               return $ pretty key <+> "->" <+> objDoc
             )
           $ HM.toList methods
-      return $ vsep ["{", nest 2 (vcat dic), "}"]
+      return $ vsep ["{", indent 2 (vsep dic), "}"]
     ONativeObject _ -> return "Native Object"
 
       -------------------------------------------------------
@@ -406,7 +397,7 @@ instance AccessHierarchy StWorld Object where
         clsId <- maybe notFound return mClassId
         cls <- unwrap <$> getVar clsId
         case cls of
-          OClassDef _ _ attrs -> maybe notFound return (
+          OClassDef _ attrs -> maybe notFound return (
             HM.lookup acc attrs
             <|>
             -- Find into share methods (operators) too
@@ -468,8 +459,8 @@ instance TypeName Object where
     OObject{}       -> "Object"
     ONativeObject{} -> "NativeObject"
 
-instance Prettify Object where
-  prettify obj _verbose = pretty $ typeName obj
+instance Pretty Object where
+  pretty obj = pretty $ typeName obj
 
 internalMethods :: Object -> StWorld (HM.HashMap T.Text Address)
 internalMethods obj = case obj of

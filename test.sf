@@ -1,11 +1,7 @@
-class Test {
-  fun __init__ a {
-    self.a = a
-  }
-}
+class Test:
+  fun __init__ a_value b_value:
+    self.a = a_value
+    self.b = b_value
 
 
-t = Test("Hello")
-
-t2 = Test(4)
-
+# t = Test("Hello", "World")

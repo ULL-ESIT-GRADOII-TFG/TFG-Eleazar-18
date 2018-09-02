@@ -6,11 +6,12 @@ import           Data.Bifunctor
 import           Data.Maybe
 import qualified Data.Text                             as T
 import qualified Data.Text.IO                          as T
-import           Data.Text.Prettyprint.Doc.Render.Text
+import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
 import           Compiler.Ast
+import           Compiler.Scope.Ast
 import           Compiler.Error
 import           Compiler.Interpreter
 import           Compiler.Interpreter.Command
@@ -37,7 +38,7 @@ repl = do
             multilineA .= Nothing
             value <- compileSource text "**Interpreter**"
             docs <- liftWorld $ showObject value
-            liftIO $ putDoc docs >> putStr "\n"
+            liftIO $ putDocLnPP 0 docs
 
           | otherwise ->
             multilineA .= Just (text `mappend` "\n" `mappend` T.pack input)
@@ -48,8 +49,9 @@ repl = do
             Complete _ -> flip catchError handleREPLError $ do
               value <- compileSource (T.pack input) "**Interpreter**"
               docs <- liftWorld $ showObject value
-              liftIO $ putDoc docs >> putStr "\n"
+              liftIO $ putDocLnPP 0 docs
   repl
+
 
 -- | Get prompt from configuration try execute prompt code else show a
 -- default prompt with error flag
@@ -62,17 +64,17 @@ getPrompt = do
       return $
         if isMultiline then "[ERROR] ... " else "[ERROR] >>> ")
     $ do
-      value <- liftWorld $ unwrap <$> getVarWithName "__prompt__"
-      case value of
+      (rc, addr) <- liftWorld $ getVarWithName "__prompt__"
+      case unwrap rc of
         OStr text ->
           if isMultiline then
             return $ replicate (T.length text - 4) ' ' ++ "... "
           else return $ T.unpack text
         OFunc{} -> do
           ostr <- liftWorld $ do
-            addr <- directCall value []
+            retAddr <- call (PathVar addr []) []
             val <- unwrap <$> getVar addr
-            deleteVar addr
+            _ <- deleteVar retAddr
             return val
           case ostr of
             OStr text ->
@@ -91,7 +93,7 @@ handleREPLError err = case err of
   Tokenizer err'     -> liftIO $ T.putStrLn err'
   Parsing parseError -> liftIO . putStrLn $ show parseError
   Internal  err'     -> liftIO $ T.putStrLn err'
-  WrapWorld err'     -> liftIO $ putDoc (renderError err') >> putStr "\n"
+  WrapWorld err'     -> liftIO $ putDocLnPP 1 (renderError err') >> putStr "\n"
 
 
 -- | Compile source code
@@ -107,7 +109,7 @@ compileSource rawFile nameFile = do
   -- ast <- catchEither id . return $ generateAST rawFile nameFile
   when (verbosity > 2) $ do
     liftIO $ putStrLn "** AST **"
-    liftIO $ putDoc $ prettify ast verbosity
+    liftIO $ putDocLnPP verbosity $ pretty ast
     liftIO $ putStr "\n"
   case ast of
     Command cmd args -> executeCommand cmd args >> return ONone
@@ -116,23 +118,24 @@ compileSource rawFile nameFile = do
         computeStatements statements
       when (verbosity >= 2) $ do
         liftIO $ putStrLn "** SCOPED AST **"
-        mapM_ (liftIO . putDoc . flip prettify verbosity) astScoped
-        liftIO $ putStr "\n"
+        mapM_ (liftIO . putDocLnPP verbosity . pretty) astScoped
       foldM (\_ ast' -> evaluateScopedProgram ast') ONone astScoped
 
 -- | Evaluate program with AST already scoped
-evaluateScopedProgram :: Expression ScopeInfoAST -> Interpreter Object
+evaluateScopedProgram :: Expression Rn -> Interpreter Object
 evaluateScopedProgram astScoped = do
   verbosity <- use verboseLevelA
   instrs <- liftWorld . liftScope $ transform astScoped
   when (verbosity >= 2) $ do
     liftIO $ putStrLn "** Instructions **"
-    liftIO $ putDoc $ prettify instrs verbosity
-    liftIO $ putStr "\n"
+    liftIO $ putDocLnPP verbosity $ pretty instrs
   liftWorld $ do
-    address <- runProgram instrs
-    val <- unwrap <$> getVar address
-    return val
+    mAddress <- runProgram instrs
+    case mAddress of
+      Just address -> do
+        val <- unwrap <$> getVar address
+        return val
+      Nothing -> return ONone
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
@@ -148,7 +151,7 @@ generateAST rawFile nameFile = do
   first Parsing . parserLexer nameFile $ getTokens tokenizer'
 
 -- | Computar las class y los import, unir todos los Expression con seq
-computeStatements :: [Statement TokenInfo] -> ScopeM [Expression ScopeInfoAST]
+computeStatements :: [Statement Tok] -> ScopeM [Expression Rn]
 computeStatements stmts = reverse <$> foldM
   (\exprs st -> do
     expr <- transform st

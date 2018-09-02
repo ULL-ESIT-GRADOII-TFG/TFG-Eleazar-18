@@ -5,7 +5,7 @@ import           Control.Monad.Except
 import           Data.List
 import qualified Data.Map                              as M
 import qualified Data.Text                             as T
-import           Data.Text.Prettyprint.Doc.Render.Text
+import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
 import           System.Exit
 
@@ -28,7 +28,7 @@ commands = M.fromList
   [ ("mem", \_ -> do
       mem <- use memoryA
       verbosity <- use verboseLevelA
-      liftIO . putDoc . (`prettify` verbosity) $ mem)
+      liftIO . putDocLnPP verbosity . pretty $ mem)
   , ("instr", showInstructions')
   , ("help", help)
   , ("quit", \_ -> liftIO exitSuccess)
@@ -50,8 +50,8 @@ showInstructions' :: [T.Text] -> Interpreter ()
 showInstructions' [] = throwError $ Internal "Command just allow 1 arg"
 showInstructions' (name:_) = do
   -- Find into scope the ref -> search into world -> apply
-  object <- liftWorld $ unwrap <$> getVarWithName name
+  object <- liftWorld $ unwrap . fst <$> getVarWithName name
   case object of
     OFunc _ _ prog ->
-      liftIO $ putDoc $ prettify (prog (repeat 0)) 3
+      liftIO $ putDocLnPP 3 $ pretty (prog (repeat 0))
     _  -> liftIO . putStrLn $ "Can't found `" ++ T.unpack name ++ "`"

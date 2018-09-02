@@ -132,6 +132,6 @@ renderErrorWithSource err@(ErrorInfo tok _) source filename =
         [tok^.startA.rowA..] getSourceCode
 
 -- | Render an error without location information. Useful for interpreter.
-renderError :: ReadeableError a => ErrorInfo a -> Doc ()
+renderError :: ReadeableError a => ErrorInfo a -> Doc ann
 renderError (ErrorInfo _tok internal) =
   (pretty . show $ getLevel internal) <> ":" <+> pretty (getMessage internal)

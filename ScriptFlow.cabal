@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: >= 1.10
+
+-- This file has been generated from package.yaml by hpack version 0.29.6.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 07159e9286cf09c1f84326565c0fea0f42c54d3a982c687e794725ac91e80cba
+-- hash: 0d21b3c7a7ce2734913a66d7c774a1d7ea911f7acb4a0765897b9c8931398522
 
 name:           ScriptFlow
 version:        0.0.2
@@ -17,7 +19,6 @@ copyright:      2018 Eleazar Díaz Delgado
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
     defaultConfig.yaml
     README.org
@@ -91,11 +92,13 @@ library
       Compiler.Utils
       Compiler.World
   other-modules:
+      Compiler.Ast.Th
       Compiler.Fuse
       Compiler.Interpreter
       Compiler.Interpreter.Th
       Compiler.Prelude.Github
       Compiler.Prelude.Github.Auth
+      Compiler.Scope.Ast
       Paths_ScriptFlow
   default-language: Haskell2010
 

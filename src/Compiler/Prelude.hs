@@ -81,10 +81,9 @@ printObj addr = unwrap <$> getVar addr >>= \case
   obj@(OObject (Just classRef) _attrs) -> do
     clsObj <- unwrap . fst <$> findPathVar (simple classRef)
     case clsObj of
-      OClassDef name _ref methods -> case HM.lookup "__print__" methods of
+      OClassDef name methods -> case HM.lookup "__print__" methods of
         Just func' -> do
-          func'' <- follow func'
-          retAddr   <- directCall func'' [addr]
+          retAddr   <- call (PathVar func' []) [addr]
           obj' <- unwrap <$> getVar retAddr
           docs   <- showObject obj'
           liftIO $ putDoc docs
@@ -123,7 +122,7 @@ exploreObjectAttributes obj = case obj of
   ORef ref -> do
     obj' <- unwrap <$> getVar ref
     exploreObjectAttributes obj'
-  OClassDef _name _refClass attrs -> return $ HM.toList attrs
+  OClassDef _name attrs -> return $ HM.toList attrs
   _ -> do
     methods <- internalMethods obj
     return $ HM.toList methods

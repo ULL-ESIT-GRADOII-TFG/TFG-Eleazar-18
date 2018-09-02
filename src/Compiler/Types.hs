@@ -1,14 +1,14 @@
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE FunctionalDependencies    #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Compiler.Types where
 
 import           Control.Monad.Except
@@ -87,8 +87,8 @@ data PathVar = PathVar
 simple :: Address -> PathVar
 simple addr = PathVar addr []
 
-instance Prettify PathVar where
-  prettify (PathVar r p) _verbose =
+instance Pretty PathVar where
+  pretty (PathVar r p) =
     "ADDR#" <> pretty r <> "." <> pretty (T.intercalate "." p)
 
 class Applicative r => Wrapper r where
@@ -104,7 +104,7 @@ class (Naming mm, Wrapper (Store mm))
   -- | Look into memory to find the final object pointed, and returns also its address
   -- Fails in case of not found the object `NotFoundObject`
   findPathVar :: PathVar -> mm (Store mm o, Address)
-  setPathVar :: PathVar -> Store mm o -> mm ()
+  setPathVar :: PathVar -> Store mm o -> mm Address
 
 
 class Deallocate mm where
@@ -113,6 +113,9 @@ class Deallocate mm where
 
 idToAdr :: IdName -> Address
 idToAdr (IdName i) = Adr i
+
+adrToId :: Address -> IdName
+adrToId (Address i) = IdName i
 
 newVar :: MemoryAccessor mm Object => Store mm Object -> mm Address
 newVar var = do
@@ -126,11 +129,14 @@ newVarWithName nameId obj = do
   setVar ref (pure obj)
   return ref
 
-getVarWithName :: (MonadError (ErrorInfo WorldError) mm, GetInfo mm, MemoryAccessor mm Object) => T.Text -> mm (Store mm Object)
+getVarWithName
+  :: (MonadError (ErrorInfo WorldError) mm
+     , GetInfo mm, MemoryAccessor mm Object)
+  => T.Text -> mm (Store mm Object, Address)
 getVarWithName nameId = do
   mPathVar <- findAddress nameId
   case mPathVar of
-    Just pathVar -> fst <$> findPathVar pathVar
+    Just pathVar -> findPathVar pathVar
     Nothing      -> throw (ScopeError (NotDefinedObject nameId))
 
 type StWorld = StateT (World Object) (ExceptT (ErrorInfo WorldError) IO)
@@ -156,9 +162,8 @@ data World o = World
 -------------------------------------------------------------------------------
 -- * Object relate type classes
 
-class Callable mm o | mm -> o where
+class Callable mm where
   call :: PathVar -> [Address] -> mm Address
-  directCall :: o -> [Address] -> mm Address
 
 class Iterable mm where
   mapOver :: Address -> (Address -> mm ()) -> mm ()
@@ -167,7 +172,7 @@ class Booleanable mm where
   checkBool :: Address -> mm Bool
 
 class Showable mm o where
-  showObject :: o -> mm (Doc ())
+  showObject :: o -> mm (Doc ann)
 
 -- | Creates reference to address specified
 class GetRef mm o where
@@ -206,7 +211,7 @@ data Object
   -- ^ Shell command
   | OVector (V.Vector Address)
   -- ^ Sequence of objects
-  | forall prog. (Runnable prog StWorld Address, Prettify (prog Address))
+  | forall prog. (Runnable prog StWorld Address, Pretty (prog Address))
     => OFunc (HM.HashMap T.Text Address) [Address] ([Address] -> prog Address)
   -- ^ Lambda with possible scope/vars attached
   | OBound Address Address
@@ -223,7 +228,6 @@ data Object
   -- ^ Pointer reference
   | OClassDef
     { nameClass       :: T.Text
-    , refClass        :: Address
     , attributesClass :: HM.HashMap T.Text Address
     }
   | ONone
@@ -231,7 +235,7 @@ data Object
 -------------------------------------------------------------------------------
 -- * Instruction relate type classes
 class Runnable prog mm o where
-  runProgram :: prog o -> mm o
+  runProgram :: prog o -> mm (Maybe o)
 
 -------------------------------------------------------------------------------
 -- * AST relate type classes

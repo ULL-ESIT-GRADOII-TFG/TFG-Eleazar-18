@@ -8,6 +8,7 @@ import           Data.Text.Prettyprint.Doc
 import           Compiler.Prettify
 import           Compiler.Utils
 
+type Loc = TokenInfo
 
 data TokenInfo = TokenInfo
   { _start :: !SrcPos
@@ -28,8 +29,8 @@ instance Default SrcPos where
 instance Default TokenInfo where
   def = TokenInfo def def
 
-instance Prettify SrcPos where
-  prettify (SrcPos col row _offset) _ =
+instance Pretty SrcPos where
+  pretty (SrcPos col row _offset) =
     "L" <>
     pretty row <>
     ":C" <>
@@ -37,12 +38,12 @@ instance Prettify SrcPos where
     -- text " >> " <>
     -- text (show offset)
 
-instance Prettify TokenInfo where
-  prettify (TokenInfo st en) verbose =
+instance Pretty TokenInfo where
+  pretty (TokenInfo st en) =
     "Tok" <+>
-    prettify st verbose <+>
+    pretty st <+>
     "- to -" <+>
-    prettify en verbose
+    pretty en
 
 dummyTokenInfo :: TokenInfo
 dummyTokenInfo = def
