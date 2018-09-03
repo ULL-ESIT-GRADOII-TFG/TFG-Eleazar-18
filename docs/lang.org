@@ -1,18 +1,20 @@
 #+MACRO: lang_name ScriptFlow
 #+MACRO: lang scriptflow
 #+OPTIONS: title:nil toc:nil
+#+latex_header: \usepackage[version=3]{mhchem}
+#+latex_header: \usepackage{float}
 
 \title{Un lenguaje para realizar DSLs}
 \author{Eleazar Díaz Delgado}
 
-\date{La Laguna, 3 de Septiembre de 2018}
+\date{La Laguna, 4 de Septiembre de 2018}
 
 \makeatletter
     \begin{titlepage}
         \includegraphics[width=40mm]{ull-logo.jpg}\\[4ex]
         \begin{center}
             {\huge \bfseries  Trabajo de Fin de Grado }\\[2ex]
-            {\LARGE  Grado en Ingeniería Informática}\\[5ex]
+            {\LARGE  Grado en Ingeniería Informática}\\[10ex]
         \end{center}
         \begin{flushright}
             {\huge \bfseries  \@title }\\[2ex]
@@ -31,7 +33,7 @@
 
 #+BEGIN_EXPORT latex
 
-D. Casiano Rodríguez León, con N.I.F. 42.020.072-S profesor Titular de Universidad adscrito al Departamento de TODO:Nombre del Departamento de la Universidad de La Laguna, como tutor
+D. Casiano Rodríguez León, con N.I.F. 42.020.072-S profesor Titular de Universidad adscrito al Departamento de Ingeniería Informática y de Sistemas de la Universidad de La Laguna, como tutor
 
 {\large \bfseries C E R T I F I C A (N)}
 
@@ -40,13 +42,20 @@ Que la presente memoria titulada: “Un lenguaje para realizar DSLs"
 ha sido realizada bajo su dirección por D. Eleazar Díaz Delgado
 con N.I.F. 54.117.199-Q.
 
-Y para que así conste, en cumplimiento de la legislación vigente y a los efectos oportunos firman la presente en La Laguna, 3 de Septiembre de 2018.
+Y para que así conste, en cumplimiento de la legislación vigente y a los efectos oportunos firman la presente en La Laguna, 4 de Septiembre de 2018.
 
 #+END_EXPORT
 \newpage
 \begin{flushright}
     {\huge  Agradecimientos }\\[2ex]
+    A mi familia por el apoyo, \\
+    y en especial a mi madre por preguntarme \\
+    casi todos los días por como iba con el TFG. \\
+    \vspace{10mm} %5mm vertical space
+    También dar la gracias a los profesores de \\
+    a lo largo de este grado y en especial a Casiano. \\
 \end{flushright}
+
 
 \newpage
 \begin{flushleft}
@@ -68,7 +77,6 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de scripts para la automatización de tareas, que requieran configuraciones.
    Se trata de un lenguaje basado en expresiones que da la opción a ser sensible a la indentación. Incluye una integración con Haskell por el
    cual puede ser ampliable.
-   Este lenguaje propone diversas herramientas para ser usado como un DSL, usando la extensibilidad via Haskell.
 }
 #+END_EXPORT
 
@@ -79,10 +87,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 #+BEGIN_EXPORT latex
 {\fontsize{14}{11}\selectfont
-   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of config files.
-   It is a language based in expressions that allows you to use a syntax identation-sensitive. It is includes a integration with Haskell the language
-   which one was built in. It can be extended using from scripts.
-   This language provide several tools to be used as DSL.
+   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of configuration files.
+   It is a language based in expressions that allows to you to use identation-sensitive syntax. It is includes a integration with Haskell language,
+   which, it was built in.
 }
 #+END_EXPORT
 
@@ -97,26 +104,39 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 * Introducción
 
-   Scriptflow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios especificos.
-   Los posibles DSL creados en esta plataforma. Son pensados para ser utilizados via terminal, o texto. Incluyendo
-   TODO:
+   ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
+   lenguaje es combinar ficheros de configuración, con características del lenguaje y las APIs. Con el fin de realizar los lenguajes de dominio específico,
+   que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL capaces de realizar el lenguaje creado, estan planteado
+   para trabajar mediante via textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
+   scripts y un REPL customizable según el DSL usado.
 
 * Metodología
 
-  TODO:
+  Se usado el lenguaje de programación Haskell, debido a su capacidad para trabajar con ADT, y estructuras abstractas. Permite gestionar
+  el código mejor que la representación equivalente usando objetos, en un lenguaje POO. Junto con la infraestructura /Stack-Haskell/ para
+  gestionar las dependencias debido a su estabilidad.
+
+  La parte de análisis sintáctico y léxico. Se optó por usar dos fases para la generación del AST
+  debido a la simplificación del problema de la indentación. Se tokeniza con la librería /Alex/ y se parsea con /parsec/.
+  Añadido a esto se usan librerías para gestionar el REPL (Haskeline) o internamente estructuras de datos como pueden ser (mtl, transformers, free, prettyprinters, ...)
+  entre otras.
+
+  En las configuraciones se usa el formato Yaml por permitir crear configuraciones más complejas que el equivalente en JSON.
+
+  Para realizar el proyecto se usan las herramientas VsCode y Neovim para el desarrollo del software usando diversos
+  plugin de entre ellos LSP (Language Server Protocol).
+
+  Los recursos son obtenidos de la propia documentación de las librerías, como información adicional que se encuentra en Internet.
 
 * Lenguaje {{{lang_name}}}
-
-   {{{lang_name}}} es un lenguaje de tipado dinámico para el desarrollo de /scripts/ para la automatización de tareas
-   con servicios /webs/. La automatización de esta tareas se plantea mediante el uso de las propias API del servicio web, ya sea REST, o GraphQL.
 
 ** Sintáxis
 
     {{{lang_name}}} se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
     /python/ o /c++/.
 
-    Los comentarios se comienzan con ~#~ y el retorno de línea delimita su fin. Los comentarios de lineas no están sujetos a reglas de indentación
-    lo que permite cierta flexibilidad. Estos pueden también ser añadidos al final de una expresión.
+    Los comentarios se comienzan con ~#~ y el retorno de línea delimita su fin. Estos pueden ser añadidos al final de una expresión y no están sujetos a las reglas de indentación
+    lo que permite cierta flexibilidad.
 
     #+BEGIN_SRC python
     # Variable ejemplo
@@ -163,15 +183,19 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
        # Enteros
        12 + 4 # ...
 
-       # Decimales (Se utiliza un double para su representanción actualmente)
+       # Decimales (Se utiliza un double para su
+       # representanción actualmente)
        45.5
 
-       # Las cadenas pueden ser multilineas se crean con "
+       # Las cadenas pueden ser multilineas se crean con
+       # comillas dobles "
        "Un\nejemplo
        de cadena"
 
-       # Las regex se construyen con r" y terminan con ". Usan la sintaxis de PCRE.
-       r"a*"  # Sin implementar aún
+       # Las regex se construyen
+       # con r" y terminan con ".
+       # Usan la sintaxis de PCRE.
+       r"a*"
 
        # Los comandos shell se crean con
        $cd #HOME/repos; nvim .$
@@ -190,20 +214,21 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
      #+BEGIN_SRC python
        # Vectores
-       [45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
+       # Los vectores pueden contener diferentes tipos en el mismo vector
+       [45, "tipos", []]
 
        # Diccionarios
        { test -> [1,2,3,47,5]
          , author ->
          { name -> "Flynn"
-           , "vive en" -> "tal sitio"
+         , "vive en" -> "tal sitio"
          }
        }
 
      #+end_src
 
 *** Expressiones
-     El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitan de forma diferente según en que contexto
+     El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitadas de forma diferente según en que contexto
      se encuentren.
      Las expresiones en la base del archivo, tales como;
      #+BEGIN_SRC python
@@ -217,7 +242,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
      #+END_SRC
 
      Son delimitadas por el final de linea, o en el caso de exista cierto nivel de indentación mayor que el base '0' se agrupan con la primera sin indentación. Es decir, en el caso de ~func_call~
-     la expresion final sería ~func_call(first_param, second_param)~. Se puede usar el carácter ';' para realizar esta separación (el cual es opcional al nivel base).
+     la expresión final sería ~func_call(first_param, second_param)~. Se puede usar el carácter ';' para realizar esta separación (el cual es opcional al nivel base).
 
      En el caso de expresiones más complejas que requieran un subconjunto de expresiones, hablamos de ~if~, ~for~ .... Se contemplan dos casos para realizar la terminación de las expresiones.
      Si se usa sintáxis sensible a la indentación, los niveles de indentación determinarán donde se halla la terminación de las expressiones. Pero, por si el contrario se usa sintáxis con llaves
@@ -255,7 +280,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
      lam arg1 arg2 { arg1 }
      #+END_SRC
 
-     Las funciones con nombre en el siguiente ejemplo;
+     Las funciones con nombre, en el siguiente ejemplo;
      #+BEGIN_SRC python
      fun func_name arg1 arg2 { arg1 }
 
@@ -266,7 +291,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 ** Orientado a objetos
 
 *** Objectos
-     Un objeto en {{{lang_name}}} es un diccionario con la clase a la que pertenece, si se diese el caso de ser
+     Un objeto en {{{lang_name}}} es un diccionario con la clase a la que pertenece, en el caso de ser
      un objeto instanciado.
 
      En el siguiente ejemplo se enumeran las distintas formas de crear un objeto:
@@ -278,7 +303,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
        # A partir de none
        obj2 = none
        # Al asignar dentro de una varible establecidad `none` un "sub-item".
-       # Automáticamente se genera un objeto con ese item dentro
+       # Automáticamente se genera un objeto con ese ítem dentro
        obj2.a = "ejemplo"
        > { a -> "ejemplo" }
 
@@ -292,10 +317,12 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
      Las funciones ~use~ y ~unuse~ permiten modificar el ámbito actual de búsqueda de variables, y simplificar ciertos escenarios.
 
-     La resolución de nombres al usar ~use~ sobre un objeto. Tiene la menor precedencia dentro de la propia resolución del nombres, y
-     la última llamada de ~use~ tiene mayor precedencia que las anteriores.
+     La función ~use~ genera un nuevo ámbito que queda detrás del actual permitiendo acceder a los attributos y funciones directamente
+     sin necesidad de especificar a que objecto se refiere. Las nuevas variables creadas dentro del ámbito sobreescriben las creadas por ~use~
+     debido a que continuán en el ámbito superior. La resolución de nombres al usar ~use~ sobre un objeto, tiene la menor precedencia
+     dentro de la propia resolución del nombres, y la última llamada de ~use~ tiene mayor precedencia que las anteriores de use.
 
-     Y la función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automaticamente un ~unuse~ al salir de un ámbito.
+     La función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automaticamente un ~unuse~ al salir de un ámbito.
 
      Un ejemplo ilustrativo de como trabaja esta funcionalidad dentro de un DSL.
 
@@ -361,7 +388,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     | print      |                    - | --          | ~__print__~   |
 
 
-    El método especial ~__print__~ indica la forma de como debe mostrarse por pantalla el objecto al usar la función ~print~.
+    El método especial ~__print__~ indica la forma visualización, que debe mostrarse por pantalla el objecto al usar la función ~print~.
 
 
 * Configuración
@@ -460,7 +487,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     ~OBraceT~ y ~CBraceT~.
 
     La segunda fase del /parseo/ se encarga de generar el árbol sintáctico
-    abstracto o sus siglas en inglés AST (Abstract Syntax Tree).
+    abstracto (AST).
 
     #+BEGIN_SRC haskell
       SeqExpr [
@@ -493,9 +520,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
         funName <- nameIdT
         params  <- many nameIdT
         prog    <- parseBody
-        return (VarDecl
-          (Simple funName)
-          (FunDecl params prog))
+        return (FunDecl funcName params prog)
     #+end_src
 
     Una vez generado se realiza la comprobación del *scope* del AST. En esta fase
@@ -540,16 +565,16 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     para que en cada nodo se encuentre el componente genérico. Este componente, se fija en el AST a lo largo de todos los nodos lo que
     que conlleva a crear un componente complejo e innecesario en la mayoría de los nodos. Se crea un AST poco flexible.
 
-    La solución a este problema se encontró dentro de los /papers/ que estan siendo implementados en el propio /GHC/. En el /paper/[Trees that Grow]
+    La solución a este problema se encontró dentro de los /papers/ que estan siendo implementados en el propio /GHC/. En el /paper/ cite:shayan-2017-trees
     se decribe como se logra una estructura de datos maś flexible que la convencional. Que por medio de los tipos de familia abiertos (Open Family types)
-    se logra modificar el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
+    se logra modificar individualmente el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
 
 ** Lenguaje intermedio
 
     <<intermediate_lang>> La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
-    que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de {{{lang_name}}
-    Este conjunto de instrucciones se encuentra expresado en ADT (Abstract Data Tree), de tal forma que encaje con la estructura
-    de datos mónada libre (/Free Monad/). Este estructura, secuencia las instrucciones y permiten usar la notación /do/ de Haskell.
+    que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de {{{lang_name}}}
+    Este conjunto de instrucciones se encuentra expresado en un ADT (Abstract Data Tree), de tal forma que encaje con la estructura
+    de datos mónada libre (/Free Monad/) cite:free-monads. Este estructura, secuencia las instrucciones y permiten usar la notación /do/ de Haskell.
 
 ** Interoperabilidad
 
@@ -586,10 +611,10 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
     Las cuales mediante el uso de la recursividad entre instancias de las clases de tipos se resolvía el problema. Sin embargo
     el método no es eficiente. Y requiere de una clase auxiliar para contar el número de argumentos que posée una función, la cual use
-    sobrelapamiento entre instancias.
+    sobrelapamiento entre instancias cite:overlaping-instances.
 
-    La opción actual reside crear las /wrappers/ a medida para cada función convertida. Para ello se implementado una solución
-    basada en el uso de la meta-programación conocida en Haskell por /Template Haskell/.
+    La opción actual reside crear los /wrappers/ a medida para cada función convertida. Para ello se implementado una solución
+    basada en el uso de la meta-programación conocida en Haskell por /Template Haskell/ cite:template-haskell .
 
     Ejemplo de código auto-generado, dada la función:
     #+BEGIN_SRC haskell
@@ -614,7 +639,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+END_SRC
 
     Una de las desventajas de esta solución se encuentra en las propias limitaciones del /Template Haskell/. Debido a que no es posible
-    inferir el tipo de una expresión, lo que requiere añadir el tipo de la expressión.
+    inferir el tipo de una expresión dada, lo que requiere añadir el tipo de la expressión.
     #+BEGIN_SRC haskell
     $(normalize [| (>) :: Int -> Int -> Bool |])
                 -- Se repite el tipo obligatoriamente
@@ -622,7 +647,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
     La implementación de la "meta-función" se encuentra en el módulo /Compiler.Prelude.Th/.
 
-    Otro factor de interoperabilidad a destacar, es la creación de un /QuasiQuoter/. Lo que permite incrustar fragmentos de {{{lang_name}}}
+    Otro factor de interoperabilidad a destacar, es la creación de un /QuasiQuoter/ cite:quasi-quoter. Lo que permite incrustar fragmentos de {{{lang_name}}}
     dentro de Haskell. Y dentro del propio /QuasiQuoter/ realizar llamadas a funciones de Haskell usando el mecanismo anteriormente descrito
     para la conversión de funciones entre ambos lenguajes.
 
@@ -644,4 +669,24 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 * Conclusiones
 
-  TODO:
+  ScriptFlow trata de simplificar el procesor de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
+  configuración, funciones de interacción con APIs y característcas propias del lenguaje.
+
+  Existen diversos problemas y dificultades en el desarrollo de software dentro de la plataforma de Haskell, debido a ser un lenguaje
+  con una comunidad menor a lenguajes más populares. Se encuentran escasas herramientas de programación o poco actualizadas a las últimas versiones de la plataforma.
+  Cabe a destacar que la mayor dificultad encontrada es trabajar con dependencias cíclicas entre módulos en Haskell. Es cierto, que existen soluciones pero
+  no son prácticas para un desarrollo ágil.
+
+  Existen diversas mejoras a aplicar sobre el proyecto:
+  - Actualmente es solo extensible via Haskell (lo que requiere tener el compilador), una mejora sería permitir interoperabilidad con Python.
+  - Los objectos básicos, contienen pocos métodos con los que interactuar entre sí.
+  - Para el DSL de Github, se tiene planteado realizar un uso de HFuse. Para simular virtualmente los repositorios de Github en el sistema de ficheros
+    y con determinadas acciones clonar directamente repositorio, por ejemplo.
+
+
+\renewcommand{\refname}{Bibliografía}
+
+\newpage
+
+bibliographystyle:unsrt
+bibliography:manuscript.bib
