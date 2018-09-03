@@ -2,6 +2,25 @@
 
   TODO: What is it?
 
+** Installation
+
+   Use Haskell Stack
+   #+BEGIN_SRC bash
+   cd TFG-Eleazar-18
+   stack build
+   stack exec scriptflow
+   #+END_SRC
+
+   To get help
+   #+BEGIN_SRC bash
+   stack exec scriptflow -- --help
+   #+END_SRC
+
+   Install to ./local/bin
+   #+BEGIN_SRC bash
+   stack install
+   #+END_SRC
+
 ** Documentation
    See [[./docs/lang.org]]
 
