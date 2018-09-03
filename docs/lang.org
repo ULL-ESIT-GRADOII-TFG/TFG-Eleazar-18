@@ -50,9 +50,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     {\huge  Agradecimientos }\\[2ex]
     A mi familia por el apoyo, \\
     y en especial a mi madre por preguntarme \\
-    casi todos los días por como iba con el TFG. \\
+    casi todos los días por el estado del TFG. \\
     \vspace{10mm} %5mm vertical space
-    También dar la gracias a los profesores de \\
+    También dar la gracias a los profesores \\
     a lo largo de este grado y en especial a Casiano. \\
 \end{flushright}
 
@@ -77,7 +77,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de scripts para la automatización de tareas, que requieran configuraciones.
    Se trata de un lenguaje basado en expresiones que da la opción a ser sensible a la indentación. Incluye una integración con Haskell por el
    cual puede ser ampliable.
-}
+}\\
+\vspace{50mm}
+\textbf{Palabras clave}: ScriptFlow, Intérprete, Compilador, Haskell, DSL.
 #+END_EXPORT
 
 \newpage
@@ -90,7 +92,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of configuration files.
    It is a language based in expressions that allows to you to use identation-sensitive syntax. It is includes a integration with Haskell language,
    which, it was built in.
-}
+}\\
+\vspace{50mm}
+\textbf{Keywords}: ScriptFlow, Interpreter, Compiler, Haskell, DSL.
 #+END_EXPORT
 
 \newpage
@@ -669,7 +673,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 * Conclusiones
 
-  ScriptFlow trata de simplificar el procesor de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
+  ScriptFlow trata de simplificar el proceso de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
   configuración, funciones de interacción con APIs y característcas propias del lenguaje.
 
   Existen diversos problemas y dificultades en el desarrollo de software dentro de la plataforma de Haskell, debido a ser un lenguaje
@@ -683,6 +687,27 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   - Para el DSL de Github, se tiene planteado realizar un uso de HFuse. Para simular virtualmente los repositorios de Github en el sistema de ficheros
     y con determinadas acciones clonar directamente repositorio, por ejemplo.
 
+* Conclusions
+
+  ScriptFlow try to simplifies the process of make scripts to automatize, providing with a unified interface between; configuration files, functions that interact with external APIs and
+  characteristics of the own language.
+
+  There are several problems and difficulties developing software into the Haskell platform, due to be a language with smaller community than other popular languages. There are less programming
+  tools or they are no update to latest versions of platform. I highlight, the greater problem found into this project was cyclic-dependencies between modules in Haskell. It can be solved but there are not optimal
+  solutions to an agile development.
+
+  Exist different improvements to apply over this project:
+  - Currently, it can be only extended using Haskell (It requires have a Haskell compiler), it could improve if it allows to inter-operate with Python also.
+  - The basic objects, contains few methods to be used between themselves.
+  - In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
+
+* Presupuestos
+
+  Se ha realizado una estimación de los costes realizados en el proyecto.
+
+  | Tipo | Descripción |
+  |------+-------------|
+  |      |             |
 
 \renewcommand{\refname}{Bibliografía}
 

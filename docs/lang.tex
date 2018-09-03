@@ -1,4 +1,4 @@
-% Created 2018-09-03 lun 21:26
+% Created 2018-09-03 lun 23:03
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -71,9 +71,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     {\huge  Agradecimientos }\\[2ex]
     A mi familia por el apoyo, \\
     y en especial a mi madre por preguntarme \\
-    casi todos los días por como iba con el TFG. \\
+    casi todos los días por el estado del TFG. \\
     \vspace{10mm} %5mm vertical space
-    También dar la gracias a los profesores de \\
+    También dar la gracias a los profesores \\
     a lo largo de este grado y en especial a Casiano. \\
 \end{flushright}
 
@@ -97,7 +97,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de scripts para la automatización de tareas, que requieran configuraciones.
    Se trata de un lenguaje basado en expresiones que da la opción a ser sensible a la indentación. Incluye una integración con Haskell por el
    cual puede ser ampliable.
-}
+}\\
+\vspace{50mm}
+\textbf{Palabras clave}: ScriptFlow, Intérprete, Compilador, Haskell, DSL.
 
 \newpage
 \begin{center}
@@ -108,7 +110,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of configuration files.
    It is a language based in expressions that allows to you to use identation-sensitive syntax. It is includes a integration with Haskell language,
    which, it was built in.
-}
+}\\
+\vspace{50mm}
+\textbf{Keywords}: ScriptFlow, Interpreter, Compiler, Haskell, DSL.
 
 \newpage
 
@@ -120,7 +124,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 
 \section{Introducción}
-\label{sec:org9408cb6}
+\label{sec:org5c9bb11}
 
 ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
 lenguaje es combinar ficheros de configuración, con características del lenguaje y las APIs. Con el fin de realizar los lenguajes de dominio específico,
@@ -129,7 +133,7 @@ para trabajar mediante via textual o terminal. Es decir, no está pensado para r
 scripts y un REPL customizable según el DSL usado.
 
 \section{Metodología}
-\label{sec:org0799017}
+\label{sec:org74980ec}
 
 Se usado el lenguaje de programación Haskell, debido a su capacidad para trabajar con ADT, y estructuras abstractas. Permite gestionar
 el código mejor que la representación equivalente usando objetos, en un lenguaje POO. Junto con la infraestructura \emph{Stack-Haskell} para
@@ -148,10 +152,10 @@ plugin de entre ellos LSP (Language Server Protocol).
 Los recursos son obtenidos de la propia documentación de las librerías, como información adicional que se encuentra en Internet.
 
 \section{Lenguaje ScriptFlow}
-\label{sec:org1cfe43f}
+\label{sec:org21d94ce}
 
 \subsection{Sintáxis}
-\label{sec:org1b4565a}
+\label{sec:orgf5783b0}
 
 ScriptFlow se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
 \emph{python} o \emph{c++}.
@@ -170,9 +174,9 @@ if example == 2:
 \end{verbatim}
 
 \subsubsection{Identación}
-\label{sec:orgdacadc7}
+\label{sec:org661b8d3}
 
-\label{org879552c}
+\label{org6e76675}
 El lenguaje puede usar su sintáxis sensible a la indentación como \emph{python} o \emph{haskell} pero se trata de algo opcional que puede ser omitido usando las llaves "\{\}":
 
 \begin{verbatim}
@@ -188,7 +192,7 @@ fun saludar_a nombre {
 \end{verbatim}
 
 \subsubsection{Literales}
-\label{sec:orgd795b38}
+\label{sec:org9a7d8de}
 
 El lenguaje cuenta con diversas primitivas integradas por defecto, como
 booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
@@ -251,7 +255,7 @@ diccionarios o tablas hash.
 \end{verbatim}
 
 \subsubsection{Expressiones}
-\label{sec:orgef1f2fc}
+\label{sec:org7ee14d5}
 El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitadas de forma diferente según en que contexto
 se encuentren.
 Las expresiones en la base del archivo, tales como;
@@ -290,7 +294,7 @@ if always_true {
 \end{verbatim}
 
 \subsubsection{Funciones}
-\label{sec:orgdec359a}
+\label{sec:org63f114c}
 
 La sintáxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
 a que la primeras son traducidas a una función lambda asignada a una variable.
@@ -314,10 +318,10 @@ fun func_name arg1 arg2:
 \end{verbatim}
 
 \subsection{Orientado a objetos}
-\label{sec:org144abeb}
+\label{sec:org3213ca5}
 
 \subsubsection{Objectos}
-\label{sec:org3361a83}
+\label{sec:orge75dfae}
 Un objeto en ScriptFlow es un diccionario con la clase a la que pertenece, en el caso de ser
 un objeto instanciado.
 
@@ -372,7 +376,7 @@ unuse
 \end{verbatim}
 
 \subsubsection{Clases}
-\label{sec:org7afadba}
+\label{sec:org71ea073}
 El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
 de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
 usando el método especial \texttt{\_\_init\_\_}.
@@ -424,9 +428,9 @@ El método especial \texttt{\_\_print\_\_} indica la forma visualización, que d
 
 
 \section{Configuración}
-\label{sec:orgb00be54}
+\label{sec:orgb5495bd}
 
-\label{org68f320f}
+\label{org38c8232}
 El fichero de configuración se localiza mediante el
 estándar XDG. Normalmente localizado en \texttt{/home/username/.config/scriptflow}
 La configuración es un fichero tipo YAML. El cual permite especificar
@@ -435,14 +439,14 @@ específicos con la API Web; tales como la autenticación o posibles
 preferencias.
 
 \subsection{Prompt}
-\label{sec:orgf3873ed}
+\label{sec:orge9698d7}
 
-\label{org2dc12b7}
+\label{org1230f1c}
 En el modo interactivo del intérprete (repl) permite la personalización del
 \textbf{prompt}. Tales como la salida de la ejecución de comandos
 shell, y diversos comandos propios del intérprete. La configuración del
 prompt se puede realizar desde el fichero de configuración (véase:
-\ref{org68f320f}) en la sección \textbf{repl}.
+\ref{org38c8232}) en la sección \textbf{repl}.
 
 Por defecto, la sección del \emph{prompt} contiene la siguiente configuración:
 
@@ -457,12 +461,12 @@ repl:
 La configuración del prompt debe ser una expresión de ScriptFlow.
 
 \section{REPL}
-\label{sec:org5413f5d}
+\label{sec:orgae75343}
 El \textbf{REPL} puede ser accedido mediante comando de líneas \texttt{scriptflow} o con la
 finalización de ejecución de un \textbf{script} con la opción \texttt{-e}. Se pueden ver más opciones del
 ejecutable del intérprete mediante \texttt{scriptflow -{}-help}. Una vez,
 iniciado el \textbf{REPL} se mostrará por defecto el \textbf{prompt} predeterminado
-(configuración véase: \ref{org2dc12b7}).
+(configuración véase: \ref{org1230f1c}).
 
 Desde el \textbf{REPL} se puede escribir cualquier tipo de expresión definida por el
 lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
@@ -472,7 +476,7 @@ puede ver una lista de los comandos con \texttt{:help}
 \item \texttt{:instr}
 
 Permite visualizar, a que instrucciones se traduce el código. Estas
-instrucciones son parciales solo sirven de guía. (Véase: \ref{org2d7b7fc})
+instrucciones son parciales solo sirven de guía. (Véase: \ref{orgd492490})
 
 \item \texttt{:mem}
 
@@ -484,10 +488,10 @@ Sale del intérprete.
 \end{itemize}
 
 \section{Arquitectura del proyecto}
-\label{sec:orgece86cb}
+\label{sec:org5aa4036}
 
 \subsection{Introducción}
-\label{sec:orge54af89}
+\label{sec:org9d4bce0}
 
 El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
 requiere diferentes enfoques al realizar el diseño del interprete. Ya que
@@ -520,7 +524,7 @@ NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
 \end{verbatim}
 
 En esta fase de \emph{tokenización}, se procede a identificar los niveles de
-indentación en el código en el caso necesario (Para más información ir: \ref{org879552c}).
+indentación en el código en el caso necesario (Para más información ir: \ref{org6e76675}).
 El \emph{tokenizador} procede a añadir las llaves necesarias en el caso de usar la
 gramática del lenguage sensible al contexto. Estos \emph{tokens} se identifican con
 \texttt{OBraceT} y \texttt{CBraceT}.
@@ -584,7 +588,7 @@ SeqExpr [
 \end{verbatim}
 
 Una de la últimas fases es la conversion del AST al conjunto de
-instrucciones simplificado. (Vease: \ref{org2d7b7fc})
+instrucciones simplificado. (Vease: \ref{orgd492490})
 
 \begin{verbatim}
 Assign var_0
@@ -598,7 +602,7 @@ Y de esta foma es como se representa el código en memoria. Es decir, las
 funciones que se definan su contenido es guardado en este formato.
 
 \subsection{Árbol abstracto sintáctico}
-\label{sec:org8dbc216}
+\label{sec:org7d4741d}
 
 El AST (Abstract Syntax Tree) de ScriptFlow ha pasado por diversos cambios en el transcurso del proyecto. Inicialmente
 se considero usar el modelo conceptual que se aplica en el paquete "language-haskell-ext" el cual codifica el AST de forma genérica
@@ -610,15 +614,15 @@ se decribe como se logra una estructura de datos maś flexible que la convencion
 se logra modificar individualmente el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
 
 \subsection{Lenguaje intermedio}
-\label{sec:org21c1ade}
+\label{sec:orgaf90169}
 
-\label{org2d7b7fc} La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
+\label{orgd492490} La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
 que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de ScriptFlow
 Este conjunto de instrucciones se encuentra expresado en un ADT (Abstract Data Tree), de tal forma que encaje con la estructura
 de datos mónada libre (\emph{Free Monad}) \cite{free-monads}. Este estructura, secuencia las instrucciones y permiten usar la notación \emph{do} de Haskell.
 
 \subsection{Interoperabilidad}
-\label{sec:org62e9735}
+\label{sec:orgc2eba29}
 
 La metaprogramación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
 ya testeadas de Haskell, en ScriptFlow. Únicamente realizando cambios oportunos, como el orden de los argumentos.
@@ -710,9 +714,9 @@ githubClassSC = [scriptflow|
 \end{verbatim}
 
 \section{Conclusiones}
-\label{sec:orgcc62823}
+\label{sec:org44b7255}
 
-ScriptFlow trata de simplificar el procesor de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
+ScriptFlow trata de simplificar el proceso de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
 configuración, funciones de interacción con APIs y característcas propias del lenguaje.
 
 Existen diversos problemas y dificultades en el desarrollo de software dentro de la plataforma de Haskell, debido a ser un lenguaje
@@ -728,6 +732,35 @@ Existen diversas mejoras a aplicar sobre el proyecto:
 y con determinadas acciones clonar directamente repositorio, por ejemplo.
 \end{itemize}
 
+\section{Conclusions}
+\label{sec:org4cc9efc}
+
+ScriptFlow try to simplifies the process of make scripts to automatize, providing with a unified interface between; configuration files, functions that interact with external APIs and
+characteristics of the own language.
+
+There are several problems and difficulties developing software into the Haskell platform, due to be a language with smaller community than other popular languages. There are less programming
+tools or they are no update to latest versions of platform. I highlight, the greater problem found into this project was cyclic-dependencies between modules in Haskell. It can be solved but there are not optimal
+solutions to an agile development.
+
+Exist different improvements to apply over this project:
+\begin{itemize}
+\item Currently, it can be only extended using Haskell (It requires have a Haskell compiler), it could improve if it allows to inter-operate with Python also.
+\item The basic objects, contains few methods to be used between themselves.
+\item In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
+\end{itemize}
+
+\section{Presupuestos}
+\label{sec:orgd8b36ee}
+
+Se ha realizado una estimación de los costes realizados en el proyecto.
+
+\begin{center}
+\begin{tabular}{ll}
+Tipo & Descripción\\
+\hline
+ & \\
+\end{tabular}
+\end{center}
 
 \renewcommand{\refname}{Bibliografía}
 
