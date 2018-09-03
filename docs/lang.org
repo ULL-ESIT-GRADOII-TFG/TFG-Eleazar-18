@@ -1,28 +1,137 @@
 #+MACRO: lang_name ScriptFlow
 #+MACRO: lang scriptflow
+#+OPTIONS: title:nil toc:nil
 
-* {{{lang_name}}} Manual
+\title{Un lenguaje para realizar DSLs}
+\author{Eleazar Díaz Delgado}
 
-** Introducción
+\date{La Laguna, 3 de Septiembre de 2018}
 
-   Dominio de useo ejemplos
+\makeatletter
+    \begin{titlepage}
+        \includegraphics[width=40mm]{ull-logo.jpg}\\[4ex]
+        \begin{center}
+            {\huge \bfseries  Trabajo de Fin de Grado }\\[2ex]
+            {\LARGE  Grado en Ingeniería Informática}\\[5ex]
+        \end{center}
+        \begin{flushright}
+            {\huge \bfseries  \@title }\\[2ex]
+            {\huge  A language to make DSLs }\\[2ex]
+            {\LARGE  \@author}
+        \end{flushright}
+        \vfill
+        \begin{center}
+            {\LARGE \@date}
+        \end{center}
 
-** Lenguaje {{{lang_name}}}
+    \end{titlepage}
+\makeatother
+\thispagestyle{empty}
+\newpage
+
+#+BEGIN_EXPORT latex
+
+D. Casiano Rodríguez León, con N.I.F. 42.020.072-S profesor Titular de Universidad adscrito al Departamento de TODO:Nombre del Departamento de la Universidad de La Laguna, como tutor
+
+{\large \bfseries C E R T I F I C A (N)}
+
+Que la presente memoria titulada: “Un lenguaje para realizar DSLs"
+
+ha sido realizada bajo su dirección por D. Eleazar Díaz Delgado
+con N.I.F. 54.117.199-Q.
+
+Y para que así conste, en cumplimiento de la legislación vigente y a los efectos oportunos firman la presente en La Laguna, 3 de Septiembre de 2018.
+
+#+END_EXPORT
+\newpage
+\begin{flushright}
+    {\huge  Agradecimientos }\\[2ex]
+\end{flushright}
+
+\newpage
+\begin{flushleft}
+  {\huge  Licencia }\\[2ex]
+\end{flushleft}
+
+\begin{center}
+  \includegraphics[width=40mm]{license.png}\\[4ex]
+\end{center}
+© Esta obra está bajo una licencia de Creative Commons Reconocimiento-NoComercial 4.0 Internacional
+
+\newpage
+\begin{center}
+  {\huge  Resumen }\\[2ex]
+\end{center}
+
+#+BEGIN_EXPORT latex
+{\fontsize{14}{11}\selectfont
+   ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de scripts para la automatización de tareas, que requieran configuraciones.
+   Se trata de un lenguaje basado en expresiones que da la opción a ser sensible a la indentación. Incluye una integración con Haskell por el
+   cual puede ser ampliable.
+   Este lenguaje propone diversas herramientas para ser usado como un DSL, usando la extensibilidad via Haskell.
+}
+#+END_EXPORT
+
+\newpage
+\begin{center}
+  {\huge  Abstract }\\[2ex]
+\end{center}
+
+#+BEGIN_EXPORT latex
+{\fontsize{14}{11}\selectfont
+   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of config files.
+   It is a language based in expressions that allows you to use a syntax identation-sensitive. It is includes a integration with Haskell the language
+   which one was built in. It can be extended using from scripts.
+   This language provide several tools to be used as DSL.
+}
+#+END_EXPORT
+
+\newpage
+
+\renewcommand{\contentsname}{Índice general}
+
+\tableofcontents
+
+\newpage
+
+
+* Introducción
+
+   Scriptflow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios especificos.
+   Los posibles DSL creados en esta plataforma. Son pensados para ser utilizados via terminal, o texto. Incluyendo
+   TODO:
+
+* Metodología
+
+  TODO:
+
+* Lenguaje {{{lang_name}}}
 
    {{{lang_name}}} es un lenguaje de tipado dinámico para el desarrollo de /scripts/ para la automatización de tareas
    con servicios /webs/. La automatización de esta tareas se plantea mediante el uso de las propias API del servicio web, ya sea REST, o GraphQL.
 
-*** Sintáxis
+** Sintáxis
 
     {{{lang_name}}} se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
     /python/ o /c++/.
 
-    Los comentarios se comienzan con /#/ hasta el final de linea.
-    Posiblemente se añada un comentario multilínea.
+    Los comentarios se comienzan con ~#~ y el retorno de línea delimita su fin. Los comentarios de lineas no están sujetos a reglas de indentación
+    lo que permite cierta flexibilidad. Estos pueden también ser añadidos al final de una expresión.
 
-**** Identación
+    #+BEGIN_SRC python
+    # Variable ejemplo
+       # Comentario
+    example = 1 + 1 # Commentario
 
-     El lenguaje puede ser sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando "{}":
+    if example == 2:
+    # Otro ejemplo
+      print "something"
+    #+END_SRC
+
+*** Identación
+
+     <<identacion>>
+     El lenguaje puede usar su sintáxis sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando las llaves "{}":
 
      #+BEGIN_SRC haskell
        fun saludar_a nombre:
@@ -36,8 +145,7 @@
        }
      #+END_SRC
 
-
-**** Literales
+*** Literales
 
      El lenguaje cuenta con diversas primitivas integradas por defecto, como
      booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
@@ -94,44 +202,75 @@
 
      #+end_src
 
-     TODO: dir docs to get methods/attributes and documentation about them
+*** Expressiones
+     El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitan de forma diferente según en que contexto
+     se encuentren.
+     Las expresiones en la base del archivo, tales como;
+     #+BEGIN_SRC python
+     print "Hello World"
 
+     var = 67
 
+     func_call
+        first_param
+        second_param
+     #+END_SRC
 
-**** Funciones
+     Son delimitadas por el final de linea, o en el caso de exista cierto nivel de indentación mayor que el base '0' se agrupan con la primera sin indentación. Es decir, en el caso de ~func_call~
+     la expresion final sería ~func_call(first_param, second_param)~. Se puede usar el carácter ';' para realizar esta separación (el cual es opcional al nivel base).
 
+     En el caso de expresiones más complejas que requieran un subconjunto de expresiones, hablamos de ~if~, ~for~ .... Se contemplan dos casos para realizar la terminación de las expresiones.
+     Si se usa sintáxis sensible a la indentación, los niveles de indentación determinarán donde se halla la terminación de las expressiones. Pero, por si el contrario se usa sintáxis con llaves
+     se necesitará añadir ';' para indicar la terminación de cada expressión. Y opcionalmente se puede quitar el ';' de la última expressión.
 
-*** Orientado a objetos
+     #+BEGIN_SRC python
+     if always_true:
+       make_test test1 test2
+       other_func
+          arg1
+          arg2
+       end_test arg_end
 
-    El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
-    de clases sin capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
-    usando el método especial `__init__`.
+     if always_true {
+       make_test test1 test2;
+       other_func
+          arg1
+          arg2;
+       end_test arg_end
+     }
+     #+END_SRC
 
-    Los métodos asociados al objeto internamente se pasan a si mismo como argumento usando la palabra
-    reservada `self`. El lenguaje no soporta métodos estáticos.
+*** Funciones
 
+     La sintáxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
+     a que la primeras son traducidas a una función lambda asignada a una variable.
 
-    #+BEGIN_SRC python
-      class Repository {
-              fun __init__ new_name {
-                  self.url = none
-                  self.local_repo = none
-                  self.name = new_name
-              }
-      }
-    #+end_src
+     La sintáxis de las funciones lambda es la siguiente:
+     #+BEGIN_SRC python
+     # Con identación
+     lam arg1 arg2:
+        arg1
 
+     # O alternativamente
+     lam arg1 arg2 { arg1 }
+     #+END_SRC
 
+     Las funciones con nombre en el siguiente ejemplo;
+     #+BEGIN_SRC python
+     fun func_name arg1 arg2 { arg1 }
 
-    Métodos estándar para la realización de tareas comunes.
-    - print
-    -
+     fun func_name arg1 arg2:
+        arg1
+     #+END_SRC
 
-**** Objectos
+** Orientado a objetos
+
+*** Objectos
      Un objeto en {{{lang_name}}} es un diccionario con la clase a la que pertenece, si se diese el caso de ser
      un objeto instanciado.
 
-     En el siguiente ejemplo se enumeran las distintas formas de crear un objeto
+     En el siguiente ejemplo se enumeran las distintas formas de crear un objeto:
+
      #+BEGIN_SRC python
        # A partir de un diccionario vacío
        obj = {}
@@ -149,21 +288,97 @@
        obj3 = Test()
      #+END_SRC
 
-** Configuración
+     Los objetos tienen diversas características incorporadas con el intérprete para mejorar su uso dentro de una DSL.
+
+     Las funciones ~use~ y ~unuse~ permiten modificar el ámbito actual de búsqueda de variables, y simplificar ciertos escenarios.
+
+     La resolución de nombres al usar ~use~ sobre un objeto. Tiene la menor precedencia dentro de la propia resolución del nombres, y
+     la última llamada de ~use~ tiene mayor precedencia que las anteriores.
+
+     Y la función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automaticamente un ~unuse~ al salir de un ámbito.
+
+     Un ejemplo ilustrativo de como trabaja esta funcionalidad dentro de un DSL.
+
+     #+BEGIN_SRC python
+     class Github:
+       fun repositories {} # return a list of repositories
+       fun user_name {}
+     class Repository:
+       fun name {}
+       fun issues {}
+
+     gh = use Github()
+     filter_reg = Regex gh.user_name
+     for repo in repositories:
+       use repo
+       print name
+       print issues.filter(filter_reg)
+       unuse
+     unuse
+     #+END_SRC
+
+*** Clases
+    El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
+    de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
+    usando el método especial ~__init__~.
+
+    Los métodos asociados al objeto internamente se pasan a si mismo como argumento usando la palabra
+    reservada ~self~. El lenguaje no soporta métodos estáticos.
+
+
+    #+BEGIN_SRC python
+      class Repository {
+              fun __init__ new_name {
+                  self.url = none
+                  self.local_repo = none
+                  self.name = new_name
+              }
+      }
+    #+end_src
+
+    La siguiente tabla muestra los métodos disponibles para sobrecargar.
+
+    | Operador   | Nivel de precedencia | Precedencia | Nombre método |
+    |------------+----------------------+-------------+---------------|
+    | **         |                    8 | Izquierda   | ~__pow__~     |
+    | =*=        |                    7 | Izquierda   | ~__mul__~     |
+    | =/=        |                    7 | Izquierda   | ~__div__~     |
+    | %          |                    7 | Izquierda   | ~__mod__~     |
+    | +          |                    6 | Izquierda   | ~__plus__~    |
+    | -          |                    6 | Izquierda   | ~__minus__~   |
+    | ++         |                    5 | Derecha     | ~__append__~  |
+    | ====       |                    4 | Izquierda   | ~__eq__~      |
+    | !=         |                    4 | Izquierda   | ~__neq__~     |
+    | /=         |                    4 | Izquierda   | ~__neq__~     |
+    | >          |                    4 | Izquierda   | ~__gt__~      |
+    | <          |                    4 | Izquierda   | ~__lt__~      |
+    | <=         |                    4 | Izquierda   | ~__le__~      |
+    | >=         |                    4 | Izquierda   | ~__ge__~      |
+    | &&         |                    3 | Derecha     | ~__and__~     |
+    | \vert\vert |                    3 | Derecha     | ~__or__~      |
+    | =!=        |                    1 | Izquierda   | ~__not__~     |
+    | @          |                    1 | Izquierda   | ~__at__~      |
+    | print      |                    - | --          | ~__print__~   |
+
+
+    El método especial ~__print__~ indica la forma de como debe mostrarse por pantalla el objecto al usar la función ~print~.
+
+
+* Configuración
 
    <<file_config>>
    El fichero de configuración se localiza mediante el
-   estándar XDG. Normalmente localizado en */home/username/.config/{{{lang}}}*
+   estándar XDG. Normalmente localizado en ~/home/username/.config/scriptflow~
    La configuración es un fichero tipo YAML. El cual permite especificar
    parámetros de configuración, tales como el prompt, shell. O parametros
    específicos con la API Web; tales como la autenticación o posibles
    preferencias.
 
-*** Prompt
+** Prompt
 
     <<config_prompt>>
     En el modo interactivo del intérprete (repl) permite la personalización del
-    *prompt*. Tales como el color del texto, salida de la ejecución de comandos
+    *prompt*. Tales como la salida de la ejecución de comandos
     shell, y diversos comandos propios del intérprete. La configuración del
     prompt se puede realizar desde el fichero de configuración (véase:
     [[file_config]]) en la sección *repl*.
@@ -173,23 +388,17 @@
     #+BEGIN_SRC yaml
         repl:
           # ...
-          # A portion of code to define repl prompt (Default: "{$pwd} >>>")
-          prompt: "{$pwd} >>> "
+          prompt: |
+             $"pwd".exec().strip() ++ " >>> "
           # ...
     #+end_src
 
-    El prompt permite diferentes añadir texto al mismo desde distintas fuentes.
-    Y realizar un minimo de personalizaciones visuales en el color de texto que
-    conforma el prompt.
+    La configuración del prompt debe ser una expresión de {{{lang_name}}}.
 
-    - {#.....}
-    - {clear_color}
-    - {$date YY}
-    - {list_modules}
-
-** REPL
+* REPL
    El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~ o con la
-   finalización de ejecución de un *script* con la opción ~-e~. Una vez,
+   finalización de ejecución de un *script* con la opción ~-e~. Se pueden ver más opciones del
+   ejecutable del intérprete mediante ~scriptflow --help~. Una vez,
    iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado
    (configuración véase: [[config_prompt]]).
 
@@ -197,13 +406,22 @@
    lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
    puede ver una lista de los comandos con ~:help~
 
-*** :instr
+   - ~:instr~
+
     Permite visualizar, a que instrucciones se traduce el código. Estas
-    instrucciones (vease: [[intermediate_lang]])
+    instrucciones son parciales solo sirven de guía. (Véase: [[intermediate_lang]])
 
-** Arquitectura del proyecto
+   - ~:mem~
 
-*** Introducción
+     Muestra parcialmente las variables disponibles en memoria.
+
+   - ~:quit~
+
+     Sale del intérprete.
+
+* Arquitectura del proyecto
+
+** Introducción
 
     El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
     requiere diferentes enfoques al realizar el diseño del interprete. Ya que
@@ -215,18 +433,18 @@
     Dado un fichero de entrada con el código escrito en {{{lang_name}}}.
 
     #+BEGIN_SRC python
-      fun say_hi name:
+    fun say_hi name:
       "Hola, " ++ name
 
-      say_hi("Mundo")
+    say_hi("Mundo")
     #+end_src
 
 
-    Se procede al "parseo" del código, el cual, se realiza a dos fases. La primera el
-    "tokenizador". Se encarga de transformar, el texto en de entrada en una
+    Se procede al /parseo/ del código, el cual, se realiza a dos fases. La primera el
+    /tokenizador/, se encarga de transformar, el texto en de entrada, en una
     secuencia de /tokens/. Estos tokens representan los elementos importantes
-    que se usarán para generar el *AST*. Cada token contiene la información
-    necesaria para reconstruir el código.
+    que se usarán para generar el AST (Abstract Syntax Tree). Cada /token/ contiene la información
+    necesaria para reconstruir la parte esencial del código.
 
     #+BEGIN_SRC haskell
       [FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
@@ -235,14 +453,14 @@
       NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
     #+end_src
 
-    En esta fase de "tokenización", se procede a identificar los niveles de
-    indentación en el código en el caso de que se este usando la sintáxis sin
-    llaves. El proceso que realiza el "tokenizador" simplemente añade las
-    correspondientes llaves en la secuencia. Estos /tokens/ se identifican con
+    En esta fase de /tokenización/, se procede a identificar los niveles de
+    indentación en el código en el caso necesario (Para más información ir: [[identacion]]).
+    El /tokenizador/ procede a añadir las llaves necesarias en el caso de usar la
+    gramática del lenguage sensible al contexto. Estos /tokens/ se identifican con
     ~OBraceT~ y ~CBraceT~.
 
-    La segunda fase del "parseo" se encarga de generar el árbol sintáctico
-    abstracto o sus siglas en inglés *AST*.
+    La segunda fase del /parseo/ se encarga de generar el árbol sintáctico
+    abstracto o sus siglas en inglés AST (Abstract Syntax Tree).
 
     #+BEGIN_SRC haskell
       SeqExpr [
@@ -261,12 +479,11 @@
       ]
     #+end_src
 
-    La salida del *AST* está simplificada, ya que se tiene que guardar
-    información de la posición dentro del fichero (columna, fila, y offset)
-    de cada elemento del *AST*.
+    La salida del AST está simplificada en este ejemplo, se puede ver una salida más detallada,
+    añadiendo una mayor verbosidad ~scriptflow -v~ (Ver ~scriptflow --help~ para más información).
 
-    Este proceso se realiza mediante un *parser combinador*, el cual se comporta de
-    forma parecida a los *PEGs*. Un ejemplo simplificado es la definción de
+    Este proceso se realiza mediante un /parser combinador/, el cual se comporta de
+    forma parecida a los PEGs. Un ejemplo simplificado es la definción de
     una función:
 
     #+BEGIN_SRC haskell
@@ -302,8 +519,8 @@
       ]
     #+end_src
 
-    Una de la últimas fases es la conversion del AST a un conjunto de
-    instrucciones simplificado.
+    Una de la últimas fases es la conversion del AST al conjunto de
+    instrucciones simplificado. (Vease: [[intermediate_lang]])
 
     #+BEGIN_SRC haskell
       Assign var_0
@@ -313,45 +530,118 @@
       CallCommand var_0 ["Mundo"]
     #+end_src
 
-    Y de esta foma es como se representa el código guardado en memoria. Es decir, las
+    Y de esta foma es como se representa el código en memoria. Es decir, las
     funciones que se definan su contenido es guardado en este formato.
 
-    Y como se puede observar "OFunc" no es una instrucción si no, un objeto.
+** Árbol abstracto sintáctico
 
-    El conjunto de instrucciones definidas es el siguiente.
+    El AST (Abstract Syntax Tree) de {{{lang_name}}} ha pasado por diversos cambios en el transcurso del proyecto. Inicialmente
+    se considero usar el modelo conceptual que se aplica en el paquete "language-haskell-ext" el cual codifica el AST de forma genérica
+    para que en cada nodo se encuentre el componente genérico. Este componente, se fija en el AST a lo largo de todos los nodos lo que
+    que conlleva a crear un componente complejo e innecesario en la mayoría de los nodos. Se crea un AST poco flexible.
+
+    La solución a este problema se encontró dentro de los /papers/ que estan siendo implementados en el propio /GHC/. En el /paper/[Trees that Grow]
+    se decribe como se logra una estructura de datos maś flexible que la convencional. Que por medio de los tipos de familia abiertos (Open Family types)
+    se logra modificar el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
+
+** Lenguaje intermedio
+
+    <<intermediate_lang>> La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
+    que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de {{{lang_name}}
+    Este conjunto de instrucciones se encuentra expresado en ADT (Abstract Data Tree), de tal forma que encaje con la estructura
+    de datos mónada libre (/Free Monad/). Este estructura, secuencia las instrucciones y permiten usar la notación /do/ de Haskell.
+
+** Interoperabilidad
+
+    La metaprogramación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
+    ya testeadas de Haskell, en {{{lang_name}}}. Únicamente realizando cambios oportunos, como el orden de los argumentos.
+
+    El desarrollo de esta característica se basa en la definición de un isomorfismo entre los tipos de datos de haskell y los de {{{lang_name}}}.
+    este isomorfismo se encuentra en las clases de tipo =FromObject= y =ToObject=.
+
+    Apesar de este isomorfismo, existe una dificultad añadida debido a que las funciones en Haskell son currificadas. Por ejemplo dada la siguiente
+    función =f= que recibe dos parametros y retorna un =Bool=.
 
     #+BEGIN_SRC haskell
-      data Instruction next
-        = CallCommand !Info !AddressRef ![Object] (Object -> next)
-        -- ^ Make a call to and defined function
-        | Assign !Info !AddressRef !Object (Object -> next)
-        -- ^ Assign an object to local variable
-        | DropVar !Info !AddressRef next
-        -- ^ Remove a var from memory
-        | GetVal !Info !AddressRef (Object -> next)
-        -- ^ Retrieve a object from a memory reference
-        | Loop !Info !Object (Object -> Prog) next
-        -- ^ Loop over a object
-        | Cond !Info !Object
-            Prog
-            Prog
-            (Object -> next)
-        -- ^ If sentence given a object
+    f :: Int -> Int -> Bool
     #+END_SRC
 
-    La estructura de datos puede intimidar, pero su uso simplifica manejo de
-    este conjunto de instrucciones. La Free Monad permite trabajar esta
-    estructura como una lista con peculiaridades.
+    Se debe eliminar esta currificación, para que el tipo concuerde con algo más uniforme.
 
-    Ejecución
+    #+BEGIN_SRC
+    f :: [Int] -> Bool
+    #+END_SRC
 
-    En lo relativo a la ejecución principalmente se trata de ejecutar las
-    instrucciones una tras otra. En cuanto a la memoria, actualmente se
-    encuentra en proceso de desarrollo. Se tiene implementado de tal forma
-    que el scope indique que variables pueden ser descartadas. O quizás se
-    realize otro módulo específico para tal tarea.
+    La primera solución, que resuelve el problema, se hizo mediante clases de tipos.
+    #+BEGIN_SRC haskell
+    class Normalize a
+       normalize :: a -> [Object] -> Object
 
+    instance ToObject a => Normalize a where
+       normalize = -- implementación omitida
 
-*** Lenguaje intermedio
+    instance (ToObject a, Normalize r) => Normalize (a -> r) where
+       normalize = -- implementación omitida
+    #+END_SRC
 
-    <<intermediate_lang>>
+    Las cuales mediante el uso de la recursividad entre instancias de las clases de tipos se resolvía el problema. Sin embargo
+    el método no es eficiente. Y requiere de una clase auxiliar para contar el número de argumentos que posée una función, la cual use
+    sobrelapamiento entre instancias.
+
+    La opción actual reside crear las /wrappers/ a medida para cada función convertida. Para ello se implementado una solución
+    basada en el uso de la meta-programación conocida en Haskell por /Template Haskell/.
+
+    Ejemplo de código auto-generado, dada la función:
+    #+BEGIN_SRC haskell
+    (>) :: Int -> Int -> Bool
+    (>) = -- implementación omitida
+    #+END_SRC
+
+    La salida obtenida es:
+    #+BEGIN_SRC haskell
+    greaterThan :: [Object] -> StWorld Object
+    greaterThan objs =
+      let expectedArgs = 2
+          givenArgs    = length objs
+      case compare givenArgs expectedArgs of
+        LT -> throw $ NumArgsMissmatch expectedArgs givenArgs
+        GT -> throw $ NumArgsMissmatch expectedArgs givenArgs
+        EQ -> do
+          let [arg1, arg2] = objs
+          val1 <- fromObject arg1
+          val2 <- fromObject arg2
+          toObject ((>) val1 val2)
+    #+END_SRC
+
+    Una de las desventajas de esta solución se encuentra en las propias limitaciones del /Template Haskell/. Debido a que no es posible
+    inferir el tipo de una expresión, lo que requiere añadir el tipo de la expressión.
+    #+BEGIN_SRC haskell
+    $(normalize [| (>) :: Int -> Int -> Bool |])
+                -- Se repite el tipo obligatoriamente
+    #+END_SRC
+
+    La implementación de la "meta-función" se encuentra en el módulo /Compiler.Prelude.Th/.
+
+    Otro factor de interoperabilidad a destacar, es la creación de un /QuasiQuoter/. Lo que permite incrustar fragmentos de {{{lang_name}}}
+    dentro de Haskell. Y dentro del propio /QuasiQuoter/ realizar llamadas a funciones de Haskell usando el mecanismo anteriormente descrito
+    para la conversión de funciones entre ambos lenguajes.
+
+    #+BEGIN_SRC haskell
+    requestLogin :: String -> String -> IO ()
+    requestLogin = -- se omite implementación
+
+    githubClassSC :: Interpreter Object
+    githubClassSC = [scriptflow|
+        # Github base class
+        class Github:
+            fun login:
+              print "Logging to get authorization token to use in future connections"
+              username = get_line "User Name: "
+              password = ask_password "*" "Password: "
+              __call__ ${requestLogin} username password
+      |]
+    #+END_SRC
+
+* Conclusiones
+
+  TODO:

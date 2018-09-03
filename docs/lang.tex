@@ -1,0 +1,691 @@
+% Created 2018-09-03 lun 15:37
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Eleazar Díaz Delgado }
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={Eleazar Díaz Delgado },
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.1 (Org mode 9.1.14)},
+ pdflang={English}}
+\begin{document}
+
+\title{Un lenguaje para realizar DSLs}
+\author{Eleazar Díaz Delgado}
+
+\date{La Laguna, 3 de Septiembre de 2018}
+
+\makeatletter
+\begin{titlepage}
+    \includegraphics[width=40mm]{ull-logo.jpg}\\[4ex]
+    \begin{center}
+        {\huge \bfseries  Trabajo de Fin de Grado }\\[2ex]
+        {\LARGE  Grado en Ingeniería Informática}\\[5ex]
+    \end{center}
+    \begin{flushright}
+        {\huge \bfseries  \@title }\\[2ex]
+        {\huge  A language to make DSLs }\\[2ex]
+        {\LARGE  \@author}
+    \end{flushright}
+    \vfill
+    \begin{center}
+        {\LARGE \@date}
+    \end{center}
+
+\end{titlepage}
+\makeatother
+\thispagestyle{empty}
+\newpage
+
+
+D. Casiano Rodríguez León, con N.I.F. 42.020.072-S profesor Titular de Universidad adscrito al Departamento de TODO:Nombre del Departamento de la Universidad de La Laguna, como tutor
+
+{\large \bfseries C E R T I F I C A (N)}
+
+Que la presente memoria titulada: “Un lenguaje para realizar DSLs"
+
+ha sido realizada bajo su dirección por D. Eleazar Díaz Delgado
+con N.I.F. 54.117.199-Q.
+
+Y para que así conste, en cumplimiento de la legislación vigente y a los efectos oportunos firman la presente en La Laguna, 3 de Septiembre de 2018.
+\newpage
+\begin{flushright}
+    {\huge  Agradecimientos }\\[2ex]
+\end{flushright}
+
+\newpage
+\begin{flushleft}
+  {\huge  Licencia }\\[2ex]
+\end{flushleft}
+
+\begin{center}
+  \includegraphics[width=40mm]{license.png}\\[4ex]
+\end{center}
+© Esta obra está bajo una licencia de Creative Commons Reconocimiento-NoComercial 4.0 Internacional
+
+\newpage
+\begin{center}
+  {\huge  Resumen }\\[2ex]
+\end{center}
+
+{\fontsize{14}{11}\selectfont
+   ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de scripts para la automatización de tareas, que requieran configuraciones.
+   Se trata de un lenguaje basado en expresiones que da la opción a ser sensible a la indentación. Incluye una integración con Haskell por el
+   cual puede ser ampliable.
+   Este lenguaje propone diversas herramientas para ser usado como un DSL, usando la extensibilidad via Haskell.
+}
+
+\newpage
+\begin{center}
+  {\huge  Abstract }\\[2ex]
+\end{center}
+
+{\fontsize{14}{11}\selectfont
+   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of config files.
+   It is a language based in expressions that allows you to use a syntax identation-sensitive. It is includes a integration with Haskell the language
+   which one was built in. It can be extended using from scripts.
+   This language provide several tools to be used as DSL.
+}
+
+\newpage
+
+\renewcommand{\contentsname}{Índice general}
+
+\tableofcontents
+
+\newpage
+
+
+\section{Introducción}
+\label{sec:org650b5e2}
+
+Scriptflow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios especificos.
+Los posibles DSL creados en esta plataforma. Son pensados para ser utilizados via terminal, o texto. Incluyendo
+TODO:
+
+\section{Metodología}
+\label{sec:org3e3894b}
+
+TODO:
+
+\section{Lenguaje ScriptFlow}
+\label{sec:org07793b5}
+
+ScriptFlow es un lenguaje de tipado dinámico para el desarrollo de \emph{scripts} para la automatización de tareas
+con servicios \emph{webs}. La automatización de esta tareas se plantea mediante el uso de las propias API del servicio web, ya sea REST, o GraphQL.
+
+\subsection{Sintáxis}
+\label{sec:orge5634bd}
+
+ScriptFlow se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
+\emph{python} o \emph{c++}.
+
+Los comentarios se comienzan con \texttt{\#} y el retorno de línea delimita su fin. Los comentarios de lineas no están sujetos a reglas de indentación
+lo que permite cierta flexibilidad. Estos pueden también ser añadidos al final de una expresión.
+
+\begin{verbatim}
+# Variable ejemplo
+   # Comentario
+example = 1 + 1 # Commentario
+
+if example == 2:
+# Otro ejemplo
+  print "something"
+\end{verbatim}
+
+\subsubsection{Identación}
+\label{sec:orgb8f3e50}
+
+\label{orgc30c940}
+El lenguaje puede usar su sintáxis alternative sensible a la indentación como \emph{python} o \emph{haskell} pero se trata de algo opcional que puede ser omitido usando las llaves "\{\}":
+
+\begin{verbatim}
+fun saludar_a nombre:
+  print("Saludos, " ++ nombre)
+\end{verbatim}
+
+O la sintáxis equivalente al estilo de la familia de \emph{C}:
+\begin{verbatim}
+fun saludar_a nombre {
+  print("Saludos, " ++ nombre)
+}
+\end{verbatim}
+
+\subsubsection{Literales}
+\label{sec:org3f6a920}
+
+El lenguaje cuenta con diversas primitivas integradas por defecto, como
+booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
+shell.
+
+\begin{verbatim}
+
+# none
+none
+
+# Booleanos
+true
+false
+
+# Enteros
+12 + 4 # ...
+
+# Decimales (Se utiliza un double para su representanción actualmente)
+45.5
+
+# Las cadenas pueden ser multilineas se crean con "
+"Un\nejemplo
+de cadena"
+
+# Las regex se construyen con r" y terminan con ". Usan la sintaxis de PCRE.
+r"a*"  # Sin implementar aún
+
+# Los comandos shell se crean con
+$cd #HOME/repos; nvim .$
+Ó mutltilinea
+$
+cd #HOME/repos
+nvim .
+$
+
+O la sintaxis alternativa
+$"pwd"
+\end{verbatim}
+
+A su vez también existen tipos contenedores tales como los vectores y los
+diccionarios o tablas hash.
+
+\begin{verbatim}
+# Vectores
+[45, "tipos", []] # los vectores pueden contener diferentes tipos en el mismo vector
+
+# Diccionarios
+{ test -> [1,2,3,47,5]
+  , author ->
+  { name -> "Flynn"
+    , "vive en" -> "tal sitio"
+  }
+}
+
+\end{verbatim}
+
+\subsubsection{Expressiones}
+\label{sec:org24928f6}
+El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitan de forma diferente según en que contexto
+se encuentren.
+Las expresiones en la base del archivo, tales como;
+\begin{verbatim}
+print "Hello World"
+
+var = 67
+
+func_call
+   first_param
+   second_param
+\end{verbatim}
+
+Son delimitadas por el final de linea, o en el caso de exista cierto nivel de indentación mayor que el base '0' se agrupan con la primera sin indentación. Es decir, en el caso de \texttt{func\_call}
+la expresion final sería \texttt{func\_call(first\_param, second\_param)}. Se puede usar el carácter ';' para realizar esta separación (el cual es opcional al nivel base).
+
+En el caso de expresiones más complejas que requieran un subconjunto de expresiones, hablamos de \texttt{if}, \texttt{for} \ldots{}. Se contemplan dos casos para realizar la terminación de las expresiones.
+Si se usa sintáxis sensible a la indentación, los niveles de indentación determinarán donde se halla la terminación de las expressiones. Pero, por si el contrario se usa sintáxis con llaves
+se necesitará añadir ';' para indicar la terminación de cada expressión. Y opcionalmente se puede quitar el ';' de la última expressión.
+
+\begin{verbatim}
+if always_true:
+  make_test test1 test2
+  other_func
+     arg1
+     arg2
+  end_test arg_end
+
+if always_true {
+  make_test test1 test2;
+  other_func
+     arg1
+     arg2;
+  end_test arg_end
+}
+\end{verbatim}
+
+\subsubsection{Funciones}
+\label{sec:org2e553c9}
+
+La sintáxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
+a que la primeras son traducidas a una función lambda asignada a una variable.
+
+La sintáxis de las funciones lambda es la siguiente:
+\begin{verbatim}
+# Con identación
+lam arg1 arg2:
+   arg1
+
+# O alternativamente
+lam arg1 arg2 { arg1 }
+\end{verbatim}
+
+Las funciones con nombre en el siguiente ejemplo;
+\begin{verbatim}
+fun func_name arg1 arg2 { arg1 }
+
+fun func_name arg1 arg2:
+   arg1
+\end{verbatim}
+
+\subsection{Orientado a objetos}
+\label{sec:orgb530cb0}
+
+\subsubsection{Objectos}
+\label{sec:org8c3a883}
+Un objeto en ScriptFlow es un diccionario con la clase a la que pertenece, si se diese el caso de ser
+un objeto instanciado.
+
+En el siguiente ejemplo se enumeran las distintas formas de crear un objeto:
+
+\begin{verbatim}
+# A partir de un diccionario vacío
+obj = {}
+
+# A partir de none
+obj2 = none
+# Al asignar dentro de una varible establecidad `none` un "sub-item".
+# Automáticamente se genera un objeto con ese item dentro
+obj2.a = "ejemplo"
+> { a -> "ejemplo" }
+
+# A partir de una clase definida
+class Test {}
+# El constructor devolverá la instancia correspondiente
+obj3 = Test()
+\end{verbatim}
+
+Los objetos tienen diversas características incorporadas con el intérprete para mejorar su uso dentro de una DSL.
+
+Las funciones \texttt{use} y \texttt{unuse} permiten modificar el ámbito actual de búsqueda de variables, y simplificar ciertos escenarios.
+
+La resolución de nombres al usar \texttt{use} sobre un objeto. Tiene la menor precedencia dentro de la propia resolución del nombres, y
+la última llamada de \texttt{use} tiene mayor precedencia que las anteriores.
+
+Y la función \texttt{unuse} deshace el último \texttt{use} usado. Se tiene planeado en futuras versiones realizar automaticamente un \texttt{unuse} al salir de un ámbito.
+
+Un ejemplo ilustrativo de como trabaja esta funcionalidad dentro de un DSL.
+
+\begin{verbatim}
+class Github:
+  fun repositories {} # return a list of repositories
+  fun user_name {}
+class Repository:
+  fun name {}
+  fun issues {}
+
+gh = use Github()
+filter_reg = Regex gh.user_name
+for repo in repositories:
+  use repo
+  print name
+  print issues.filter(filter_reg)
+  unuse
+unuse
+\end{verbatim}
+
+\subsubsection{Clases}
+\label{sec:org2b3177b}
+El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
+de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
+usando el método especial \texttt{\_\_init\_\_}.
+
+Los métodos asociados al objeto internamente se pasan a si mismo como argumento usando la palabra
+reservada \texttt{self}. El lenguaje no soporta métodos estáticos.
+
+
+\begin{verbatim}
+class Repository {
+        fun __init__ new_name {
+            self.url = none
+            self.local_repo = none
+            self.name = new_name
+        }
+}
+\end{verbatim}
+
+La siguiente tabla muestra los métodos disponibles para sobrecargar.
+
+\begin{center}
+\begin{tabular}{lrll}
+Operador & Nivel de precedencia & Precedencia & Nombre método\\
+\hline
+** & 8 & Izquierda & \texttt{\_\_pow\_\_}\\
+\texttt{*} & 7 & Izquierda & \texttt{\_\_mul\_\_}\\
+\texttt{/} & 7 & Izquierda & \texttt{\_\_div\_\_}\\
+\% & 7 & Izquierda & \texttt{\_\_mod\_\_}\\
++ & 6 & Izquierda & \texttt{\_\_plus\_\_}\\
+- & 6 & Izquierda & \texttt{\_\_minus\_\_}\\
+++ & 5 & Derecha & \texttt{\_\_append\_\_}\\
+\texttt{==} & 4 & Izquierda & \texttt{\_\_eq\_\_}\\
+!= & 4 & Izquierda & \texttt{\_\_neq\_\_}\\
+/= & 4 & Izquierda & \texttt{\_\_neq\_\_}\\
+> & 4 & Izquierda & \texttt{\_\_gt\_\_}\\
+< & 4 & Izquierda & \texttt{\_\_lt\_\_}\\
+<= & 4 & Izquierda & \texttt{\_\_le\_\_}\\
+>= & 4 & Izquierda & \texttt{\_\_ge\_\_}\\
+\&\& & 3 & Derecha & \texttt{\_\_and\_\_}\\
+\(\vert{} \vert{}\) & 3 & Derecha & \texttt{\_\_or\_\_}\\
+\texttt{!} & 1 & Izquierda & \texttt{\_\_not\_\_}\\
+@ & 1 & Izquierda & \texttt{\_\_at\_\_}\\
+print & - & -- & \texttt{\_\_print\_\_}\\
+\end{tabular}
+\end{center}
+
+
+El método especial \texttt{\_\_print\_\_} indica la forma de como debe mostrarse por pantalla el objecto al usar la función \texttt{print}.
+
+
+\section{Configuración}
+\label{sec:org85e6880}
+
+\label{org0696008}
+El fichero de configuración se localiza mediante el
+estándar XDG. Normalmente localizado en \texttt{/home/username/.config/scriptflow}
+La configuración es un fichero tipo YAML. El cual permite especificar
+parámetros de configuración, tales como el prompt, shell. O parametros
+específicos con la API Web; tales como la autenticación o posibles
+preferencias.
+
+\subsection{Prompt}
+\label{sec:org50df81a}
+
+\label{org1dbde11}
+En el modo interactivo del intérprete (repl) permite la personalización del
+\textbf{prompt}. Tales como la salida de la ejecución de comandos
+shell, y diversos comandos propios del intérprete. La configuración del
+prompt se puede realizar desde el fichero de configuración (véase:
+\ref{org0696008}) en la sección \textbf{repl}.
+
+Por defecto, la sección del \emph{prompt} contiene la siguiente configuración:
+
+\begin{verbatim}
+repl:
+  # ...
+  prompt: |
+     $"pwd".exec().strip() ++ " >>> "
+  # ...
+\end{verbatim}
+
+La configuración del prompt debe ser una expresión de ScriptFlow.
+
+\section{REPL}
+\label{sec:org7b2643e}
+El \textbf{REPL} puede ser accedido mediante comando de líneas \texttt{scriptflow} o con la
+finalización de ejecución de un \textbf{script} con la opción \texttt{-e}. Se pueden ver más opciones del
+ejecutable del intérprete mediante \texttt{scriptflow -{}-help}. Una vez,
+iniciado el \textbf{REPL} se mostrará por defecto el \textbf{prompt} predeterminado
+(configuración véase: \ref{org1dbde11}).
+
+Desde el \textbf{REPL} se puede escribir cualquier tipo de expresión definida por el
+lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
+puede ver una lista de los comandos con \texttt{:help}
+
+\begin{itemize}
+\item \texttt{:instr}
+
+Permite visualizar, a que instrucciones se traduce el código. Estas
+instrucciones son parciales solo sirven de guía. (Véase: \ref{org5f95a9e})
+
+\item \texttt{:mem}
+
+Muestra parcialmente las variables disponibles en memoria.
+
+\item \texttt{:quit}
+
+Sale del intérprete.
+\end{itemize}
+
+\section{Arquitectura del proyecto}
+\label{sec:org8fed9d2}
+
+\subsection{Introducción}
+\label{sec:org1281b1a}
+
+El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
+requiere diferentes enfoques al realizar el diseño del interprete. Ya que
+no posée una interfaz orientada a objetos. Dada esta diferencia voy a
+detallar en cierta medida peculiaridades del desarrollo, en las siguientes
+secciones. Antes de ello empezaremos con un pequeño análisis de como
+funciona el intérprete.
+
+Dado un fichero de entrada con el código escrito en ScriptFlow.
+
+\begin{verbatim}
+fun say_hi name:
+  "Hola, " ++ name
+
+say_hi("Mundo")
+\end{verbatim}
+
+
+Se procede al \emph{parseo} del código, el cual, se realiza a dos fases. La primera el
+\emph{tokenizador}, se encarga de transformar, el texto en de entrada, en una
+secuencia de \emph{tokens}. Estos tokens representan los elementos importantes
+que se usarán para generar el AST (Abstract Syntax Tree). Cada \emph{token} contiene la información
+necesaria para reconstruir la parte esencial del código.
+
+\begin{verbatim}
+[FunT, NameIdT "say_hi", NameIdT "name", OBraceT,
+      LitTextT "Hola, ", OperatorT "++", NameIdT "name",
+CBraceT,
+NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
+\end{verbatim}
+
+En esta fase de \emph{tokenización}, se procede a identificar los niveles de
+indentación en el código en el caso necesario (Para más información ir: \ref{orgc30c940}).
+El \emph{tokenizador} procede a añadir las llaves necesarias en el caso de usar la
+gramática del lenguage sensible al contexto. Estos \emph{tokens} se identifican con
+\texttt{OBraceT} y \texttt{CBraceT}.
+
+La segunda fase del \emph{parseo} se encarga de generar el árbol sintáctico
+abstracto o sus siglas en inglés AST (Abstract Syntax Tree).
+
+\begin{verbatim}
+SeqExpr [
+      VarDecl (Simple "say_hi")
+                (FunDecl ["name"]
+                    (SeqExpr
+                      [Apply (Simple "++")
+                          [Factor (AStr "Hola, "),
+                          Identifier (Simple "name")]
+                      ]
+                    )
+                  )
+      ,
+      Apply (Simple "say_hi")
+            [SeqExpr [Factor (AStr "Mundo")]]
+]
+\end{verbatim}
+
+La salida del AST está simplificada en este ejemplo, se puede ver una salida más detallada,
+añadiendo una mayor verbosidad \texttt{scriptflow -v} (Ver \texttt{scriptflow -{}-help} para más información).
+
+Este proceso se realiza mediante un \emph{parser combinador}, el cual se comporta de
+forma parecida a los PEGs. Un ejemplo simplificado es la definción de
+una función:
+
+\begin{verbatim}
+parseFunDecl :: TokenParser Expression
+parseFunDecl = do
+  funT
+  funName <- nameIdT
+  params  <- many nameIdT
+  prog    <- parseBody
+  return (VarDecl
+    (Simple funName)
+    (FunDecl params prog))
+\end{verbatim}
+
+Una vez generado se realiza la comprobación del \textbf{scope} del AST. En esta fase
+comprueban si están usando variables que no existen, o si sobreescriben
+otra. Y se procede al renombrado de las variables.
+
+\begin{verbatim}
+SeqExpr [
+      VarDecl var_0        -- say_hi
+                 (FunDecl [param_0] -- name
+                    (SeqExpr
+                       [Apply op_0   -- "++"
+                          [Factor (AStr "Hola, "),
+                           Identifier param_0]
+                       ]
+                    )
+                  )
+      ,
+      Apply var_0     -- say_hi
+            [SeqExpr [Factor (AStr "Mundo")]]
+]
+\end{verbatim}
+
+Una de la últimas fases es la conversion del AST al conjunto de
+instrucciones simplificado. (Vease: \ref{org5f95a9e})
+
+\begin{verbatim}
+Assign var_0
+    OFunc [param_0]
+          CallCommand op_0 ["Hola, ", GetVal param_0]
+
+CallCommand var_0 ["Mundo"]
+\end{verbatim}
+
+Y de esta foma es como se representa el código en memoria. Es decir, las
+funciones que se definan su contenido es guardado en este formato.
+
+\subsection{Árbol abstracto sintáctico}
+\label{sec:orgdb43592}
+
+El AST (Abstract Syntax Tree) de ScriptFlow ha pasado por diversos cambios en el transcurso del proyecto. Inicialmente
+se considero usar el modelo conceptual que se aplica en el paquete "language-haskell-ext" el cual codifica el AST de forma genérica
+para que en cada nodo se encuentre el componente genérico. Este componente, se fija en el AST a lo largo de todos los nodos lo que
+que conlleva a crear un componente complejo e innecesario en la mayoría de los nodos. Se crea un AST poco flexible.
+
+La solución a este problema se encontró dentro de los \emph{papers} que estan siendo implementados en el propio \emph{GHC}. En el \emph{paper}[Trees that Grow]
+se decribe como se logra una estructura de datos maś flexible que la convencional. Que por medio de los tipos de familia abiertos (Open Family types)
+se logra modificar el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
+
+\subsection{Lenguaje intermedio}
+\label{sec:org7939ef6}
+
+\label{org5f95a9e} La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
+que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de \{\{\{lang\(_{\text{name}}\)\}\}
+Este conjunto de instrucciones se encuentra expresado en ADT (Abstract Data Tree), de tal forma que encaje con la estructura
+de datos mónada libre (\emph{Free Monad}). Este estructura, secuencia las instrucciones y permiten usar la notación \emph{do} de Haskell.
+
+\subsection{Interoperabilidad}
+\label{sec:org189a1dd}
+
+La metaprogramación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
+ya testeadas de Haskell, en ScriptFlow. Únicamente realizando cambios oportunos, como el orden de los argumentos.
+
+El desarrollo de esta característica se basa en la definición de un isomorfismo entre los tipos de datos de haskell y los de ScriptFlow.
+este isomorfismo se encuentra en las clases de tipo \texttt{FromObject} y \texttt{ToObject}.
+
+Apesar de este isomorfismo, existe una dificultad añadida debido a que las funciones en Haskell son currificadas. Por ejemplo dada la siguiente
+función \texttt{f} que recibe dos parametros y retorna un \texttt{Bool}.
+
+\begin{verbatim}
+f :: Int -> Int -> Bool
+\end{verbatim}
+
+Se debe eliminar esta currificación, para que el tipo concuerde con algo más uniforme.
+
+\begin{verbatim}
+f :: [Int] -> Bool
+\end{verbatim}
+
+La primera solución, que resuelve el problema, se hizo mediante clases de tipos.
+\begin{verbatim}
+class Normalize a
+   normalize :: a -> [Object] -> Object
+
+instance ToObject a => Normalize a where
+   normalize = -- implementación omitida
+
+instance (ToObject a, Normalize r) => Normalize (a -> r) where
+   normalize = -- implementación omitida
+\end{verbatim}
+
+Las cuales mediante el uso de la recursividad entre instancias de las clases de tipos se resolvía el problema. Sin embargo
+el método no es eficiente. Y requiere de una clase auxiliar para contar el número de argumentos que posée una función, la cual use
+sobrelapamiento entre instancias.
+
+La opción actual reside crear las \emph{wrappers} a medida para cada función convertida. Para ello se implementado una solución
+basada en el uso de la meta-programación conocida en Haskell por \emph{Template Haskell}.
+
+Ejemplo de código auto-generado, dada la función:
+\begin{verbatim}
+(>) :: Int -> Int -> Bool
+(>) = -- implementación omitida
+\end{verbatim}
+
+La salida obtenida es:
+\begin{verbatim}
+greaterThan :: [Object] -> StWorld Object
+greaterThan objs =
+  let expectedArgs = 2
+      givenArgs    = length objs
+  case compare givenArgs expectedArgs of
+    LT -> throw $ NumArgsMissmatch expectedArgs givenArgs
+    GT -> throw $ NumArgsMissmatch expectedArgs givenArgs
+    EQ -> do
+      let [arg1, arg2] = objs
+      val1 <- fromObject arg1
+      val2 <- fromObject arg2
+      toObject ((>) val1 val2)
+\end{verbatim}
+
+Una de las desventajas de esta solución se encuentra en las propias limitaciones del \emph{Template Haskell}. Debido a que no es posible
+inferir el tipo de una expresión, lo que requiere añadir el tipo de la expressión.
+\begin{verbatim}
+$(normalize [| (>) :: Int -> Int -> Bool |])
+            -- Se repite el tipo obligatoriamente
+\end{verbatim}
+
+La implementación de la "meta-función" se encuentra en el módulo \emph{Compiler.Prelude.Th}.
+
+Otro factor de interoperabilidad a destacar, es la creación de un \emph{QuasiQuoter}. Lo que permite incrustar fragmentos de ScriptFlow
+dentro de Haskell. Y dentro del propio \emph{QuasiQuoter} realizar llamadas a funciones de Haskell usando el mecanismo anteriormente descrito
+para la conversión de funciones entre ambos lenguajes.
+
+\begin{verbatim}
+requestLogin :: String -> String -> IO ()
+requestLogin = -- se omite implementación
+
+githubClassSC :: Interpreter Object
+githubClassSC = [scriptflow|
+    # Github base class
+    class Github:
+        fun login:
+          print "Logging to get authorization token to use in future connections"
+          username = get_line "User Name: "
+          password = ask_password "*" "Password: "
+          __call__ ${requestLogin} username password
+  |]
+\end{verbatim}
+
+\section{Conclusiones}
+\label{sec:orgbda8938}
+
+TODO:
+\end{document}

@@ -4,4 +4,8 @@ class Test:
     self.b = b_value
 
 
-# t = Test("Hello", "World")
+t = Test("Hello", "World")
+
+print "hello"
+
+tt= 4
