@@ -701,13 +701,30 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   - The basic objects, contains few methods to be used between themselves.
   - In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
 
-* Presupuestos
+* Presupuesto
 
-  Se ha realizado una estimación de los costes realizados en el proyecto.
+  En esta sección se indican los costes totales de la realización del proyecto. No existen costes de
+  licencia, tanto en las propias dependencias del proyecto las cuales son BSD3 compatibles. Como software
+  empleado en el mismo proyecto, debido al uso de software libre, desde el SO hasta los IDE usados.
 
-  | Tipo | Descripción |
-  |------+-------------|
-  |      |             |
+  En cuanto al coste material, se ha realizado un estimación del equipo necesario para realizar el proyecto y diversas necesidades básicas.
+  Estas necesidades englogan el coste de alquiler de una oficina, consumo eléctrico, coste de acceso a internet.
+
+  El desarrollo está definido a 4 meses. Aquellos valores, los cuales la factura sea mensual, se indicará el coste total de los meses usados.
+
+  | Tipo                                 | Descripción   |
+  |--------------------------------------+---------------|
+  | Equipo de Desarrollo                 | 400€ - 600€   |
+  | Alquiler Oficina - 4 meses           | 800€ - 1000€  |
+  | ADSL - 4 meses                       | 100€ - 120€   |
+  | Electricidad                         | 120€ - 200€   |
+  | Programación del software - 4 meses* | 5760€         |
+  |--------------------------------------+---------------|
+  | Total                                | 7180€ - 7680€ |
+
+
+  *El desarrollo del software, se ha estimado el coste a la hora en España 12€.
+
 
 \renewcommand{\refname}{Bibliografía}
 

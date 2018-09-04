@@ -1,4 +1,4 @@
-% Created 2018-09-03 lun 23:03
+% Created 2018-09-04 mar 07:01
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -124,7 +124,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 
 \section{Introducción}
-\label{sec:org5c9bb11}
+\label{sec:org0b5b072}
 
 ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
 lenguaje es combinar ficheros de configuración, con características del lenguaje y las APIs. Con el fin de realizar los lenguajes de dominio específico,
@@ -133,7 +133,7 @@ para trabajar mediante via textual o terminal. Es decir, no está pensado para r
 scripts y un REPL customizable según el DSL usado.
 
 \section{Metodología}
-\label{sec:org74980ec}
+\label{sec:org998e0d3}
 
 Se usado el lenguaje de programación Haskell, debido a su capacidad para trabajar con ADT, y estructuras abstractas. Permite gestionar
 el código mejor que la representación equivalente usando objetos, en un lenguaje POO. Junto con la infraestructura \emph{Stack-Haskell} para
@@ -152,10 +152,10 @@ plugin de entre ellos LSP (Language Server Protocol).
 Los recursos son obtenidos de la propia documentación de las librerías, como información adicional que se encuentra en Internet.
 
 \section{Lenguaje ScriptFlow}
-\label{sec:org21d94ce}
+\label{sec:orgd69040d}
 
 \subsection{Sintáxis}
-\label{sec:orgf5783b0}
+\label{sec:org1eb5cf1}
 
 ScriptFlow se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
 \emph{python} o \emph{c++}.
@@ -174,9 +174,9 @@ if example == 2:
 \end{verbatim}
 
 \subsubsection{Identación}
-\label{sec:org661b8d3}
+\label{sec:org7f45394}
 
-\label{org6e76675}
+\label{org4f7feac}
 El lenguaje puede usar su sintáxis sensible a la indentación como \emph{python} o \emph{haskell} pero se trata de algo opcional que puede ser omitido usando las llaves "\{\}":
 
 \begin{verbatim}
@@ -192,7 +192,7 @@ fun saludar_a nombre {
 \end{verbatim}
 
 \subsubsection{Literales}
-\label{sec:org9a7d8de}
+\label{sec:org1e6505c}
 
 El lenguaje cuenta con diversas primitivas integradas por defecto, como
 booleanos, enteros, decimales, cadenas, expresiones regulares, comandos
@@ -255,7 +255,7 @@ diccionarios o tablas hash.
 \end{verbatim}
 
 \subsubsection{Expressiones}
-\label{sec:org7ee14d5}
+\label{sec:org0feb118}
 El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitadas de forma diferente según en que contexto
 se encuentren.
 Las expresiones en la base del archivo, tales como;
@@ -294,7 +294,7 @@ if always_true {
 \end{verbatim}
 
 \subsubsection{Funciones}
-\label{sec:org63f114c}
+\label{sec:org16020fd}
 
 La sintáxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
 a que la primeras son traducidas a una función lambda asignada a una variable.
@@ -318,10 +318,10 @@ fun func_name arg1 arg2:
 \end{verbatim}
 
 \subsection{Orientado a objetos}
-\label{sec:org3213ca5}
+\label{sec:org183fe07}
 
 \subsubsection{Objectos}
-\label{sec:orge75dfae}
+\label{sec:org68dfb11}
 Un objeto en ScriptFlow es un diccionario con la clase a la que pertenece, en el caso de ser
 un objeto instanciado.
 
@@ -376,7 +376,7 @@ unuse
 \end{verbatim}
 
 \subsubsection{Clases}
-\label{sec:org71ea073}
+\label{sec:orge1f36d4}
 El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
 de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
 usando el método especial \texttt{\_\_init\_\_}.
@@ -428,9 +428,9 @@ El método especial \texttt{\_\_print\_\_} indica la forma visualización, que d
 
 
 \section{Configuración}
-\label{sec:orgb5495bd}
+\label{sec:org3a99a7f}
 
-\label{org38c8232}
+\label{org320ece6}
 El fichero de configuración se localiza mediante el
 estándar XDG. Normalmente localizado en \texttt{/home/username/.config/scriptflow}
 La configuración es un fichero tipo YAML. El cual permite especificar
@@ -439,14 +439,14 @@ específicos con la API Web; tales como la autenticación o posibles
 preferencias.
 
 \subsection{Prompt}
-\label{sec:orge9698d7}
+\label{sec:orgc6d9ef0}
 
-\label{org1230f1c}
+\label{org70c5ce7}
 En el modo interactivo del intérprete (repl) permite la personalización del
 \textbf{prompt}. Tales como la salida de la ejecución de comandos
 shell, y diversos comandos propios del intérprete. La configuración del
 prompt se puede realizar desde el fichero de configuración (véase:
-\ref{org38c8232}) en la sección \textbf{repl}.
+\ref{org320ece6}) en la sección \textbf{repl}.
 
 Por defecto, la sección del \emph{prompt} contiene la siguiente configuración:
 
@@ -461,12 +461,12 @@ repl:
 La configuración del prompt debe ser una expresión de ScriptFlow.
 
 \section{REPL}
-\label{sec:orgae75343}
+\label{sec:orga2b25a1}
 El \textbf{REPL} puede ser accedido mediante comando de líneas \texttt{scriptflow} o con la
 finalización de ejecución de un \textbf{script} con la opción \texttt{-e}. Se pueden ver más opciones del
 ejecutable del intérprete mediante \texttt{scriptflow -{}-help}. Una vez,
 iniciado el \textbf{REPL} se mostrará por defecto el \textbf{prompt} predeterminado
-(configuración véase: \ref{org1230f1c}).
+(configuración véase: \ref{org70c5ce7}).
 
 Desde el \textbf{REPL} se puede escribir cualquier tipo de expresión definida por el
 lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
@@ -476,7 +476,7 @@ puede ver una lista de los comandos con \texttt{:help}
 \item \texttt{:instr}
 
 Permite visualizar, a que instrucciones se traduce el código. Estas
-instrucciones son parciales solo sirven de guía. (Véase: \ref{orgd492490})
+instrucciones son parciales solo sirven de guía. (Véase: \ref{orgd7da428})
 
 \item \texttt{:mem}
 
@@ -488,10 +488,10 @@ Sale del intérprete.
 \end{itemize}
 
 \section{Arquitectura del proyecto}
-\label{sec:org5aa4036}
+\label{sec:orgbb458c0}
 
 \subsection{Introducción}
-\label{sec:org9d4bce0}
+\label{sec:org88a1b05}
 
 El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
 requiere diferentes enfoques al realizar el diseño del interprete. Ya que
@@ -524,7 +524,7 @@ NameIdT "say_hi",OParenT,LitTextT "Mundo",CParenT]
 \end{verbatim}
 
 En esta fase de \emph{tokenización}, se procede a identificar los niveles de
-indentación en el código en el caso necesario (Para más información ir: \ref{org6e76675}).
+indentación en el código en el caso necesario (Para más información ir: \ref{org4f7feac}).
 El \emph{tokenizador} procede a añadir las llaves necesarias en el caso de usar la
 gramática del lenguage sensible al contexto. Estos \emph{tokens} se identifican con
 \texttt{OBraceT} y \texttt{CBraceT}.
@@ -588,7 +588,7 @@ SeqExpr [
 \end{verbatim}
 
 Una de la últimas fases es la conversion del AST al conjunto de
-instrucciones simplificado. (Vease: \ref{orgd492490})
+instrucciones simplificado. (Vease: \ref{orgd7da428})
 
 \begin{verbatim}
 Assign var_0
@@ -602,7 +602,7 @@ Y de esta foma es como se representa el código en memoria. Es decir, las
 funciones que se definan su contenido es guardado en este formato.
 
 \subsection{Árbol abstracto sintáctico}
-\label{sec:org7d4741d}
+\label{sec:org2fcbaae}
 
 El AST (Abstract Syntax Tree) de ScriptFlow ha pasado por diversos cambios en el transcurso del proyecto. Inicialmente
 se considero usar el modelo conceptual que se aplica en el paquete "language-haskell-ext" el cual codifica el AST de forma genérica
@@ -614,15 +614,15 @@ se decribe como se logra una estructura de datos maś flexible que la convencion
 se logra modificar individualmente el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
 
 \subsection{Lenguaje intermedio}
-\label{sec:orgaf90169}
+\label{sec:orgd5163d1}
 
-\label{orgd492490} La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
+\label{orgd7da428} La última fase es la conversión del AST (Abstract Syntax Tree) en conjunto de instrucciones
 que se usarán, para describir las secuencia de acciones. Para llevar acabo la ejecución de un script de ScriptFlow
 Este conjunto de instrucciones se encuentra expresado en un ADT (Abstract Data Tree), de tal forma que encaje con la estructura
 de datos mónada libre (\emph{Free Monad}) \cite{free-monads}. Este estructura, secuencia las instrucciones y permiten usar la notación \emph{do} de Haskell.
 
 \subsection{Interoperabilidad}
-\label{sec:orgc2eba29}
+\label{sec:orgc9512c9}
 
 La metaprogramación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
 ya testeadas de Haskell, en ScriptFlow. Únicamente realizando cambios oportunos, como el orden de los argumentos.
@@ -714,7 +714,7 @@ githubClassSC = [scriptflow|
 \end{verbatim}
 
 \section{Conclusiones}
-\label{sec:org44b7255}
+\label{sec:org029c6a1}
 
 ScriptFlow trata de simplificar el proceso de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
 configuración, funciones de interacción con APIs y característcas propias del lenguaje.
@@ -733,7 +733,7 @@ y con determinadas acciones clonar directamente repositorio, por ejemplo.
 \end{itemize}
 
 \section{Conclusions}
-\label{sec:org4cc9efc}
+\label{sec:org13d2872}
 
 ScriptFlow try to simplifies the process of make scripts to automatize, providing with a unified interface between; configuration files, functions that interact with external APIs and
 characteristics of the own language.
@@ -749,18 +749,35 @@ Exist different improvements to apply over this project:
 \item In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
 \end{itemize}
 
-\section{Presupuestos}
-\label{sec:orgd8b36ee}
+\section{Presupuesto}
+\label{sec:org1455d13}
 
-Se ha realizado una estimación de los costes realizados en el proyecto.
+En esta sección se indican los costes totales de la realización del proyecto. No existen costes de
+licencia, tanto en las propias dependencias del proyecto las cuales son BSD3 compatibles. Como software
+empleado en el mismo proyecto, debido al uso de software libre, desde el SO hasta los IDE usados.
+
+En cuanto al coste material, se ha realizado un estimación del equipo necesario para realizar el proyecto y diversas necesidades básicas.
+Estas necesidades englogan el coste de alquiler de una oficina, consumo eléctrico, coste de acceso a internet.
+
+El desarrollo está definido a 4 meses. Aquellos valores, los cuales la factura sea mensual, se indicará el coste total de los meses usados.
 
 \begin{center}
 \begin{tabular}{ll}
 Tipo & Descripción\\
 \hline
- & \\
+Equipo de Desarrollo & 400€ - 600€\\
+Alquiler Oficina - 4 meses & 800€ - 1000€\\
+ADSL - 4 meses & 100€ - 120€\\
+Electricidad & 120€ - 200€\\
+Programación del software - 4 meses* & 5760€\\
+\hline
+Total & 7180€ - 7680€\\
 \end{tabular}
 \end{center}
+
+
+*El desarrollo del software, se ha estimado el coste a la hora en España 12€.
+
 
 \renewcommand{\refname}{Bibliografía}
 
