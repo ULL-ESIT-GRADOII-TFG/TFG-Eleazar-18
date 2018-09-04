@@ -110,7 +110,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
    ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
    lenguaje es combinar ficheros de configuración, con características del lenguaje y las APIs. Con el fin de realizar los lenguajes de dominio específico,
-   que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL capaces de realizar el lenguaje creado, estan planteado
+   que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL, estan planteados
    para trabajar mediante via textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
    scripts y un REPL customizable según el DSL usado.
 
@@ -323,8 +323,8 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
      La función ~use~ genera un nuevo ámbito que queda detrás del actual permitiendo acceder a los attributos y funciones directamente
      sin necesidad de especificar a que objecto se refiere. Las nuevas variables creadas dentro del ámbito sobreescriben las creadas por ~use~
-     debido a que continuán en el ámbito superior. La resolución de nombres al usar ~use~ sobre un objeto, tiene la menor precedencia
-     dentro de la propia resolución del nombres, y la última llamada de ~use~ tiene mayor precedencia que las anteriores de use.
+     debido a que continuán en un ámbito superior. La resolución de nombres al usar ~use~ sobre un objeto, tiene la menor precedencia
+     dentro de la propia resolución del nombres, y la última llamada de ~use~ tiene mayor precedencia que las anteriores de ~use~.
 
      La función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automaticamente un ~unuse~ al salir de un ámbito.
 
@@ -350,10 +350,10 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 *** Clases
     El lenguaje tiene un básico soporte a la programación orientada a objetos. Permite la definición
-    de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase
+    de clases sin la capacidad de herencia. El siguiente ejemplo sobrecarga el constructor de la clase,
     usando el método especial ~__init__~.
 
-    Los métodos asociados al objeto internamente se pasan a si mismo como argumento usando la palabra
+    Los métodos asociados al objeto internamente se pasan a si mismo como argumento, usando la palabra
     reservada ~self~. El lenguaje no soporta métodos estáticos.
 
 
@@ -427,11 +427,11 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     La configuración del prompt debe ser una expresión de {{{lang_name}}}.
 
 * REPL
-   El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~ o con la
+   El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~, o con la
    finalización de ejecución de un *script* con la opción ~-e~. Se pueden ver más opciones del
    ejecutable del intérprete mediante ~scriptflow --help~. Una vez,
    iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado
-   (configuración véase: [[config_prompt]]).
+   (Configuración véase: [[config_prompt]]).
 
    Desde el *REPL* se puede escribir cualquier tipo de expresión definida por el
    lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
@@ -693,37 +693,38 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   characteristics of the own language.
 
   There are several problems and difficulties developing software into the Haskell platform, due to be a language with smaller community than other popular languages. There are less programming
-  tools or they are no update to latest versions of platform. I highlight, the greater problem found into this project was cyclic-dependencies between modules in Haskell. It can be solved but there are not optimal
+  tools or they are not update to latest versions of platform. I highlight, the greater problem found into this project was cyclic-dependencies between modules in Haskell. It can be solved but there are not optimal
   solutions to an agile development.
 
   Exist different improvements to apply over this project:
-  - Currently, it can be only extended using Haskell (It requires have a Haskell compiler), it could improve if it allows to inter-operate with Python also.
+  - Currently, it can be only extended using Haskell (It requires to have a Haskell compiler), it could improve if it allows to inter-operate with Python.
   - The basic objects, contains few methods to be used between themselves.
   - In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
 
 * Presupuesto
 
   En esta sección se indican los costes totales de la realización del proyecto. No existen costes de
-  licencia, tanto en las propias dependencias del proyecto las cuales son BSD3 compatibles. Como software
+  licencia tanto en las propias dependencias del proyecto, las cuales son BSD3 compatibles. Como el software
   empleado en el mismo proyecto, debido al uso de software libre, desde el SO hasta los IDE usados.
 
   En cuanto al coste material, se ha realizado un estimación del equipo necesario para realizar el proyecto y diversas necesidades básicas.
-  Estas necesidades englogan el coste de alquiler de una oficina, consumo eléctrico, coste de acceso a internet.
+  Estas necesidades engloban el coste de alquiler de una oficina, consumo eléctrico, coste de acceso a internet.
 
   El desarrollo está definido a 4 meses. Aquellos valores, los cuales la factura sea mensual, se indicará el coste total de los meses usados.
 
   | Tipo                                 | Descripción   |
   |--------------------------------------+---------------|
-  | Equipo de Desarrollo                 | 400€ - 600€   |
+  | Equipo de Desarrollo*                | 400€ - 600€   |
   | Alquiler Oficina - 4 meses           | 800€ - 1000€  |
   | ADSL - 4 meses                       | 100€ - 120€   |
   | Electricidad                         | 120€ - 200€   |
-  | Programación del software - 4 meses* | 5760€         |
+  | Programación del software - 4 meses** | 5760€         |
   |--------------------------------------+---------------|
   | Total                                | 7180€ - 7680€ |
 
+  *Comprende el hardware usado, periféricos y torre.
 
-  *El desarrollo del software, se ha estimado el coste a la hora en España 12€.
+  **El desarrollo del software, se ha estimado el coste a la hora en España 12€.
 
 
 \renewcommand{\refname}{Bibliografía}
