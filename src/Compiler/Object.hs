@@ -321,16 +321,15 @@ instance Showable StWorld Object where
       obj' <- follow rfs
       showObject obj' <&> (\o -> "#"<> pretty rfs <> ":" <> o) -- TODO: Remove when the project turn it more stable
     ONone                -> return "none"
-    OFunc _env _args _body -> return "Function"
-      -- body' <- pretty (body (repeat ONone))
-      -- return
-      --   $   "Function with args:"
-      --   <+> pretty args
-      --   <>  "{"
-      --   <>  line
-      --   <>  nest 2 body'
-      --   <>  line
-      --   <>  "}"
+    OFunc _env args body -> do
+      return
+        $   "Function with args:"
+        <+> pretty args
+        <>  "{"
+        <>  line
+        <>  indent 2 (pretty (body (repeat 0)))
+        <>  line
+        <>  "}"
     ONative _          -> return "Native Function"
     OClassDef name _ -> return $ "class" <+> pretty name
     OObject _ methods  -> do
