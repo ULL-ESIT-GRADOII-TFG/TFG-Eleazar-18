@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0d21b3c7a7ce2734913a66d7c774a1d7ea911f7acb4a0765897b9c8931398522
+-- hash: 1d8bf4fafa4d6eb5fa3bb14b700782c8269713085aa620fc08aff772b4b7cd1c
 
 name:           ScriptFlow
 version:        0.0.2
@@ -32,8 +32,7 @@ library
       src
   ghc-options: -Wall -Wno-orphans
   build-depends:
-      HFuse
-    , aeson
+      aeson
     , array
     , base
     , bytestring

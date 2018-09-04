@@ -7,29 +7,29 @@ module Compiler.Object where
 
 import           Control.Applicative
 import           Control.Monad.Except
-import qualified Data.ByteString                       as B
-import qualified Data.HashMap.Strict                   as HM
+import qualified Data.ByteString               as B
+import qualified Data.HashMap.Strict           as HM
 import           Data.Scientific
-import qualified Data.Text                             as T
-import qualified Data.Text.Encoding                    as TE
+import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as TE
 import           Data.Text.Prettyprint.Doc
-import qualified Data.Vector                           as V
-import qualified Data.Yaml                             as Y
+import qualified Data.Vector                   as V
+import qualified Data.Yaml                     as Y
 import           Lens.Micro.Platform
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
-import qualified Compiler.Object.OBool                 as OB
-import qualified Compiler.Object.ODouble               as OD
-import qualified Compiler.Object.ONum                  as ON
-import qualified Compiler.Object.ORegex                as OR
-import qualified Compiler.Object.OShellCommand         as OC
-import qualified Compiler.Object.OStr                  as OS
-import qualified Compiler.Object.OVector               as OV
+import qualified Compiler.Object.OBool         as OB
+import qualified Compiler.Object.ODouble       as OD
+import qualified Compiler.Object.ONum          as ON
+import qualified Compiler.Object.ORegex        as OR
+import qualified Compiler.Object.OShellCommand as OC
+import qualified Compiler.Object.OStr          as OS
+import qualified Compiler.Object.OVector       as OV
 import           Compiler.Prelude.Utils
 import           Compiler.Prettify
 import           Compiler.Types
-import           Compiler.World                        ()
+import           Compiler.World                ()
 
 
 
@@ -213,15 +213,15 @@ instance ToObject a => ToObject (Maybe a) where
 
 instance Callable StWorld where
   -- | From memory address, check if object callable and call it with given arguments
-  call pathVar args =
+  call pathVar args = do
+    (obj, _address) <- findPathVar pathVar
+    let obj' = unwrap obj
     if null (pathVar ^. dynPathA) then do
-      (obj, _address) <- findPathVar pathVar
-      let obj' = unwrap obj
       directCall obj' args
     else do
       let addr = pathVar ^. refA
       objCaller <- unwrap <$> getVar addr
-      directCall objCaller (addr:args)
+      directCall obj' (addr:args)
     where
       directCall :: Object -> [Address] -> StWorld Address
       directCall obj args = case obj of

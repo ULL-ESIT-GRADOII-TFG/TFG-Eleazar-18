@@ -132,33 +132,33 @@ data FuseOperations fh = FuseOperations
 -- fuseRunInline     use args to set mount point
 -- OnOpen
 -- OnLoad
-fuseSystem :: FuseOperations fh
-fuseSystem = FuseOperations
-  { fuseGetFileStat          = \_ -> return (Left eNOSYS)
-  , fuseReadSymbolicLink     = \_ -> return (Left eNOSYS)
-  , fuseCreateDevice         = \_ _ _ _ -> return eNOSYS
-  , fuseCreateDirectory      = \_ _ -> return eNOSYS
-  , fuseRemoveLink           = \_ -> return eNOSYS
-  , fuseRemoveDirectory      = \_ -> return eNOSYS
-  , fuseCreateSymbolicLink   = \_ _ -> return eNOSYS
-  , fuseRename               = \_ _ -> return eNOSYS
-  , fuseCreateLink           = \_ _ -> return eNOSYS
-  , fuseSetFileMode          = \_ _ -> return eNOSYS
-  , fuseSetOwnerAndGroup     = \_ _ _ -> return eNOSYS
-  , fuseSetFileSize          = \_ _ -> return eNOSYS
-  , fuseSetFileTimes         = \_ _ _ -> return eNOSYS
-  , fuseOpen                 = \_ _ _ -> return (Left eNOSYS)
-  , fuseRead                 = \_ _ _ _ -> return (Left eNOSYS)
-  , fuseWrite                = \_ _ _ _ -> return (Left eNOSYS)
-  , fuseGetFileSystemStats   = \_ -> return (Left eNOSYS)
-  , fuseFlush                = \_ _ -> return eOK
-  , fuseRelease              = \_ _ -> return ()
-  , fuseSynchronizeFile      = \_ _ -> return eNOSYS
-  , fuseOpenDirectory        = \_ -> return eNOSYS
-  , fuseReadDirectory        = \_ -> return (Left eNOSYS)
-  , fuseReleaseDirectory     = \_ -> return eNOSYS
-  , fuseSynchronizeDirectory = \_ _ -> return eNOSYS
-  , fuseAccess               = \_ _ -> return eNOSYS
-  , fuseInit                 = return ()
-  , fuseDestroy              = return ()
-  }
+-- fuseSystem :: FuseOperations fh
+-- fuseSystem = FuseOperations
+--   { fuseGetFileStat          = \_ -> return (Left eNOSYS)
+--   , fuseReadSymbolicLink     = \_ -> return (Left eNOSYS)
+--   , fuseCreateDevice         = \_ _ _ _ -> return eNOSYS
+--   , fuseCreateDirectory      = \_ _ -> return eNOSYS
+--   , fuseRemoveLink           = \_ -> return eNOSYS
+--   , fuseRemoveDirectory      = \_ -> return eNOSYS
+--   , fuseCreateSymbolicLink   = \_ _ -> return eNOSYS
+--   , fuseRename               = \_ _ -> return eNOSYS
+--   , fuseCreateLink           = \_ _ -> return eNOSYS
+--   , fuseSetFileMode          = \_ _ -> return eNOSYS
+--   , fuseSetOwnerAndGroup     = \_ _ _ -> return eNOSYS
+--   , fuseSetFileSize          = \_ _ -> return eNOSYS
+--   , fuseSetFileTimes         = \_ _ _ -> return eNOSYS
+--   , fuseOpen                 = \_ _ _ -> return (Left eNOSYS)
+--   , fuseRead                 = \_ _ _ _ -> return (Left eNOSYS)
+--   , fuseWrite                = \_ _ _ _ -> return (Left eNOSYS)
+--   , fuseGetFileSystemStats   = \_ -> return (Left eNOSYS)
+--   , fuseFlush                = \_ _ -> return eOK
+--   , fuseRelease              = \_ _ -> return ()
+--   , fuseSynchronizeFile      = \_ _ -> return eNOSYS
+--   , fuseOpenDirectory        = \_ -> return eNOSYS
+--   , fuseReadDirectory        = \_ -> return (Left eNOSYS)
+--   , fuseReleaseDirectory     = \_ -> return eNOSYS
+--   , fuseSynchronizeDirectory = \_ _ -> return eNOSYS
+--   , fuseAccess               = \_ _ -> return eNOSYS
+--   , fuseInit                 = return ()
+--   , fuseDestroy              = return ()
+--   }
