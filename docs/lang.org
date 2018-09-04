@@ -89,7 +89,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 #+BEGIN_EXPORT latex
 {\fontsize{14}{11}\selectfont
-   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of configuration files.
+   ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of tasks, whose of these requires to use configuration files.
    It is a language based in expressions that allows to you to use indentation-sensitive syntax. It is includes a integration with Haskell language,
    which, it was built in.
 }\\
@@ -109,7 +109,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 * Introducción
 
    ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
-   lenguaje es combinar ficheros de configuración, con características del lenguaje y APIs Webs . Con el fin de realizar los lenguajes de dominio específico,
+   lenguaje es combinar ficheros de configuración, con características del lenguaje y APIs Webs. Con el fin de realizar los lenguajes de dominio específico,
    que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL, están planteados
    para trabajar mediante vía textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
    scripts y un REPL personalizable según el DSL usado.
@@ -122,7 +122,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   gestionar las dependencias debido a su estabilidad.
 
   La parte de análisis sintáctico y léxico. Se optó por usar dos fases para la generación del AST
-  debido a la simplificación del problema de la indentación. Se tokeniza con la librería /Alex/ y se parsea con /parsec/.
+  debido a la simplificación del problema de la indentación. Se /tokeniza/ con la librería /Alex/ y se parsea con /parsec/.
   Añadido a esto se usan librerías para gestionar el REPL (Haskeline) o internamente estructuras de datos como pueden ser (mtl, transformers, free, prettyprinters, ...)
   entre otras.
 
@@ -756,7 +756,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   Exist different improvements to apply over this project:
   - Currently, it can be only extended using Haskell (It requires to have a Haskell compiler), it could improve if it allows to inter-operate with Python.
   - The basic objects, contains few methods to be used between themselves.
-  - In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system and with specific actions clone this repositories.
+  - In the case of Github's DSL, its planed to use HFuse library. For example; to simulate Github repositories virtuality into file system, and with specific actions clone this repositories.
 
 * Presupuesto
 
