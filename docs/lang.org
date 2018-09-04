@@ -90,7 +90,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 #+BEGIN_EXPORT latex
 {\fontsize{14}{11}\selectfont
    ScriptFlow is a dynamic typed language to develop scripts to automatize a sets of task, whose of these requires use of configuration files.
-   It is a language based in expressions that allows to you to use identation-sensitive syntax. It is includes a integration with Haskell language,
+   It is a language based in expressions that allows to you to use indentation-sensitive syntax. It is includes a integration with Haskell language,
    which, it was built in.
 }\\
 \vspace{50mm}
@@ -110,14 +110,15 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
    ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
    lenguaje es combinar ficheros de configuración, con características del lenguaje y APIs Webs . Con el fin de realizar los lenguajes de dominio específico,
-   que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL, estan planteados
-   para trabajar mediante via textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
-   scripts y un REPL customizable según el DSL usado.
+   que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL, están planteados
+   para trabajar mediante vía textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
+   scripts y un REPL personalizable según el DSL usado.
 
 * Metodología
 
   Se usado el lenguaje de programación Haskell, debido a su capacidad para trabajar con ADT, y estructuras abstractas. Permite gestionar
-  el código mejor que la representación equivalente usando objetos, en un lenguaje POO. Junto con la infraestructura /Stack-Haskell/ para
+  el código mejor que la representación equivalente usando objetos, en un
+  lenguaje OOP. Junto con la infraestructura /Stack-Haskell/ para
   gestionar las dependencias debido a su estabilidad.
 
   La parte de análisis sintáctico y léxico. Se optó por usar dos fases para la generación del AST
@@ -134,7 +135,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 * Lenguaje {{{lang_name}}}
 
-** Sintáxis
+** Sintaxis
 
     {{{lang_name}}} se ha diseñado para ser sencillo de usar, para ello se optado por una sintaxis familiar a lenguajes como
     /python/ o /c++/.
@@ -145,24 +146,24 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+BEGIN_SRC python
     # Variable ejemplo
        # Comentario
-    example = 1 + 1 # Commentario
+    example = 1 + 1 # Comentario
 
     if example == 2:
     # Otro ejemplo
       print "something"
     #+END_SRC
 
-*** Identación
+*** Indentación
 
-     <<identacion>>
-     El lenguaje puede usar su sintáxis sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando las llaves "{}":
+     <<indentacion>>
+     El lenguaje puede usar su sintaxis sensible a la indentación como /python/ o /haskell/ pero se trata de algo opcional que puede ser omitido usando las llaves "{}":
 
      #+BEGIN_SRC haskell
        fun saludar_a nombre:
          print("Saludos, " ++ nombre)
      #+END_SRC
 
-     O la sintáxis equivalente al estilo de la familia de /C/:
+     O la sintaxis equivalente al estilo de la familia de /C/:
      #+BEGIN_SRC haskell
        fun saludar_a nombre {
          print("Saludos, " ++ nombre)
@@ -188,7 +189,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
        12 + 4 # ...
 
        # Decimales (Se utiliza un double para su
-       # representanción actualmente)
+       # representación actualmente)
        45.5
 
        # Las cadenas pueden ser multilineas se crean con
@@ -203,7 +204,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
        # Los comandos shell se crean con
        $cd #HOME/repos; nvim .$
-       Ó mutltilinea
+       Ó multilínea
        $
        cd #HOME/repos
        nvim .
@@ -231,7 +232,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
      #+end_src
 
-*** Expressiones
+*** Expresiones
      El lenguaje esta compuesto por expresiones, es decir, todas las estructuras devuelven algún valor. Estas expresiones, se encuentran delimitadas de forma diferente según en que contexto
      se encuentren.
      Las expresiones en la base del archivo, tales como;
@@ -249,8 +250,10 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
      la expresión final sería ~func_call(first_param, second_param)~. Se puede usar el carácter ';' para realizar esta separación (el cual es opcional al nivel base).
 
      En el caso de expresiones más complejas que requieran un subconjunto de expresiones, hablamos de ~if~, ~for~ .... Se contemplan dos casos para realizar la terminación de las expresiones.
-     Si se usa sintáxis sensible a la indentación, los niveles de indentación determinarán donde se halla la terminación de las expressiones. Pero, por si el contrario se usa sintáxis con llaves
-     se necesitará añadir ';' para indicar la terminación de cada expressión. Y opcionalmente se puede quitar el ';' de la última expressión.
+     Si se usa sintaxis sensible a la indentación, los niveles de indentación
+     determinarán donde se halla la terminación de las expresiones. Pero,
+     por si el contrario se usa sintaxis con llaves
+     se necesitará añadir ';' para indicar la terminación de cada expresión. Y opcionalmente se puede quitar el ';' de la última expresión.
 
      #+BEGIN_SRC python
      if always_true:
@@ -271,12 +274,12 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 *** Funciones
 
-     La sintáxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
+     La sintaxis permite definir dos tipos de funciones, aquellas que tienen un nombre y las lambda. Internamente solo hay lambdas debido
      a que la primeras son traducidas a una función lambda asignada a una variable.
 
-     La sintáxis de las funciones lambda es la siguiente:
+     La sintaxis de las funciones lambda es la siguiente:
      #+BEGIN_SRC python
-     # Con identación
+     # Con indentación
      lam arg1 arg2:
         arg1
 
@@ -294,7 +297,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 ** Orientado a objetos
 
-*** Objectos
+*** Objetos
      Un objeto en {{{lang_name}}} es un diccionario con la clase a la que pertenece, en el caso de ser
      un objeto instanciado.
 
@@ -306,7 +309,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
        # A partir de none
        obj2 = none
-       # Al asignar dentro de una varible establecidad `none` un "sub-item".
+       # Al asignar dentro de una variable establecida a `none` un "sub-item".
        # Automáticamente se genera un objeto con ese ítem dentro
        obj2.a = "ejemplo"
        > { a -> "ejemplo" }
@@ -321,12 +324,13 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
      Las funciones ~use~ y ~unuse~ permiten modificar el ámbito actual de búsqueda de variables, y simplificar ciertos escenarios.
 
-     La función ~use~ genera un nuevo ámbito que queda detrás del actual permitiendo acceder a los attributos y funciones directamente
-     sin necesidad de especificar a que objecto se refiere. Las nuevas variables creadas dentro del ámbito sobreescriben las creadas por ~use~
-     debido a que continuán en un ámbito superior. La resolución de nombres al usar ~use~ sobre un objeto, tiene la menor precedencia
+     La función ~use~ genera un nuevo ámbito que queda detrás del actual permitiendo acceder a los atributos y funciones directamente
+     sin necesidad de especificar a que objeto se refiere. Las nuevas
+     variables creadas dentro del ámbito sobrescriben las creadas por ~use~
+     debido a que continúan en un ámbito superior. La resolución de nombres al usar ~use~ sobre un objeto, tiene la menor precedencia
      dentro de la propia resolución del nombres, y la última llamada de ~use~ tiene mayor precedencia que las anteriores de ~use~.
 
-     La función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automaticamente un ~unuse~ al salir de un ámbito.
+     La función ~unuse~ deshace el último ~use~ usado. Se tiene planeado en futuras versiones realizar automáticamente un ~unuse~ al salir de un ámbito.
 
      Un ejemplo ilustrativo de como trabaja esta funcionalidad dentro de un DSL.
 
@@ -392,7 +396,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     | print      |                    - | --          | ~__print__~   |
 
 
-    El método especial ~__print__~ indica la forma visualización, que debe mostrarse por pantalla el objecto al usar la función ~print~.
+    El método especial ~__print__~ indica la forma visualización, que debe mostrarse por pantalla el objeto al usar la función ~print~.
 
 
 * Guía de usuario
@@ -400,7 +404,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 ** Instalación
 
    ScriptFlow permite una sencilla instalación por medio del uso de la herramienta /[[https://docs.haskellstack.org/en/stable/README/][Stack]]/. La cual es un /wrapper/ a /cabal/, el cual gestiona
-   las dependencias. /Stack/ se encarga de asegurar que es posible construir el proyecto en periodo largo de tiempo, ya que el proyecto se fija a una version del LTS(Long Term Support).
+   las dependencias. /Stack/ se encarga de asegurar que es posible construir
+   el proyecto en periodo largo de tiempo, ya que el proyecto se fija a una
+   versión del LTS(Long Term Support).
 
    /Stack/ también gestiona la instalación del compilador. El primer paso es instalar dicha herramienta:
    #+BEGIN_SRC bash
@@ -452,7 +458,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
    El fichero de configuración se localiza mediante el
    estándar XDG. Normalmente localizado en ~/home/username/.config/scriptflow~
    La configuración es un fichero tipo YAML. El cual permite especificar
-   parámetros de configuración, tales como el prompt, shell. O parametros
+   parámetros de configuración, tales como el prompt, shell. O parámetros
    específicos con la API Web; tales como la autenticación o posibles
    preferencias.
 
@@ -507,7 +513,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
     El lenguaje se ha realizado usando un lenguaje puramente funcional lo que
     requiere diferentes enfoques al realizar el diseño del interprete. Ya que
-    no posée una interfaz orientada a objetos. Dada esta diferencia voy a
+    no posee una interfaz orientada a objetos. Dada esta diferencia voy a
     detallar en cierta medida peculiaridades del desarrollo, en las siguientes
     secciones. Antes de ello empezaremos con un pequeño análisis de como
     funciona el intérprete.
@@ -536,9 +542,9 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+end_src
 
     En esta fase de /tokenización/, se procede a identificar los niveles de
-    indentación en el código en el caso necesario (Para más información ir: [[identacion]]).
+    indentación en el código en el caso necesario (Para más información ir: [[indentacion]]).
     El /tokenizador/ procede a añadir las llaves necesarias en el caso de usar la
-    gramática del lenguage sensible al contexto. Estos /tokens/ se identifican con
+    gramática del lenguaje sensible al contexto. Estos /tokens/ se identifican con
     ~OBraceT~ y ~CBraceT~.
 
     La segunda fase del /parseo/ se encarga de generar el árbol sintáctico
@@ -565,7 +571,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     añadiendo una mayor verbosidad ~scriptflow -v~ (Ver ~scriptflow --help~ para más información).
 
     Este proceso se realiza mediante un /parser combinador/, el cual se comporta de
-    forma parecida a los PEGs. Un ejemplo simplificado es la definción de
+    forma parecida a los PEGs. Un ejemplo simplificado es la definición de
     una función:
 
     #+BEGIN_SRC haskell
@@ -579,7 +585,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+end_src
 
     Una vez generado se realiza la comprobación del *scope* del AST. En esta fase
-    comprueban si están usando variables que no existen, o si sobreescriben
+    comprueban si están usando variables que no existen, o si sobrescriben
     otra. Y se procede al renombrado de las variables.
 
     #+BEGIN_SRC haskell
@@ -599,8 +605,8 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
       ]
     #+end_src
 
-    Una de la últimas fases es la conversion del AST al conjunto de
-    instrucciones simplificado. (Vease: [[intermediate_lang]])
+    Una de la últimas fases es la conversión del AST al conjunto de
+    instrucciones simplificado. (Véase: [[intermediate_lang]])
 
     #+BEGIN_SRC haskell
       Assign var_0
@@ -610,7 +616,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
       CallCommand var_0 ["Mundo"]
     #+end_src
 
-    Y de esta foma es como se representa el código en memoria. Es decir, las
+    Y de esta forma es como se representa el código en memoria. Es decir, las
     funciones que se definan su contenido es guardado en este formato.
 
 ** Árbol abstracto sintáctico
@@ -620,8 +626,8 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     para que en cada nodo se encuentre el componente genérico. Este componente, se fija en el AST a lo largo de todos los nodos lo que
     que conlleva a crear un componente complejo e innecesario en la mayoría de los nodos. Se crea un AST poco flexible.
 
-    La solución a este problema se encontró dentro de los /papers/ que estan siendo implementados en el propio /GHC/. En el /paper/ cite:shayan-2017-trees
-    se decribe como se logra una estructura de datos maś flexible que la convencional. Que por medio de los tipos de familia abiertos (Open Family types)
+    La solución a este problema se encontró dentro de los /papers/ que están siendo implementados en el propio /GHC/. En el /paper/ cite:shayan-2017-trees
+    se describe como se logra una estructura de datos maś flexible que la convencional. Que por medio de los tipos de familia abiertos (Open Family types)
     se logra modificar individualmente el tipo de dato complementario en cada nodo del AST según que fase del compilador se encuentre.
 
 ** Lenguaje intermedio
@@ -633,14 +639,14 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 ** Interoperabilidad
 
-    La metaprogramación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
+    La meta-programación ha supuesto una simplificación en la comunicación entre lenguaje padre e hijo. Con el fin de reutilizar las funciones
     ya testeadas de Haskell, en {{{lang_name}}}. Únicamente realizando cambios oportunos, como el orden de los argumentos.
 
-    El desarrollo de esta característica se basa en la definición de un isomorfismo entre los tipos de datos de haskell y los de {{{lang_name}}}.
+    El desarrollo de esta característica se basa en la definición de un isomorfismo entre los tipos de datos de Haskell y los de {{{lang_name}}}.
     este isomorfismo se encuentra en las clases de tipo =FromObject= y =ToObject=.
 
-    Apesar de este isomorfismo, existe una dificultad añadida debido a que las funciones en Haskell son currificadas. Por ejemplo dada la siguiente
-    función =f= que recibe dos parametros y retorna un =Bool=.
+    A pesar de este isomorfismo, existe una dificultad añadida debido a que las funciones en Haskell son currificadas. Por ejemplo dada la siguiente
+    función =f= que recibe dos parámetros y retorna un =Bool=.
 
     #+BEGIN_SRC haskell
     f :: Int -> Int -> Bool
@@ -665,7 +671,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+END_SRC
 
     Las cuales mediante el uso de la recursividad entre instancias de las clases de tipos se resolvía el problema. Sin embargo
-    el método no es eficiente. Y requiere de una clase auxiliar para contar el número de argumentos que posée una función, la cual use
+    el método no es eficiente. Y requiere de una clase auxiliar para contar el número de argumentos que posee una función, la cual use
     sobrelapamiento entre instancias cite:overlaping-instances.
 
     La opción actual reside crear los /wrappers/ a medida para cada función convertida. Para ello se implementado una solución
@@ -694,7 +700,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     #+END_SRC
 
     Una de las desventajas de esta solución se encuentra en las propias limitaciones del /Template Haskell/. Debido a que no es posible
-    inferir el tipo de una expresión dada, lo que requiere añadir el tipo de la expressión.
+    inferir el tipo de una expresión dada, lo que requiere añadir el tipo de la expresión.
     #+BEGIN_SRC haskell
     $(normalize [| (>) :: Int -> Int -> Bool |])
                 -- Se repite el tipo obligatoriamente
@@ -724,8 +730,8 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
 * Conclusiones
 
-  ScriptFlow trata de simplificar el proceso de crear script de automatización, proveeyendo una interfaz unificada entre ficheros
-  configuración, funciones de interacción con APIs y característcas propias del lenguaje.
+  ScriptFlow trata de simplificar el proceso de crear script de automatización, proveyendo una interfaz unificada entre ficheros
+  configuración, funciones de interacción con APIs y características propias del lenguaje.
 
   Existen diversos problemas y dificultades en el desarrollo de software dentro de la plataforma de Haskell, debido a ser un lenguaje
   con una comunidad menor a lenguajes más populares. Se encuentran escasas herramientas de programación o poco actualizadas a las últimas versiones de la plataforma.
@@ -733,8 +739,8 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
   no son prácticas para un desarrollo ágil.
 
   Existen diversas mejoras a aplicar sobre el proyecto:
-  - Actualmente es solo extensible via Haskell (lo que requiere tener el compilador), una mejora sería permitir interoperabilidad con Python.
-  - Los objectos básicos, contienen pocos métodos con los que interactuar entre sí.
+  - Actualmente es solo extensible vía Haskell (lo que requiere tener el compilador), una mejora sería permitir interoperabilidad con Python.
+  - Los objetos básicos, contienen pocos métodos con los que interactuar entre sí.
   - Para el DSL de Github, se tiene planteado realizar un uso de HFuse. Para simular virtualmente los repositorios de Github en el sistema de ficheros
     y con determinadas acciones clonar directamente repositorio, por ejemplo.
 
