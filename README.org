@@ -1,25 +1,111 @@
 * ScriptFlow
 
-  TODO: What is it?
+   ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
+   lenguaje es combinar ficheros de configuración, con características del lenguaje y APIs Webs
 
-** Installation
+** Instalación
 
-   Use Haskell Stack
+   ScriptFlow permite una sencilla instalación por medio del uso de la herramienta /[[https://docs.haskellstack.org/en/stable/README/][Stack]]/. La cual es un /wrapper/ a /cabal/, el cual gestiona
+   las dependencias. /Stack/ se encarga de asegurar que es posible construir el proyecto en periodo largo de tiempo, ya que el proyecto se fija a una version del LTS(Long Term Support).
+
+   /Stack/ también gestiona la instalación del compilador. El primer paso es instalar dicha herramienta:
    #+BEGIN_SRC bash
+   wget -qO- https://get.haskellstack.org/ | sh
+   #+END_SRC
+   O se puede usar un paquete específico según el sistema operativo que se este usando. Consultar en la página de [[https://docs.haskellstack.org/en/stable/install_and_upgrade/][Stack]].
+
+   El siguiente paso es instalar el compilador y las dependencias necesarias:
+
+   #+BEGIN_SRC bash
+   git clone https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
    cd TFG-Eleazar-18
+
    stack build
-   stack exec scriptflow
    #+END_SRC
 
-   To get help
-   #+BEGIN_SRC bash
-   stack exec scriptflow -- --help
-   #+END_SRC
+   Una vez ejecutado todos los comandos, se podrá realizar una instalación en el directorio local de binarios del sistema operativo correspondiente
+   en el caso de Linux ~$HOME/.local/bin~
 
-   Install to ./local/bin
    #+BEGIN_SRC bash
    stack install
    #+END_SRC
+
+   En el caso de que no se quiera instalar, se puede hacer uso de:
+   #+BEGIN_SRC bash
+   stack exec scriptflow -- args
+   #+END_SRC
+
+   Donde ~args~ son los argumentos que se pasaran al ejecutable ~scriptflow~.
+
+   Cualquier modificación en el código fuente requiere volver a ejecutar. ~stack build~
+
+** Uso
+
+   Una vez realizado el proceso de instalación, el ejecutable nos brinda diversas opciones, las cuales pueden
+   ser consultadas mediante el argumento ~--help~
+
+   La ejecución del ejecutable sin ningún argumento iniciará el intérprete cargando la configuración por defecto, que en caso de no existir se creará.
+   Se puede cargar otra configuración con el parámetro ~--config=filepath_to_conf~
+
+   Otra opción es ejecutar un script de ScriptFlow. Pasando el archivo como argumento (No se tiene en cuenta que extensión se use).
+   #+BEGIN_SRC bash
+   scriptflow script.sf
+   #+END_SRC
+
+** Configuración
+
+   <<file_config>>
+   El fichero de configuración se localiza mediante el
+   estándar XDG. Normalmente localizado en ~/home/username/.config/scriptflow~
+   La configuración es un fichero tipo YAML. El cual permite especificar
+   parámetros de configuración, tales como el prompt, shell. O parametros
+   específicos con la API Web; tales como la autenticación o posibles
+   preferencias.
+
+** Prompt
+
+    <<config_prompt>>
+    En el modo interactivo del intérprete (repl) permite la personalización del
+    *prompt*. Tales como la salida de la ejecución de comandos
+    shell, y diversos comandos propios del intérprete. La configuración del
+    prompt se puede realizar desde el fichero de configuración (véase:
+    [[file_config]]) en la sección *repl*.
+
+    Por defecto, la sección del /prompt/ contiene la siguiente configuración:
+
+    #+BEGIN_SRC yaml
+        repl:
+          # ...
+          prompt: |
+             $"pwd".exec().strip() ++ " >>> "
+          # ...
+    #+end_src
+
+    La configuración del prompt debe ser una expresión de {{{lang_name}}}.
+
+** REPL
+   El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~, o con la
+   finalización de ejecución de un *script* con la opción ~-e~. Se pueden ver más opciones del
+   ejecutable del intérprete mediante ~scriptflow --help~. Una vez,
+   iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado
+   (Configuración véase: [[config_prompt]]).
+
+   Desde el *REPL* se puede escribir cualquier tipo de expresión definida por el
+   lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
+   puede ver una lista de los comandos con ~:help~
+
+   - ~:instr~
+
+    Permite visualizar, a que instrucciones se traduce el código. Estas
+    instrucciones son parciales solo sirven de guía. (Véase: [[intermediate_lang]])
+
+   - ~:mem~
+
+     Muestra parcialmente las variables disponibles en memoria.
+
+   - ~:quit~
+
+     Sale del intérprete.
 
 ** Documentation
    See [[./docs/lang.org]]

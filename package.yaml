@@ -17,7 +17,6 @@ library:
   build-tools: alex
   ghc-options: -Wall -Wno-orphans
   dependencies:
-    - HFuse
     - aeson
     - array
     - base

@@ -109,7 +109,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 * Introducción
 
    ScriptFlow es un lenguaje de programación interpretado pensado para la creación de lenguajes de dominios específicos. El objetivo del
-   lenguaje es combinar ficheros de configuración, con características del lenguaje y las APIs. Con el fin de realizar los lenguajes de dominio específico,
+   lenguaje es combinar ficheros de configuración, con características del lenguaje y APIs Webs . Con el fin de realizar los lenguajes de dominio específico,
    que permitan resolver tareas y posteriormente automatizarlas en la medida de lo posible. Estos DSL, estan planteados
    para trabajar mediante via textual o terminal. Es decir, no está pensado para realizar una interfaz gráfica que permita automatizar problemas sino mediante
    scripts y un REPL customizable según el DSL usado.
@@ -395,7 +395,58 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
     El método especial ~__print__~ indica la forma visualización, que debe mostrarse por pantalla el objecto al usar la función ~print~.
 
 
-* Configuración
+* Guía de usuario
+
+** Instalación
+
+   ScriptFlow permite una sencilla instalación por medio del uso de la herramienta /[[https://docs.haskellstack.org/en/stable/README/][Stack]]/. La cual es un /wrapper/ a /cabal/, el cual gestiona
+   las dependencias. /Stack/ se encarga de asegurar que es posible construir el proyecto en periodo largo de tiempo, ya que el proyecto se fija a una version del LTS(Long Term Support).
+
+   /Stack/ también gestiona la instalación del compilador. El primer paso es instalar dicha herramienta:
+   #+BEGIN_SRC bash
+   wget -qO- https://get.haskellstack.org/ | sh
+   #+END_SRC
+   O se puede usar un paquete específico según el sistema operativo que se este usando. Consultar en la página de [[https://docs.haskellstack.org/en/stable/install_and_upgrade/][Stack]].
+
+   El siguiente paso es instalar el compilador y las dependencias necesarias:
+
+   #+BEGIN_SRC bash
+   git clone https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
+   cd TFG-Eleazar-18
+
+   stack build
+   #+END_SRC
+
+   Una vez ejecutado todos los comandos, se podrá realizar una instalación en el directorio local de binarios del sistema operativo correspondiente
+   en el caso de Linux ~$HOME/.local/bin~
+
+   #+BEGIN_SRC bash
+   stack install
+   #+END_SRC
+
+   En el caso de que no se quiera instalar, se puede hacer uso de:
+   #+BEGIN_SRC bash
+   stack exec scriptflow -- args
+   #+END_SRC
+
+   Donde ~args~ son los argumentos que se pasaran al ejecutable ~scriptflow~.
+
+   Cualquier modificación en el código fuente requiere volver a ejecutar. ~stack build~
+
+** Uso
+
+   Una vez realizado el proceso de instalación, el ejecutable nos brinda diversas opciones, las cuales pueden
+   ser consultadas mediante el argumento ~--help~
+
+   La ejecución del ejecutable sin ningún argumento iniciará el intérprete cargando la configuración por defecto, que en caso de no existir se creará.
+   Se puede cargar otra configuración con el parámetro ~--config=filepath_to_conf~
+
+   Otra opción es ejecutar un script de ScriptFlow. Pasando el archivo como argumento (No se tiene en cuenta que extensión se use).
+   #+BEGIN_SRC bash
+   scriptflow script.sf
+   #+END_SRC
+
+** Configuración
 
    <<file_config>>
    El fichero de configuración se localiza mediante el
@@ -426,7 +477,7 @@ Y para que así conste, en cumplimiento de la legislación vigente y a los efect
 
     La configuración del prompt debe ser una expresión de {{{lang_name}}}.
 
-* REPL
+** REPL
    El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~, o con la
    finalización de ejecución de un *script* con la opción ~-e~. Se pueden ver más opciones del
    ejecutable del intérprete mediante ~scriptflow --help~. Una vez,

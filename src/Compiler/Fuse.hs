@@ -1,7 +1,7 @@
 module Compiler.Fuse where
 
 
-import           System.Fuse
+-- :import           System.Fuse
 
 {-
 
