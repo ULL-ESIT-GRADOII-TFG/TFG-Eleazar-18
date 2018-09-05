@@ -15,9 +15,11 @@ import qualified Data.HashMap.Strict       as HM
 import qualified Data.IntMap               as IM
 import           Data.Maybe
 import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as T
 import           Data.Text.Prettyprint.Doc
 import qualified Data.Vector               as V
 import           Lens.Micro.Platform       hiding (assign)
+import           Text.Regex.PCRE.Light
 
 import           Compiler.Ast
 import           Compiler.Object           ()
@@ -272,9 +274,9 @@ instance Desugar Atom Rn ScopeM ProgInstr Address where
     ADecimal double info   -> do
       let info' = tokToInfo info
       return . createVar info' $ ODouble double
-    ARegex _reg info        -> do
+    ARegex reg info        -> do
       let info' = tokToInfo info
-      return . createVar info' $ ORegex undefined
+      return . createVar info' $ ORegex reg (compile (T.encodeUtf8 reg) [])
     AShellCommand cmd info -> do
       let info' = tokToInfo info
       return . createVar info' $ OShellCommand cmd

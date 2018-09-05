@@ -197,10 +197,10 @@ instance FromObject T.Text where
   fromObject o           = followRef o "Str"
 
 instance ToObject Regex where
-  toObject = return . ORegex
+  toObject = return . ORegex ""
 
 instance FromObject Regex where
-  fromObject (ORegex regex) = return regex
+  fromObject (ORegex _ regex) = return regex
   fromObject o              = followRef o "Regex"
 
 instance FromObject a => FromObject (Maybe a) where
@@ -308,7 +308,7 @@ instance Booleanable StWorld where
 instance Showable StWorld Object where
   showObject obj = case obj of
     OStr          str  -> return $ "\"" <> pretty str <> "\""
-    ORegex        _str -> undefined -- return $ "/" ++ T.unpack str ++ "/"
+    ORegex        reg _ -> return $ "/" <> pretty reg <> "/"
     OShellCommand str  -> return $ "$ " <> pretty str
     ODouble       val  -> return $ pretty val
     OBool         val  -> return $ pretty val
@@ -367,6 +367,7 @@ instance GetRef StWorld Object where
           let ref = ORef addrChild
           addr' <- newVar $ wrap ref
           return (ref, addr')
+
 
 instance Redirection StWorld where
   -- | Follow reference pointer until and not reference object.

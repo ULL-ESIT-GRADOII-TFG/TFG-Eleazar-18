@@ -205,7 +205,7 @@ data Object
   | OBool Bool
   | ODouble Double
   | ONum Int
-  | ORegex Regex
+  | ORegex T.Text Regex
   -- ^ Regex expression following PCRE syntax
   | OShellCommand T.Text
   -- ^ Shell command
