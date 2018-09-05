@@ -6,9 +6,9 @@ import           Control.Monad.State.Strict
 import           Data.Default
 import qualified Data.Text.IO                  as T
 import           Data.Version                  (showVersion)
+import           Lens.Micro.Platform
 import           System.Console.Haskeline
 import           System.Directory
-import           Lens.Micro.Platform
 
 import           Compiler.Config
 import           Compiler.Interpreter
@@ -55,13 +55,21 @@ start (Interpreter inFile cfgFile initREPL verbosity) = do
 
 loadConfig :: Maybe FilePath -> Interpreter ()
 loadConfig cfgFile = do
-  mCfg <- liftIO $ setupConfig cfgFile -- TODO
+  mCfg <- liftIO $ setupConfig cfgFile
   case mCfg of
     Just cfg -> do
       configA .= cfg
       case cfg^.promptA of
-        Just prompt -> do
-          value <- compileSource prompt "** Prompt Code **"
-          void $ liftWorld $ newVarWithName "__prompt__" value
+        Just prompt ->
+          catchError
+            (do
+              value <- compileSource prompt "** Prompt Code **"
+              void $ liftWorld $ newVarWithName "__prompt__" value
+            )
+            (\err -> do
+              liftIO $ putStrLn "There are errors into the prompt configuration:"
+              handleREPLError err
+              liftIO $ putStrLn "Prompt can't be set up"
+            )
         Nothing -> return ()
     Nothing -> return ()

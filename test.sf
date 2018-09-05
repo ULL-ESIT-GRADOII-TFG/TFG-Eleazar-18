@@ -3,6 +3,9 @@ class Test:
     self.a = a_value
     self.b = b_value
 
+  fun test_bounded name:
+    "ele"
+
 
 t = Test("Hello", "World")
 
