@@ -108,6 +108,8 @@ class (Naming mm, Wrapper (Store mm))
 
 
 class Deallocate mm where
+  collectAddr :: Address -> mm ()
+  removeLocal :: mm ()
   deleteVar :: Address -> mm Bool
   deleteUnsafe :: Address -> mm ()
 
@@ -142,7 +144,7 @@ getVarWithName nameId = do
 type StWorld = StateT (World Object) (ExceptT (ErrorInfo WorldError) IO)
 
 data Rc o = Rc
-  { _refCounter :: !Address
+  { _refCounter :: !Int
   , _rawObj     :: !o
   }
   deriving Show
@@ -156,6 +158,7 @@ data World o = World
   -- ^ Root Scope.
   , _lastTokenInfo :: TokenInfo
   -- ^ Used to generate precise errors locations
+  , _gc            :: [Address]
   }
 
 
@@ -212,7 +215,7 @@ data Object
   | OVector (V.Vector Address)
   -- ^ Sequence of objects
   | forall prog. (Runnable prog StWorld Address, Pretty (prog Address))
-    => OFunc (HM.HashMap T.Text Address) [Address] ([Address] -> prog Address)
+    => OFunc [Address] [Address] ([Address] -> prog Address)
   -- ^ Lambda with possible scope/vars attached
   | OBound Address Address
   -- ^ Used to Bound methods to variables

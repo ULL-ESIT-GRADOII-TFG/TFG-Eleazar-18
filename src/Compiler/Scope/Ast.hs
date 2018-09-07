@@ -1,10 +1,10 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeFamilies    #-}
 module Compiler.Scope.Ast where
 
-import Compiler.Ast
-import Compiler.Parser.Types
-import Compiler.Types
+import           Compiler.Ast
+import           Compiler.Parser.Types
+import           Compiler.Types
 
 data Rn
 type ExprRn = Expression Rn
@@ -12,8 +12,8 @@ type ExprRn = Expression Rn
 type instance XName Rn = IdName
 type instance XAccessor Rn = PathVar
 
-type instance XFunExpr Rn = Empty
-type instance XVarExpr Rn = Empty
+type instance XFunExpr Rn = [PathVar]
+type instance XVarExpr Rn = Bool
 type instance XSeqExpr Rn = Empty
 type instance XMkScope Rn = ScopeInfo
 type instance XIf Rn = Empty
@@ -23,13 +23,11 @@ type instance XApply Rn = Empty
 type instance XIdentifier Rn = Empty
 type instance XFactor Rn = Empty
 
-pattern RnFunExpr :: [IdName] -> ExprRn -> Loc -> ExprRn
-pattern RnFunExpr acc expr loc <- FunExpr _ acc expr loc
-  where RnFunExpr acc expr loc = FunExpr absurb acc expr loc
+pattern RnFunExpr :: [PathVar] -> [IdName] -> ExprRn -> Loc -> ExprRn
+pattern RnFunExpr pathvars acc expr loc = FunExpr pathvars acc expr loc
 
-pattern RnVarExpr :: PathVar -> ExprRn -> Loc -> ExprRn
-pattern RnVarExpr acc expr loc <- VarExpr _ acc expr loc
-  where RnVarExpr acc expr loc = VarExpr absurb acc expr loc
+pattern RnVarExpr :: Bool -> PathVar -> ExprRn -> Loc -> ExprRn
+pattern RnVarExpr newVar acc expr loc = VarExpr newVar acc expr loc
 
 pattern RnSeqExpr :: [ExprRn] -> Loc -> ExprRn
 pattern RnSeqExpr exprs loc <- SeqExpr _ exprs loc

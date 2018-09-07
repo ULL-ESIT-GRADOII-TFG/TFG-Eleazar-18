@@ -201,7 +201,7 @@ instance ToObject Regex where
 
 instance FromObject Regex where
   fromObject (ORegex _ regex) = return regex
-  fromObject o              = followRef o "Regex"
+  fromObject o                = followRef o "Regex"
 
 instance FromObject a => FromObject (Maybe a) where
   fromObject ONone = return Nothing
@@ -437,7 +437,7 @@ instance GetInnerRefs Object where
     OVector       vec     -> V.toList vec
     OBound addr1 addr2    -> [addr1, addr2]
     ORef rfs              -> [rfs]
-    OFunc env _args _body -> HM.elems env
+    OFunc env _args _body -> env
     OObject _ methods     -> HM.elems methods
     _                     -> []
 

@@ -83,7 +83,8 @@ instance Desugar ClassDecl Tok ScopeM Expression Rn where
   transform (ClassDecl name methds info) = do
     -- Generate class definition into scope
     RnVarExpr
-      <$> (addNewIdentifier $ pure name)
+      <$> return True
+      <*> (addNewIdentifier $ pure name)
       <*> (RnFactor
             <$> (AClass
                   <$> pure name
@@ -103,12 +104,8 @@ funcToMethod (FunDecl name args expr t) = FunDecl name ("self":args) expr t
 
 instance Desugar FunDecl Tok ScopeM Expression Rn where
   -- transform :: FunDecl a -> ScopeM (Expression ScoepInfoAST)
-  transform (FunDecl name args body info) = do
-      RnVarExpr
-        <$> (catchError (getIdentifier (return name) info) $
-              \_ -> addNewIdentifier (return name))
-        <*> transform (TokFunExpr args body info)
-        <*> pure info
+  transform (FunDecl name args body info) = transform $
+    TokVarExpr (Simple name info) (TokFunExpr args body info) info
 
 
 -- | Make a translation of variable names from AST, convert all to IDs and
@@ -118,7 +115,8 @@ instance Desugar Expression Tok ScopeM Expression Rn where
   transform ast = case ast of
     TokFunExpr args body info -> withNewScope $ do
       RnFunExpr
-        <$> mapM (\arg -> do
+        <$> pure []
+        <*> mapM (\arg -> do
                      pathArg <- addNewIdentifier $ return arg
                      return $ pathArg^.refA & adrToId
                  ) args
@@ -126,12 +124,13 @@ instance Desugar Expression Tok ScopeM Expression Rn where
         <*> pure info
 
     TokVarExpr name expr' info -> do
+      let accSimple = simplifiedAccessor name
+      (newVar, idName) <- catchError
+        ((False,) <$> getIdentifier accSimple info)
+        (\_ -> (True,) <$> addNewIdentifier accSimple)
       RnVarExpr
-        <$> (do
-                let accSimple = simplifiedAccessor name
-                catchError (getIdentifier accSimple info) $
-                  \_ -> addNewIdentifier accSimple
-            )
+        <$> pure newVar
+        <*> pure idName
         <*> withNewScope (transform expr')
         <*> pure info
 

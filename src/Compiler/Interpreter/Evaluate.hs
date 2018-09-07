@@ -2,22 +2,23 @@
 module Compiler.Interpreter.Evaluate where
 
 import           Control.Monad.Except
+import           Control.Monad.Identity
 import           Data.Bifunctor
 import           Data.Maybe
-import qualified Data.Text                             as T
-import qualified Data.Text.IO                          as T
+import qualified Data.Text                    as T
+import qualified Data.Text.IO                 as T
 import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
 import           System.Console.Haskeline
 
 import           Compiler.Ast
-import           Compiler.Scope.Ast
 import           Compiler.Error
 import           Compiler.Interpreter
 import           Compiler.Interpreter.Command
 import           Compiler.Parser.Methods
 import           Compiler.Parser.Types
 import           Compiler.Prettify
+import           Compiler.Scope.Ast
 import           Compiler.Token.Lexer
 import           Compiler.Types
 import           Compiler.World
@@ -125,7 +126,7 @@ compileSource rawFile nameFile = do
 evaluateScopedProgram :: Expression Rn -> Interpreter Object
 evaluateScopedProgram astScoped = do
   verbosity <- use verboseLevelA
-  instrs <- liftWorld . liftScope $ transform astScoped
+  instrs <- liftWorld . return . runIdentity $ transform astScoped
   when (verbosity >= 2) $ do
     liftIO $ putStrLn "** Instructions **"
     liftIO $ putDocLnPP verbosity $ pretty instrs

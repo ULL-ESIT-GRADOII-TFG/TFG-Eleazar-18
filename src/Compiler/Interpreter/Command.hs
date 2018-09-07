@@ -3,13 +3,13 @@ module Compiler.Interpreter.Command where
 
 import           Control.Monad.Except
 import           Data.List
-import qualified Data.Map                              as M
-import qualified Data.Text                             as T
+import qualified Data.Map                  as M
+import qualified Data.Text                 as T
 import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
 import           System.Exit
 
-import           Compiler.Instruction                  ()
+import           Compiler.Instruction      ()
 import           Compiler.Interpreter
 import           Compiler.Prettify
 import           Compiler.Types
@@ -42,7 +42,7 @@ help _ = liftIO . putStrLn $ intercalate "\n"
   [ "HELP:"
   , "   :help                -- print this help itself"
   , "   :mem                 -- Show current memory used"
-  , "   :instr function_name -- Shows sequence of instruction a defined function"
+  , "   :instr function_name -- Shows sequence of instruction a defined function, addresses showed doesn't match with the real behavior"
   , "   :quit                -- Exits immediately form REPL"
   ]
 

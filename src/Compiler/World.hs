@@ -52,10 +52,11 @@ instance Default (World o) where
     { _table = mempty
     , _scope = def
     , _lastTokenInfo = def
+    , _gc = []
     }
 
 instance TypeName o => Pretty (World o) where
-  pretty (World tb scope _) =
+  pretty (World tb scope _ _) =
     let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ unAddr . _ref) (IM.toList tb)
     in
       "World {" <> line <>
@@ -87,6 +88,11 @@ instance MemoryAccessor StWorld Object where
     return addr'
 
 instance Deallocate StWorld where
+  collectAddr addr = gcA %= (addr:)
+  removeLocal = do
+    gc <- use gcA
+    mapM_ deleteVar gc
+
   deleteVar addr = do
     obj <- unwrap <$> getVar addr
     mapM_ deleteVar (innerRefs obj)
