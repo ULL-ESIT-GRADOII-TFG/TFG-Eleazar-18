@@ -54,7 +54,6 @@
 
 ** Configuración
 
-   <<file_config>>
    El fichero de configuración se localiza mediante el
    estándar XDG. Normalmente localizado en ~/home/username/.config/scriptflow~
    La configuración es un fichero tipo YAML. El cual permite especificar
@@ -64,12 +63,10 @@
 
 ** Prompt
 
-    <<config_prompt>>
     En el modo interactivo del intérprete (repl) permite la personalización del
     *prompt*. Tales como la salida de la ejecución de comandos
     shell, y diversos comandos propios del intérprete. La configuración del
-    prompt se puede realizar desde el fichero de configuración (véase:
-    [[file_config]]) en la sección *repl*.
+    prompt se puede realizar desde el fichero de configuración en la sección *repl*.
 
     Por defecto, la sección del /prompt/ contiene la siguiente configuración:
 
@@ -81,14 +78,13 @@
           # ...
     #+end_src
 
-    La configuración del prompt debe ser una expresión de {{{lang_name}}}.
+    La configuración del prompt debe ser una expresión de ScriptFlow.
 
 ** REPL
    El *REPL* puede ser accedido mediante comando de líneas ~scriptflow~, o con la
    finalización de ejecución de un *script* con la opción ~-e~. Se pueden ver más opciones del
    ejecutable del intérprete mediante ~scriptflow --help~. Una vez,
-   iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado
-   (Configuración véase: [[config_prompt]]).
+   iniciado el *REPL* se mostrará por defecto el *prompt* predeterminado.
 
    Desde el *REPL* se puede escribir cualquier tipo de expresión definida por el
    lenguaje. Y los comandos del intérprete los cuales comienzan por ":". Se
@@ -97,7 +93,7 @@
    - ~:instr~
 
     Permite visualizar, a que instrucciones se traduce el código. Estas
-    instrucciones son parciales solo sirven de guía. (Véase: [[intermediate_lang]])
+    instrucciones son parciales solo sirven de guía.
 
    - ~:mem~
 
@@ -107,8 +103,12 @@
 
      Sale del intérprete.
 
+   - ~dir obj~
+     Permite visualizar métodos y atributos de un objeto ~dir "val"~.
+     Actualmente se encuentra en desarrollo esta funcionalidad.
+
 ** Documentation
-   See [[./docs/lang.org]]
+   See [[./docs/lang.pdf]]
 
 ** Work in Progress:
 
