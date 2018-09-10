@@ -1,0 +1,115 @@
+\documentclass{beamer}
+%\documentclass[xcolor=dvipsnames]{beamer}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{amssymb}
+
+\newcommand{\beamer}{\textsc{beamer}}
+
+%\newtheorem{definicion}{Definición}
+%\newtheorem{ejemplo}{Ejemplo}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title[Trabajo de Fin de Grado]{
+  Un lenguaje para la creación de DSLs. \\
+  A language to making DSLs.
+}
+
+\author[Eleazar Díaz Delgado] {
+Autor: Eleazar Díaz Delgado \\
+Director: Casiano Rodríguez León
+}
+
+\institute[ULL]{Escuela Superior de Ingeniería y Tecnología \\
+                Departamento de Ingeniería Informática y de Sistemas \\
+                Universidad de La Laguna}
+\date[07-09-2018]{7 de Septiembre de 2018}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\usetheme{Berlin}
+\usetheme{Madrid}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\definecolor{pantone254}{RGB}{92,6,140}
+\definecolor{pantone3015}{RGB}{92,6,140}
+\definecolor{pantone432}{RGB}{92,6,140}
+\setbeamercolor*{palette primary}{use=structure,fg=white,bg=pantone254}
+\setbeamercolor*{palette secondary}{use=structure,fg=white,bg=pantone3015}
+\setbeamercolor*{palette tertiary}{use=structure,fg=white,bg=pantone432}
+\setbeamercolor*{palette sidebar primary}{use=structure,fg=pantone254}
+\setbeamercolor*{palette sidebar tertiary}{use=structure,fg=pantone3015}
+\setbeamercolor*{block title}{bg=pantone3015,fg=white}
+\setbeamercolor*{alerted text}{fg=pantone432}
+\setbeamercolor*{item}{fg=pantone254} % projected
+\setbeamercolor*{section in toc shaded}{use=structure,fg=structure.fg}
+\setbeamercolor*{section in toc}{fg=pantone3015}
+\setbeamercolor*{subsection in toc shaded}{fg=pantone3015}
+\setbeamercolor*{subsection in toc}{fg=pantone432}
+
+% I don't like perfect rounded latex circles
+\setbeamertemplate{itemize items}{$\blacksquare$}
+\setbeamertemplate{section in toc}[square]
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\lstdefinelanguage{scriptflow}{
+  sensitive = true,
+  keywords={class, fun, lam, for, in, if, else},
+  otherkeywords={% Operators
+    >, <, ==, <=, >=, ->, **, *, /, \%, +, -, \&\&, ||, !, @, :
+  },
+  keywords = [2]{true, false, none},
+  keywordstyle=\color[HTML]{8700af},
+  keywordstyle=[2]\color[HTML]{005faf}, % for example
+  showstringspaces=false,
+  breaklines=true,
+  comment=[l]{\#},
+  commentstyle=\color[HTML]{878787}\ttfamily,
+  stringstyle=\color[HTML]{5f8700}\ttfamily,
+  morestring=[b]",
+  morestring=[b]$
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+% Cover
+\begin{frame}
+
+  \includegraphics[width=0.3\textwidth]{img/ull.eps}
+  \hspace*{7.5cm}
+  \titlepage
+
+\end{frame}
+
+% Index
+\begin{frame}
+  \frametitle{Índice}
+  \tableofcontents
+\end{frame}
+
+% Slides
+\input{presentacion}
+
+
+% Bibliography
+\section{Bibliografía}
+\begin{frame}[allowframebreaks]
+  \frametitle{Bibliografía}
+  \bibliographystyle{unsrt}
+  \bibliography{../manuscript}
+  \nocite{*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Fin de la presentación}
+  \begin{center}
+    \Huge{Gracias por su atención}
+  \end{center}
+\end{frame}
+\end{document}
