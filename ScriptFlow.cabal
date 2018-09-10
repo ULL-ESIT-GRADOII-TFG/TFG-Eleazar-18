@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1d8bf4fafa4d6eb5fa3bb14b700782c8269713085aa620fc08aff772b4b7cd1c
+-- hash: b201ae549dd279e05225821e00f0e135d312c2e0edc9ded35dd49884a096bec7
 
 name:           ScriptFlow
 version:        0.0.2
@@ -128,6 +128,7 @@ test-suite Compiler-test
     , vector
   other-modules:
       Lexer
+      Memory
       Parser
       Programs
       Paths_ScriptFlow

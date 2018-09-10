@@ -35,7 +35,7 @@ repl = do
       mText <- use multilineA
       case mText of
         Just text
-          | T.null . T.strip $ T.pack input -> do
+          | T.null . T.strip $ T.pack input -> flip catchError handleREPLError $ do
             multilineA .= Nothing
             value <- compileSource text "**Interpreter**"
             docs <- liftWorld $ showObject value
@@ -52,6 +52,7 @@ repl = do
               docs <- liftWorld $ showObject value
               liftIO $ putDocLnPP 0 docs
   repl
+
 
 
 -- | Get prompt from configuration try execute prompt code else show a

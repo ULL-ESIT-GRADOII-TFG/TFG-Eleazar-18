@@ -97,3 +97,20 @@ lexerTest =
 
     it "TEST3" $
       tokenFlow "if true {false} else {true}" `shouldBe` Right [IfT,BoolT True,OBraceT,BoolT False,CBraceT,ElseT,OBraceT,BoolT True,CBraceT]
+
+    it "Indentation" $ do
+      let ex1 = "class Test:\n\
+                \  fun name:\n\
+                \    test\n"
+      tokenFlow ex1 `shouldBe`
+         Right [ClassT, ClassIdT "Test", OBraceT, FunT, NameIdT "name", OBraceT, NameIdT "test", CBraceT, CBraceT]
+
+
+      let ex2 = "class Test:\n\
+                \  fun name:\n\
+                \    test\n\
+                \  fun other:\n\
+                \    test2\n"
+      tokenFlow ex2 `shouldBe`
+         Right [ClassT, ClassIdT "Test", OBraceT, FunT, NameIdT "name", OBraceT, NameIdT "test", CBraceT, FunT, NameIdT "other", OBraceT, NameIdT "test2", CBraceT, CBraceT]
+

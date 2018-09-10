@@ -28,7 +28,7 @@ data Token
   | ForT
   -- ^ "for" keyword
   | InT
-  -- ^ "as" keyword
+  -- ^ "in" keyword
   | IfT
   -- ^ "if" keyword
   | ElseT
@@ -38,9 +38,9 @@ data Token
   | AssignT
   -- ^ "="
   | ShellCommandT Text
-  -- ^ "!shell_command_name arg1 arg" to execute a shell command
+  -- ^ "!$shell_command_name arg1 arg$" to execute a shell command
   | RegexExprT Text
-  -- ^ "r/Project$digit${3,9}/"
+  -- ^ "r"Project$digit${3,9}"
   | NameIdT Text
   -- ^ "hello"
   | ClassIdT Text

@@ -785,7 +785,7 @@ githubClassSC = [scriptflow|
     # Github base class
     class Github:
         fun login:
-          print "Logging to get authorization token to use in future connections"
+          print "Logging to get authorization token to use ..."
           username = get_line "User Name: "
           password = ask_password "*" "Password: "
           __call__ ${requestLogin} username password

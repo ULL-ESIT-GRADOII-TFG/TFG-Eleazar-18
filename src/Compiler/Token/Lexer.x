@@ -2,6 +2,18 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 -- {-# OPTIONS_HADDOCK prune #-}
 module Compiler.Token.Lexer where
+{-
+  This module needs several modifications:
+    - On start multiline token like string, regex, shellcommands... Add initial token <code_st>
+    - Tokens should be delimited with start and en position with its file offset positions
+    - Modify monadUserState, create own monad to a better error manipulation
+      + This means touch alexMonadScan which use alexScan create by alex
+      + Add all required functions to it
+    - All this modifications could be improve adding several features to alex
+      + QuasiQuotes to generate. And convert alex into a library. Exporting the
+        differents wrappers.
+-}
+
 
 import qualified Data.Vector as V
 import qualified Data.Text as T
@@ -53,7 +65,7 @@ tokens :-
     if            { mkL IfT }
     else          { mkL ElseT }
     class         { mkL ClassT }
-    import        { mkL ImportT }
+    -- import        { mkL ImportT }
     "["           { mkL OBracketT }
     "]"           { mkL CBracketT }
     "{"           { mkL OBraceT }
