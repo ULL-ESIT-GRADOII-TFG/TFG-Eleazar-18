@@ -13,4 +13,7 @@ methodsTh
   , fn "||" [| (||) :: Bool -> Bool -> Bool |]
   , fn "&&" [| (&&) :: Bool -> Bool -> Bool |]
   , fn "not" [| not :: Bool -> Bool |]
+  , fn "==" [| (==) :: Bool -> Bool -> Bool |]
+  , fn "!=" [| (/=) :: Bool -> Bool -> Bool |]
+  , fn "/=" [| (/=) :: Bool -> Bool -> Bool |]
   ]

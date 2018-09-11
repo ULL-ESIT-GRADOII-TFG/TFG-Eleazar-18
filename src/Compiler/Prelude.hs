@@ -43,6 +43,7 @@ internalMethod name =
         call (simple addr') addresses
   )
 
+
 -- | A set of basic functions avaialable in the base scope
 baseBasicFunctions :: [(T.Text, Object)]
 baseBasicFunctions =
@@ -57,8 +58,49 @@ baseBasicFunctions =
   , ("use"        , createONative $(normalize [| layerObjectIntoScope :: Object -> StWorld Object |]))
   , ("unuse"      , createONative $(normalize [| unlayerObjectIntoScope :: StWorld () |]))
   , ("dir"        , createONative $(normalize [| (fmap (fmap fst) . exploreObjectAttributes) :: Object -> StWorld (V.Vector T.Text)|]))
+  , ("==", ONative equivalence)
+  , ("!=", ONative nonequivalence)
+  , ("/=", ONative nonequivalence)
   ]
-    ++ map internalMethod (HM.keys operatorsPrecedence)
+  ++ map internalMethod
+    ["**",
+    "*" ,
+    "/" ,
+    "%" ,
+    "+" ,
+    "-" ,
+    "++",
+    ">" ,
+    "<" ,
+    "<=",
+    ">=",
+    "&&",
+    "||",
+    "!" ,
+    "@"]
+
+equivalence :: [Address] -> StWorld Address
+equivalence [addr1, addr2] = do
+  ob1 <- unwrap <$> getVar addr1
+  ob2 <- unwrap <$> getVar addr2
+  if typeEquivalence ob1 ob2 then do
+    addr <- access ob1 "=="
+    call (simple addr) [addr1, addr2]
+  else
+    newVar . wrap $ OBool False
+equivalence addrs = throw $ NumArgsMissmatch (length addrs) 2 -- It shouldnt happend
+
+
+nonequivalence :: [Address] -> StWorld Address
+nonequivalence [addr1, addr2] = do
+  ob1 <- unwrap <$> getVar addr1
+  ob2 <- unwrap <$> getVar addr2
+  if typeEquivalence ob1 ob2 then do
+    addr <- access ob1 "!="
+    call (simple addr) [addr1, addr2]
+  else
+    newVar . wrap $ OBool True
+nonequivalence addrs = throw $ NumArgsMissmatch (length addrs) 2 -- It shouldnt happend
 
 createONative :: ([Object] -> StWorld Object) -> Object
 createONative func = ONative $ \addrs -> do
@@ -107,6 +149,25 @@ getLineWithAsk ask = runInputT defaultSettings $ getInputLine ask
 
 askPassword :: Maybe Char -> String -> IO (Maybe String)
 askPassword mChar ask = runInputT defaultSettings $ getPassword mChar ask
+
+typeEquivalence :: Object -> Object -> Bool
+typeEquivalence obj1 obj2 = case (obj1, obj2) of
+  (OClassDef{}, OClassDef{})         -> True
+  (ONative{}, ONative{})             -> True
+  (OFunc{}, OFunc{})                 -> True
+  (OStr{}, OStr{})                   -> True
+  (ORegex{}, ORegex{})               -> True
+  (OBound{}, OBound{})               -> True
+  (OShellCommand{}, OShellCommand{}) -> True
+  (ODouble{}, ODouble{})             -> True
+  (OBool{}, OBool{})                 -> True
+  (ONum{}, ONum{})                   -> True
+  (OVector{}, OVector{})             -> True
+  (ORef{}, ORef{})                   -> True
+  (ONone, ONone)                     -> True
+  (OObject{}, OObject{})             -> True
+  (ONativeObject{}, ONativeObject{}) -> True
+  _                                  -> False
 
 -- | Explore all accessors from a given object
 exploreObjectAttributes :: Object -> StWorld [(T.Text, Address)]

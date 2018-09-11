@@ -487,11 +487,11 @@ internalMethods obj = case obj of
       HM.fromList
         <$> mapM
               (\(name, func) -> do
-                ref <- newVarWithName name (ONative $ \addrs -> do
-                                               objs <- mapM (fmap unwrap . getVar) addrs
-                                               o <- func objs
-                                               newVar $ wrap o
-                                           )
+                ref <- newVar $ wrap (ONative $ \addrs -> do
+                                  objs <- mapM (fmap unwrap . getVar) addrs
+                                  o <- func objs
+                                  newVar $ wrap o
+                              )
                 return (name, ref)
               )
               methods

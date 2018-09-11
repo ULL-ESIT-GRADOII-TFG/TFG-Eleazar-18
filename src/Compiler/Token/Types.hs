@@ -1,4 +1,8 @@
 module Compiler.Token.Types where
+{-
+  Improvements to this module, its depends from Lexer.x:
+    - Move Show definition to a new function. Use the default Show.
+-}
 
 import           Data.Text
 

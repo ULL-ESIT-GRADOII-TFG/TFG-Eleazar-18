@@ -1,5 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Interpreter.Evaluate where
+{-
+   Improvements, depends from haskeline and tokenizer
+     - Improve REPL it needs give an auto-completion based on current input:
+       - Use tokenizer and extract identifier part until get an accessor
+-}
 
 import           Control.Monad.Except
 import           Control.Monad.Identity
@@ -108,7 +113,6 @@ compileSource rawFile nameFile = do
     liftIO $ print tokenizer'
     liftIO $ putStr "\n"
   ast <- catchEither id . return . first Parsing . parserLexer nameFile $ getTokens tokenizer'
-  -- ast <- catchEither id . return $ generateAST rawFile nameFile
   when (verbosity > 2) $ do
     liftIO $ putStrLn "** AST **"
     liftIO $ putDocLnPP verbosity $ pretty ast
@@ -146,11 +150,6 @@ tokenizer input = case scanner False $ T.unpack input of
     liftIO $ putStrLn err
     return $ Complete mempty
   Right toks -> return toks
-
-generateAST :: T.Text -> String -> Either InterpreterError Repl
-generateAST rawFile nameFile = do
-  tokenizer' <- first (Tokenizer . T.pack) . scanner True $ T.unpack rawFile
-  first Parsing . parserLexer nameFile $ getTokens tokenizer'
 
 -- | Computar las class y los import, unir todos los Expression con seq
 computeStatements :: [Statement Tok] -> ScopeM [Expression Rn]
