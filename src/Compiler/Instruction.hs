@@ -15,19 +15,16 @@ import           Control.Monad.Identity
 import           Control.Monad.State.Strict
 import qualified Data.HashMap.Strict        as HM
 import qualified Data.IntMap                as IM
-import           Data.Maybe
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Data.Text.Prettyprint.Doc
 import qualified Data.Vector                as V
-import           Lens.Micro.Platform        hiding (assign)
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Ast
 import           Compiler.Object            ()
 import           Compiler.Parser.Types
-import           Compiler.Prettify
-import           Compiler.Scope
+-- import           Compiler.Prettify
 import           Compiler.Scope.Ast
 import           Compiler.Types
 import           Compiler.World             ()
@@ -94,8 +91,8 @@ instance Runnable ProgInstr StWorld Address where
       _ <- deleteVar addr
       next
 
-    Loop _ accObject prog next -> do
-      _ <- mapOver accObject (\addr -> void . runProgram $ prog addr)
+    Loop _ accObject body next -> do
+      _ <- mapOver accObject (\addr -> void . runProgram $ body addr)
       next
 
     CollectAddress addr next -> do
@@ -269,8 +266,8 @@ instance Desugar Expression Rn Identity ProgInstr Address where
           return addr
 
 
-    RnSeqExpr exprs info -> do
-      let info' = tokToInfo info
+    RnSeqExpr exprs _info -> do
+      -- let info' = tokToInfo info
       instrs <- mapM transform exprs
       if null instrs then
         return noop
@@ -279,7 +276,7 @@ instance Desugar Expression Rn Identity ProgInstr Address where
           addrs <- sequence instrs
           return $ last addrs
 
-    RnMkScope scope exprs info -> do
+    RnMkScope _scope exprs info -> do
       let info' = tokToInfo info
       instrs <- mapM transform exprs
       if null instrs then
@@ -343,6 +340,8 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       return $ do
         addr <- instrs
         collectAddress addr
+
+    _ -> error "No supported AST Node"
 
 -- | Transform literal data from AST to an object
 instance Desugar Atom Rn Identity ProgInstr Address where

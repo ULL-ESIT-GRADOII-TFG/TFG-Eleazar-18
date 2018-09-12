@@ -17,7 +17,7 @@ import           Compiler.Ast
 import           Compiler.Error
 import           Compiler.Identifier
 import           Compiler.Parser.Types
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Scope.Ast
 import           Compiler.Types
 
@@ -37,7 +37,7 @@ instance Naming ScopeM where
     case HM.lookup name renamer of
       Just ref' -> return . Just $ PathVar (ref'^.refA) names
       Nothing   -> do
-        stack <- use $ stackScopeA
+        stack <- use stackScopeA
         return (findInStack stack)
 
      where
@@ -125,11 +125,11 @@ instance Desugar Expression Tok ScopeM Expression Rn where
 
     TokVarExpr name expr' info -> do
       let accSimple = simplifiedAccessor name
-      (newVar, idName) <- catchError
+      (newVariable, idName) <- catchError
         ((False,) <$> getIdentifier accSimple info)
         (\_ -> (True,) <$> addNewIdentifier accSimple)
       RnVarExpr
-        <$> pure newVar
+        <$> pure newVariable
         <*> pure idName
         <*> withNewScope (transform expr')
         <*> pure info
@@ -182,6 +182,8 @@ instance Desugar Expression Tok ScopeM Expression Rn where
 
     TokFactor atom info -> do
       RnFactor <$> transform atom <*> pure info
+
+    _ -> error "No Supported AST Node"
 
 instance Desugar Atom Tok ScopeM Atom Rn where
   -- transform :: Expression a -> ScopeM (Expression a)

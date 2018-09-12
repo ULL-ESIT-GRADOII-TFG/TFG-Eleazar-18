@@ -19,7 +19,7 @@ import           Lens.Micro.Platform        hiding (zoom)
 
 import           Compiler.Error
 import {-# SOURCE #-} Compiler.Object            ()
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Scope
 import           Compiler.Types
 import           Compiler.Utils

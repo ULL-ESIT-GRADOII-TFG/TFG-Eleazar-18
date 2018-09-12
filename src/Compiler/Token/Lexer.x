@@ -184,21 +184,21 @@ skipDels = T.dropEnd 1 . T.drop 1
 -- | FIX: Position token
 addToInnerString :: AlexInput -> Int -> Alex Lexeme
 addToInnerString input@(_,_,_,str) len = do
-  userState <- alexGetUserState
-  alexSetUserState $ userState { generatedString = (generatedString userState) ++ (take len str) }
+  userSt <- alexGetUserState
+  alexSetUserState $ userSt { generatedString = (generatedString userSt) ++ (take len str) }
   mkL SkipT input len
 
 skipJustAdd :: String -> AlexInput -> Int -> Alex Lexeme
 skipJustAdd val input len = do
-  userState <- alexGetUserState
-  alexSetUserState $ userState { generatedString = generatedString userState ++ val }
+  userSt <- alexGetUserState
+  alexSetUserState $ userSt { generatedString = generatedString userSt ++ val }
   mkL SkipT input len
 
 generateLexerFromInner :: (T.Text -> Token) -> AlexInput -> Int -> Alex Lexeme
 generateLexerFromInner mkTok input len = do
-  userState <- alexGetUserState
-  alexSetUserState $ userState { generatedString = "" }
-  mkL (mkTok . T.pack $ generatedString userState) input len
+  userSt <- alexGetUserState
+  alexSetUserState $ userSt { generatedString = "" }
+  mkL (mkTok . T.pack $ generatedString userSt) input len
 
 -- | Internal use. Generate a new ident in the tokenizer
 newIndent :: AlexInput -> Int -> Alex Lexeme
@@ -215,21 +215,13 @@ checkDecrement input len = do
     []
       | 0 == len -> mkL EndStmtT input len
       | otherwise -> mkL SkipT input len
-
-      {-if len == 0 then do
-        alexSetUserState alexInitUserState
-        mkL CBraceT input len
-      else do
-        userState <- alexGetUserState
-        alexSetUserState (userState { indentStack = [] })
-        mkL SkipT input len-}
     stack@(x:_)
       | x == len  -> mkL EndStmtT input len
       | x < len   -> mkL SkipT input len
       | otherwise -> do -- getDedent len stack
           let (removes, rest) = break (<= len) stack
-          userState <- alexGetUserState
-          alexSetUserState (userState { indentStack = rest })
+          userState' <- alexGetUserState
+          alexSetUserState (userState' { indentStack = rest })
           mkL (DedentT $ length removes) input len
 
 

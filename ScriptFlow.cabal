@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b201ae549dd279e05225821e00f0e135d312c2e0edc9ded35dd49884a096bec7
+-- hash: 8bf5832cb34aa1a21691912762379a7abb7cb66c4e9ba890cf03f82bb590d02b
 
 name:           ScriptFlow
 version:        0.0.2
@@ -97,6 +97,7 @@ library
       Compiler.Interpreter.Th
       Compiler.Prelude.Github
       Compiler.Prelude.Github.Auth
+      Compiler.Prelude.Github.Utils
       Compiler.Scope.Ast
       Paths_ScriptFlow
   default-language: Haskell2010

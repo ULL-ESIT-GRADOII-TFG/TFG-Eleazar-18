@@ -5,7 +5,7 @@ module Compiler.Parser.Types where
 import           Data.Default
 import           Data.Text.Prettyprint.Doc
 
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Utils
 
 type Loc = TokenInfo

@@ -21,7 +21,6 @@ import           Compiler.Error
 import           Compiler.Interpreter
 import           Compiler.Interpreter.Command
 import           Compiler.Parser.Methods
-import           Compiler.Parser.Types
 import           Compiler.Prettify
 import           Compiler.Scope.Ast
 import           Compiler.Token.Lexer

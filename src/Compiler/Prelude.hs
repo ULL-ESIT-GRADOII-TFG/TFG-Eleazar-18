@@ -20,7 +20,6 @@ import           Compiler.Interpreter
 import           Compiler.Object
 import           Compiler.Prelude.Github
 import           Compiler.Prelude.Th
-import           Compiler.Prelude.Utils
 import           Compiler.Types
 
 
@@ -36,7 +35,7 @@ internalMethod :: T.Text -> (T.Text, Object)
 internalMethod name =
   ( name
   , ONative $ \case
-      []             -> throw $ NumArgsMissmatch 0 1 -- It shouldnt happend
+      []             -> throw $ NumArgsMissmatch 0 1 -- It shouldnt happen
       addresses@(addr : _) -> do
         obj <- unwrap <$> getVar addr
         addr' <- access obj name

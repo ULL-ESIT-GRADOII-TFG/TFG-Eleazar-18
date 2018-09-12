@@ -12,8 +12,7 @@ import qualified Data.Text                 as T
 import           Data.Text.Prettyprint.Doc
 import           GHC.Exts
 
-import           Compiler.Parser.Types
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Utils
 
 

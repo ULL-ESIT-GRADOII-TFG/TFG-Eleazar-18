@@ -27,7 +27,7 @@ import qualified Compiler.Object.OShellCommand as OC
 import qualified Compiler.Object.OStr          as OS
 import qualified Compiler.Object.OVector       as OV
 import           Compiler.Prelude.Utils
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Types
 import           Compiler.World                ()
 
@@ -220,16 +220,16 @@ instance Callable StWorld where
       directCall obj' args
     else do
       let addr = pathVar ^. refA
-      objCaller <- unwrap <$> getVar addr
+      -- objCaller <- unwrap <$> getVar addr
       directCall obj' (addr:args)
     where
       directCall :: Object -> [Address] -> StWorld Address
-      directCall obj args = case obj of
+      directCall obj addresses = case obj of
         OFunc _ ids prog ->
           if length ids /= length args then
-            throw $ NumArgsMissmatch (length ids) (length args)
+            throw $ NumArgsMissmatch (length ids) (length addresses)
           else do
-            mAddr <- runProgram $ prog args
+            mAddr <- runProgram $ prog addresses
             case mAddr of
               Just addr -> return addr
               Nothing   -> newVar $ wrap ONone

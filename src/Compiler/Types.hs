@@ -25,7 +25,7 @@ import           Text.Regex.PCRE.Light
 
 import           Compiler.Error
 import           Compiler.Parser.Types
-import           Compiler.Prettify
+-- import           Compiler.Prettify
 import           Compiler.Utils
 
 
