@@ -2,43 +2,117 @@
 \section{Introducción}
 \begin{frame}[allowframebreaks,fragile]
   \frametitle{Introducción}
+  \begin{center}
+    Un lenguaje diseñado para crear DSLs
+  \end{center}
   % Comentar el propósito del proyecto. Cual es el objetivo
   % Cual ha sido el planteamiento, para solucionar el problema
   %
 
+
   \begin{center}
-    Propósito
+    Objetivos generales
+    % Se han planteado diversas metas a alcanzar para la realización de este proyecto.
+
+    \begin{itemize}
+      \item REPL
+        % El repl es una de las principales metas debido a que permite aprendizaje
+        % más eficaz que el equivalente mediante scripts. Además de su uso en la
+        % depuracion del propio código del intérprete, mediante los comandos especiales.
+        %
+      \item Scripts
+        % Posibilidad de realizar script. Para realizar las tareas de automatización.
+        %
+      \item Archivos de configuracion
+        % Las cuales puedan tener archivos de configuración asociados. Es decir existen mecanismos para
+        % generar configuraciones específicas para que se soporten DSLs.
+        %
+      \item Interfaz con Github
+        % La interfaz con github pretende ser un ejemplo del potencial de la sintaxis y las capacidades
+        % internas del lenguaje
+        %
+    \end{itemize}
+  \end{center}
+
+  \framebreak
+
+  \frametitle{Estado}
+  \begin{center}
+    Estado
   \end{center}
 
   \framebreak
 
   \begin{center}
-    Estado
+    Limitación de los scripts
+    \begin{itemize}
+      \item Linux, con posible soporte a MacOS
+        % Actualmente solo, tiene soporte para linux, y se prevee que en macos funcione sin problemas mayores
+        % en cuanto al soporte para windows esta limitado por la dependencia de pcre. La cual se puede parchear
+        % para su posible port a windows.
+        %
+      \item Limitada cantidad de operaciones sobre objetos
+        % Los métodos implementados son una cantidad, bastante baja. La implementación de más no debería ser ningún problema.
+        %
+      \item Manejo de la memoria
+        % La memoria está implementada para ser fácil de depurar. No se ha tenido en consideración la eficacia de la misma, hasta establecer
+        % un modelo bastante robusto. Y ciertas caracteristicas del interprete se estabilizen
+        %
+    \end{itemize}
   \end{center}
 
+  \framebreak
   \begin{center}
-    Capacidades
+    REPL
+    \begin{itemize}
+      \item Básica funcionalidad del REPL
+      \item Diversos comandos implementados
+      \item Permite insersión de codigo multilínea
+    \end{itemize}
   \end{center}
 
+  \framebreak
+  \begin{center}
+    Esquema interno
+    \begin{itemize}
+      \item Interoperabilidad
+      \item AST flexible
+      \item Reuso de funciones de Haskell
+    \end{itemize}
+  \end{center}
 \end{frame}
 
 
 \section{Usos}
 \begin{frame}[allowframebreaks,fragile]
-  \frametitle{}
+  \frametitle{Usos}
+  \begin{center}
+    Estado
+    \begin{itemize}
+      \item Interoperabilidad
+      \item AST flexible
+      \item Reuso de funciones de Haskell
+    \end{itemize}
+  \end{center}
+
+  \frametitle{REPL}
+
 
   \begin{lstlisting}[language=scriptflow]
-  # A comment
-  class Test:
-    fun test arg1 arg2:
-      test =
-        if val > fd:
-          r"hola"
-          "fdfasdf"
-          !$echo$
-          89
-        else:
-          { hola -> 45.5 }
+    use Github()
+    cd virtual_github
+
+    for repo in logued_user.repos & r/TFG-.*/:
+      cd repo
+      linter_info = !> jslinter .
+
+      if linter_info.status == 2:
+        templateIssue = Issue {
+          title -> "Linter Fails",
+          message -> "Doesn't pass linter:\n" ++ linter_info.output,
+          assignees -> [ logued_user ] ++ repo.collaborators,
+        }
+        repo.new_issue templateIssue
   \end{lstlisting}
 
 
@@ -48,8 +122,14 @@
 \begin{frame}[allowframebreaks,fragile]
   \frametitle{Conclusión}
   \begin{center}
-    \renewcommand{\labelitemi}{$\blacksquare$}
-    \renewcommand\labelitemii{$\square$}
+    \begin{itemize}
+      \item Implementación de la API de Github
+      \item Mejora
+    \end{itemize}
+  \end{center}
+
+  \frametitle{Conclusions and future work}
+  \begin{center}
     \begin{itemize}
       \item  Default item label for entry one
       \item  Default item label for entry two
@@ -57,7 +137,4 @@
     \end{itemize}
   \end{center}
 
-  \frametitle{Conclusions and future use}
-
 \end{frame}
-
