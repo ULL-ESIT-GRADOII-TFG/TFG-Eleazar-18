@@ -8,8 +8,10 @@
   % Comentar el propósito del proyecto. Cual es el objetivo
   % Cual ha sido el planteamiento, para solucionar el problema
   %
-
-
+\end{frame}
+\section{Objetivos}
+\begin{frame}[allowframebreaks,fragile]
+  \frametitle{Objectivos}
   \begin{center}
     Objetivos generales
     % Se han planteado diversas metas a alcanzar para la realización de este proyecto.
@@ -34,17 +36,14 @@
     \end{itemize}
   \end{center}
 
-  \framebreak
+  \framebreak{}
 
+\end{frame}
+\section{Estado}
+\begin{frame}[allowframebreaks,fragile]
   \frametitle{Estado}
   \begin{center}
-    Estado
-  \end{center}
-
-  \framebreak
-
-  \begin{center}
-    Limitación de los scripts
+    Limitación del intérprete
     \begin{itemize}
       \item Linux, con posible soporte a MacOS
         % Actualmente solo, tiene soporte para linux, y se prevee que en macos funcione sin problemas mayores
@@ -61,23 +60,57 @@
     \end{itemize}
   \end{center}
 
-  \framebreak
+  \framebreak{}
   \begin{center}
     REPL
     \begin{itemize}
       \item Básica funcionalidad del REPL
+        % Tiene las funcionalidades básicas esperadas de un REPL
+        % tales como historial, un autocompletado simple, keybinds de emacs
       \item Diversos comandos implementados
+        % Como mem y instrs principalmente para la propia depuración del lenguaje
+        % se tiene pensado añadir más comandos. como tutorial o docs que permitan explotar
+        % más estacaracterisca
+        % Hay funciones implementadas se podrían considerar comandos como dir. El cual permite obtener
+        % lista de los atributos y métodos de un objecto
       \item Permite insersión de codigo multilínea
+        % El REPL intenra parsear el codigo al ejecutar el retorno de carro en caso de que se detecte un corchete abierto
+        % inicia el modo multilinea hazta que entra una linea vacia. Lo que ejecutaría el codigo mencionado
+        \begin{lstlisting}[language=scriptflow]
+          >>> if $cat somefile.txt$.exec().null():
+          ...   print "It is empty"
+          ...
+          It is empty
+          none
+          >>> |
+        \end{lstlisting}
     \end{itemize}
   \end{center}
 
-  \framebreak
+  \framebreak{}
   \begin{center}
     Esquema interno
     \begin{itemize}
       \item Interoperabilidad
+        % Se trata de una característica limita entorno de haskell y unidireccional
+        % es decir se usa desde el propio codigo de haskell y permite usar codigo haskell dentro
+        % de scriptflow. Pero no lo contrario, desde el propio REPL de scriptflow llamar directamente
+        % a codigo haskell.
+
       \item AST flexible
+        % El AST recientemente se a cambiado uno más flexible encontrado en el paper
+        % Tree that grows. Este usa diversas extensiones del compilador GHC. Para lograr esta
+        % estructura, familias de tipo abiertas.
       \item Reuso de funciones de Haskell
+        % El proceso reusar las funciones de haskell es un tema con dificultad debido
+        % a la propia diferencia entre lenguajes, tipado estrito vs dinamico, funciones currificadas
+        %
+        \begin{minted}[fontsize=\small]{haskell}
+          methodsTh
+            [ fn "init" [| T.init :: T.Text -> T.Text |]
+            , fn "null" [| T.null :: T.Text -> Bool |]
+            ]
+        \end{minted}
     \end{itemize}
   \end{center}
 \end{frame}
@@ -87,54 +120,86 @@
 \begin{frame}[allowframebreaks,fragile]
   \frametitle{Usos}
   \begin{center}
-    Estado
     \begin{itemize}
-      \item Interoperabilidad
-      \item AST flexible
-      \item Reuso de funciones de Haskell
+      \item Pequeños scripts.
+      \item Scripts con configuraciones
+      \item REPL
     \end{itemize}
   \end{center}
-
-  \frametitle{REPL}
-
-
-  \begin{lstlisting}[language=scriptflow]
-    use Github()
-    cd virtual_github
-
-    for repo in logued_user.repos & r/TFG-.*/:
-      cd repo
-      linter_info = !> jslinter .
-
-      if linter_info.status == 2:
-        templateIssue = Issue {
-          title -> "Linter Fails",
-          message -> "Doesn't pass linter:\n" ++ linter_info.output,
-          assignees -> [ logued_user ] ++ repo.collaborators,
-        }
-        repo.new_issue templateIssue
-  \end{lstlisting}
-
+  \framebreak{}
+  \begin{center}
+    %% TODO Realizar ejemplos que permitan simplificar cierto trabajo
+    %%      de la shell
+    %% TODO Ejemplos de interación con la shell
+    \begin{lstlisting}[language=scriptflow]
+      class Utils:
+        fun ...
+    \end{lstlisting}
+  \end{center}
 
 \end{frame}
 
-\section{Conclusiones y uso futuro}
+\section{Conclusiones y futuras mejoras}
 \begin{frame}[allowframebreaks,fragile]
-  \frametitle{Conclusión}
+  \frametitle{Conclusión y futuras mejoras}
   \begin{center}
     \begin{itemize}
       \item Implementación de la API de Github
-      \item Mejora
+      \item Mejorar la implementación de la memoria
+      \item Poner en práctica el posible uso de FUSE en el DSL de Github
+      \item Muchas posibles mejoras y caracteristicas
     \end{itemize}
-  \end{center}
+    % Elementos a resaltar de una proxima versión
+    % - nueva sintaxis de regex
+    % - nueva sintaxis para comandos de línea
+    % - metodo especial __cd__, __filter__
+    % - pipes
+    \begin{lstlisting}[language=scriptflow2]
+      use Github()
 
+      for repo in logued_user.repos | r/tfg-.*/:
+        cd repo; use repo
+        linter_info = !$ jslinter .
+
+        if linter_info.status == 2:
+          templateissue = Issue {
+            title -> "linter fails",
+            message ->
+              "Doesn't pass linter:\n" ++ linter_info.output,
+            assignees ->
+              [ logued_user ] ++ collaborators,
+          }
+          new_issue templateissue
+    \end{lstlisting}
+  \end{center}
+\end{frame}
+
+\begin{frame}[allowframebreaks,fragile]
   \frametitle{Conclusions and future work}
   \begin{center}
     \begin{itemize}
-      \item  Default item label for entry one
-      \item  Default item label for entry two
-      \item  Custom item label for entry three
+      \item Implement Github API as DSL
+      \item Improve current implemented memory manager
+      \item Make prototype using libfuse in Github DSL
+      \item A lot more of improvements and features
     \end{itemize}
+    \begin{lstlisting}[language=scriptflow2]
+      use Github()
+
+      for repo in logued_user.repos | r/tfg-.*/:
+        cd repo; use repo
+        linter_info = !$ jslinter .
+
+        if linter_info.status == 2:
+          templateissue = Issue {
+            title -> "linter fails",
+            message ->
+              "Doesn't pass linter:\n" ++ linter_info.output,
+            assignees ->
+              [ logued_user ] ++ collaborators,
+          }
+          new_issue templateissue
+    \end{lstlisting}
   \end{center}
 
 \end{frame}

@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage{latexsym}
 \usepackage{listings}
+\usepackage{minted}
 \usepackage{color}
 \usepackage{amssymb}
 
@@ -19,7 +20,7 @@
   A language to making DSLs.
 }
 
-\author[Eleazar Díaz Delgado] {
+\author[Eleazar Díaz Delgado]{
 Autor: Eleazar Díaz Delgado \\
 Director: Casiano Rodríguez León
 }
@@ -63,7 +64,7 @@ Director: Casiano Rodríguez León
   sensitive = true,
   keywords={class, fun, lam, for, in, if, else},
   otherkeywords={% Operators
-    >, <, ==, <=, >=, ->, **, *, /, \%, +, -, \&\&, ||, !, @, :
+    >, <, ==, <=, >=, ->, **, *, /, \%, +, -, \&\&, ||, \!, @, :
   },
   keywords = [2]{true, false, none},
   keywordstyle=\color[HTML]{8700af},
@@ -77,40 +78,60 @@ Director: Casiano Rodríguez León
   morestring=[b]$,
 }
 
+\lstdefinelanguage{scriptflow2}{
+  basicstyle=\tiny, %or \small or \footnotesize etc.
+  sensitive = true,
+  keywords={cd, use, class, fun, lam, for, in, if, else},
+  otherkeywords={% Operators
+    >, <, ==, <=, >=, ->, **, *, /, \%, +, -, \&\&, \&, ||, \!, @, :, |
+  },
+  keywords = [2]{true, false, none},
+  keywordstyle=\color[HTML]{8700af},
+  keywordstyle=[2]\color[HTML]{005faf}, % for example
+  showstringspaces=false,
+  breaklines=true,
+  comment=[l]{\#},
+  commentstyle=\color[HTML]{878787}\ttfamily,
+  stringstyle=\color[HTML]{5f8700}\ttfamily,
+  morestring=[b]",
+  morestring=[b]//,
+  %%morestring=[b]$,
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
-% Cover
-\begin{frame}
+  % Cover
+  \begin{frame}
 
-  \includegraphics[width=0.3\textwidth]{img/ull.eps}
-  \hspace*{7.5cm}
-  \titlepage
+    \includegraphics[width=0.3\textwidth]{img/ull.eps}
+    \hspace*{7.5cm}
+    \titlepage
 
-\end{frame}
+  \end{frame}
 
-% Index
-\begin{frame}
-  \frametitle{Índice}
-  \tableofcontents
-\end{frame}
+  % Index
+  \begin{frame}
+    \frametitle{Índice}
+    \tableofcontents
+  \end{frame}
 
-% Slides
-\input{presentacion}
+  % Slides
+  \input{presentacion}
 
 
-% Bibliography
-\section{Bibliografía}
-\begin{frame}[allowframebreaks]
-  \frametitle{Bibliografía}
-  \bibliographystyle{unsrt}
-  \bibliography{../manuscript}
-  \nocite{*}
-\end{frame}
+  % Bibliography
+  \section{Bibliografía}
+  \begin{frame}[allowframebreaks]
+    \frametitle{Bibliografía}
+    \bibliographystyle{unsrt}
+    \bibliography{../manuscript}
+    \nocite{*}
+  \end{frame}
 
-\begin{frame}
-  \frametitle{Fin de la presentación}
-  \begin{center}
-    \Huge{Gracias por su atención}
-  \end{center}
-\end{frame}
+  \begin{frame}
+    \frametitle{Fin de la presentación}
+    \begin{center}
+      \Huge{Gracias por su atención}
+    \end{center}
+  \end{frame}
 \end{document}
