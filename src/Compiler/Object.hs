@@ -226,7 +226,7 @@ instance Callable StWorld where
       directCall :: Object -> [Address] -> StWorld Address
       directCall obj addresses = case obj of
         OFunc _ ids prog ->
-          if length ids /= length args then
+          if length ids /= length addresses then
             throw $ NumArgsMissmatch (length ids) (length addresses)
           else do
             mAddr <- runProgram $ prog addresses
@@ -235,10 +235,10 @@ instance Callable StWorld where
               Nothing   -> newVar $ wrap ONone
 
         ONative native ->
-          native args
+          native addresses
 
         OBound self method ->
-          directCall (ORef method) (self:args)
+          directCall (ORef method) (self:addresses)
 
         OClassDef _name methods -> do
           self <- newVar . wrap $ OObject (Just (pathVar^.refA)) mempty
@@ -246,19 +246,19 @@ instance Callable StWorld where
           case HM.lookup "__init__" methods of
             Just method -> do
               method' <- follow method
-              _ <- directCall method' (selfRef:args)
+              _ <- directCall method' (selfRef:addresses)
               deleteUnsafe selfRef
               return self
             Nothing ->
-              if null args then do
+              if null addresses then do
                 deleteUnsafe selfRef
                 return self
               else
-                throw $ NumArgsMissmatch 0 (length args)
+                throw $ NumArgsMissmatch 0 (length addresses)
 
         ORef ref' -> do
           obj' <- follow ref'
-          directCall obj' args
+          directCall obj' addresses
 
         t -> throw $ NotCallable (typeName t)
 
