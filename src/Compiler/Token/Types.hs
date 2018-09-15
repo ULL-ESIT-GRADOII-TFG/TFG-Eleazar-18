@@ -130,28 +130,34 @@ data Token
 -- `move_pos' calculates the new position after traversing a given character,
 -- assuming the usual eight character tab stops.
 
-
-data AlexPosn = AlexPn !Int !Int !Int
-        deriving (Eq,Show)
+-- | Token position used
+data TokPos = TokPos
+  { _offset :: !Int -- ^ Offset
+  , _line :: !Int -- ^ Line
+  , _column :: !Int -- ^ Column
+  } deriving (Eq, Show)
 
 -- -----------------------------------------------------------------------------
 -- * The input type
 
-type AlexInput = (AlexPosn,     -- ^ current position,
-                  Char,         -- ^ previous char
-                  ByteString.ByteString,        -- ^ current input string
-                  Int64)           -- ^ bytes consumed so far
-
+-- | Default input type
+-- - current position,
+-- - previous char
+-- - current input string
+-- - bytes consumed so far
+type AlexInput = (TokPos, Char, ByteString.ByteString, Int64)
 
 type Byte = Word8
 
+-- | These values are returned by generated functions `LexerGen`
 data AlexReturn action
   = AlexEOF
   | AlexError  !AlexInput
   | AlexSkip   !AlexInput !Int
   | AlexToken  !AlexInput !Int action
 
-
+-- | Used to determine which kind of string is been saved into the internal
+-- state.
 data KindString
   = Shell
   | ShellStr
@@ -160,31 +166,51 @@ data KindString
   | None
   deriving (Show, Eq)
 
+-- | Internal State of tokenizer, alex prefixed belongs to alex template
 data TokenizerSt = TokenizerSt
-  { alex_pos         :: !AlexPosn  -- ^ position at current input location
+  { alex_pos         :: !TokPos  -- ^ position at current input location
   , alex_bpos        :: !Int64     -- ^ bytes consumed so far
   , alex_inp         :: ByteString.ByteString      -- ^ the current input
   , alex_chr         :: !Char      -- ^ the character before the input
   , alex_scd         :: !Int        -- ^ the current startcode
 
+  , _stackGroups     :: [(Token, TokPos)]
+  -- ^ Allows to stack parents and brackets
+  , _initialPos      :: !TokPos
+  -- ^ Use to get initial position on possible multilines tokens
   , _indentStack     :: [Int64]
+  -- ^ Used to control Indent behavior
   , _generatedString :: T.Text
+  -- ^ Allows save a temporary string before create final token
   , _kindGenString   :: KindString
-  }
+  -- ^ Determine ´_generateString´ type token
+  } deriving (Show)
 
-data ErrorTokenizer = ErrorTokenizer deriving Show
+-- | Token info parser
+data ErrorTokenizer
+  = ErrorTokenizer T.Text
+  | ExpectedOtherToken
+    { expectedOn :: TokPos
+    , expectedKind :: [String]
+    }
+  | WrongClosedGroup
+    { expected :: Token
+    , found :: Maybe (Token, TokPos)
+    , closing :: (Token, TokPos) }
+  deriving (Show, Eq)
 
 type TokenizerM a = StateT TokenizerSt (Except ErrorTokenizer) a
 
 type AlexAction tok = AlexInput -> Int64 -> TokenizerM tok
 
--- A Lexeme
+-- | Token with position information
 data Lexeme = L
-  { start :: AlexPosn
-  , end :: AlexPosn
+  { start :: TokPos
+  , end :: TokPos
   , tokn :: Token
   } deriving Eq
 
+-- TODO: Pretty
 instance Show Lexeme where
   show (L _start _end tok) = show tok
 
@@ -195,4 +221,6 @@ data Tokenizer
   | Complete (V.Vector Lexeme)
   deriving (Show, Eq)
 
+-- * Generated Lenses
 makeSuffixLenses ''TokenizerSt
+makeSuffixLenses ''TokPos

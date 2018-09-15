@@ -1,20 +1,8 @@
 {
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE OverloadedStrings     #-}
--- {-# OPTIONS_HADDOCK prune #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Compiler.Token.LexerGen where
-{-
-  This module needs several modifications:
-    - On start multiline token like string, regex, shellcommands... Add initial token <code_st>
-    - Tokens should be delimited with start and end position with its file offset positions
-    - Modify monadUserState, create own monad to a better error manipulation
-      + This means touch alexMonadScan which use alexScan create by alex
-      + Add all required functions to it
-    - All this modifications could be improve adding several features to alex
-      + QuasiQuotes to generate. And convert alex into a library. Exporting the
-        differents wrappers.
--}
-
 
 import qualified Data.Vector as V
 import qualified Data.Text as T
@@ -69,24 +57,28 @@ tokens :-
     "class"       { mkL ClassT }
     "use"         { mkL UseT }
     "cd"          { mkL CdT }
-    "["           { mkL OBracketT }
-    "]"           { mkL CBracketT }
-    "{"           { mkL OBraceT }
-    "}"           { mkL CBraceT }
-    "("           { mkL OParenT }
-    ")"           { mkL CParenT }
+    "["           { mkGroupOL OBracketT }
+    "]"           { mkGroupCL OBracketT CBracketT }
+    "{"           { mkGroupOL OBraceT }
+    "}"           { mkGroupCL OBraceT CBraceT }
+    "("           { mkGroupOL OParenT }
+    ")"           { mkGroupCL OParenT CParenT }
     ","           { mkL CommaT }
     ";"           { mkL EndStmtT }
     "="           { mkL AssignT }
     "none"        { mkL NoneT }
     "true"        { mkL (BoolT True) }
     "false"       { mkL (BoolT False) }
-    \"            { begin string }
-    !\$           { mkL (OperatorT $ T.pack "!") `andBegin` shell }
-    \$            { begin shell }
-    !\$\"         { mkL (OperatorT $ T.pack "!") `andBegin` shell_alternative }
-    \$\"           { begin shell_alternative }
-    "r/"          { begin regex }
+    \"            { kindString' Str string }
+    !\$           { mkL (OperatorT $ T.pack "!")
+                    `andAction` kindString Shell
+                    `andBegin` shell }
+    \$            { kindString' Shell shell }
+    !\$\"         { mkL (OperatorT $ T.pack "!")
+                    `andAction` kindString ShellStr
+                    `andBegin` shell_alternative }
+    \$\"          { kindString' ShellStr shell_alternative }
+    "r/"          { kindString' Reg regex }
     $operators+   { mkL' OperatorT }
     @number       { mkL' (NumT . read . T.unpack) }
     @decimal      { mkL' (DecimalT . read . T.unpack) }
@@ -133,6 +125,6 @@ tokens :-
     "\/"           { skipJustAdd "/" }
     \\n            { skipJustAdd "\n" }
     \\t            { skipJustAdd "\t" }
-    [^\/]           { addToInnerString }
+    [^\/]          { addToInnerString }
     "/"            { generateLexerFromInner RegexExprT `andBegin` code_st }
   }

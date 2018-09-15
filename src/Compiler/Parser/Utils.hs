@@ -27,7 +27,7 @@ match tok = do
   lastPos <- getPosition
   token
     (\(L _ _ tok') -> show tok')
-    (\(L (AlexPn _ l c) _ _) -> newPos (sourceName lastPos) l c)
+    (\(L (TokPos _ l c) _ _) -> newPos (sourceName lastPos) l c)
     (\(L _ _ tok') -> if tok == tok' then Just () else Nothing)
 
 match' :: (Token -> Maybe a) -> TokenParser a
@@ -35,7 +35,7 @@ match' fun = do
   lastPos <- getPosition
   token
     (\(L _ _ tok') -> show tok')
-    (\(L (AlexPn _ l c) _ _) -> newPos (sourceName lastPos) l c)
+    (\(L (TokPos _ l c) _ _) -> newPos (sourceName lastPos) l c)
     (\(L _ _ tok') -> fun tok')
 
 cBraceT :: TokenParser ()

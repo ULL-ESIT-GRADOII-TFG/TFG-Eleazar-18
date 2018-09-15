@@ -1,24 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Lexer where
 
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Vector          as V
 import           Test.Hspec
 -- import           Text.Parsec
 
-import           Compiler.Token.Lexer
--- import           Compiler.Token.Methods
+import           Compiler.Token.Methods
 import           Compiler.Token.Types
 
-tokenParse :: String -> Either String Token
+tokenParse :: BL.ByteString -> Either ErrorTokenizer Token
 tokenParse val = do
   tokenizer' <- scanner False val
   let tokens = getTokens tokenizer'
   if V.null tokens then
-    Left "Empty scanner"
+    Left $ ErrorTokenizer "Empty scanner"
   else
     Right . tokn $ V.head tokens
 
-tokenFlow :: String -> Either String [Token]
+tokenFlow :: BL.ByteString -> Either ErrorTokenizer [Token]
 tokenFlow val = do
   tokenizer' <- scanner False val
   let tokens = getTokens tokenizer'
@@ -67,10 +67,11 @@ lexerTest =
       tokenParse "\"Into \\nhere \na string\"" `shouldBe` Right (LitTextT "Into \nhere \na string")
 
     it "It parse a literal regex" $
-      tokenParse "r\"Into a string\"" `shouldBe` Right (RegexExprT "Into a string")
+      tokenParse "r/Into a string/" `shouldBe` Right (RegexExprT "Into a string")
 
-    it "It parse a literal command" $
-      tokenParse "$Into a string$" `shouldBe` Right (ShellCommandT "Into a string")
+    it "It parse a literal command one line" $ do
+      tokenParse "$Into a string\n" `shouldBe` Right (ShellCommandT "Into a string")
+      tokenParse "$Into a string" `shouldBe` Right (ShellCommandT "Into a string")
 
     it "It parse a literal command alternative sintax" $
       tokenParse "$\"Into a string\"" `shouldBe` Right (ShellCommandT "Into a string")

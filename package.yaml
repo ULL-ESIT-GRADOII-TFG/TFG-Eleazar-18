@@ -70,6 +70,7 @@ library:
     - Compiler.Object.OShellCommand
     - Compiler.Object.OStr
     - Compiler.Object.OVector
+    - Compiler.Parser.Utils
     - Compiler.Parser.Methods
     - Compiler.Parser.Types
     - Compiler.Prelude
@@ -78,6 +79,7 @@ library:
     - Compiler.Prettify
     - Compiler.Scope
     - Compiler.Token.Lexer
+    - Compiler.Token.LexerGen
     - Compiler.Token.Methods
     - Compiler.Token.Types
     - Compiler.Types
@@ -110,3 +112,4 @@ tests:
       - hspec
       - parsec
       - vector
+      - bytestring

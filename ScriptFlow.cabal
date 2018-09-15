@@ -4,7 +4,7 @@ cabal-version: >= 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c0409c39d131631d256116486d9f417ab3c538b7e28e57a0a9a3386afd0cc39
+-- hash: 5a54ef2526a69ddd7ce59ff797c8021f301b4d04980f5697fc02193bb33471d2
 
 name:           ScriptFlow
 version:        0.0.3
@@ -86,6 +86,7 @@ library
       Compiler.Object.OShellCommand
       Compiler.Object.OStr
       Compiler.Object.OVector
+      Compiler.Parser.Utils
       Compiler.Parser.Methods
       Compiler.Parser.Types
       Compiler.Prelude
@@ -94,6 +95,7 @@ library
       Compiler.Prettify
       Compiler.Scope
       Compiler.Token.Lexer
+      Compiler.Token.LexerGen
       Compiler.Token.Methods
       Compiler.Token.Types
       Compiler.Types
@@ -104,12 +106,10 @@ library
       Compiler.Fuse
       Compiler.Interpreter
       Compiler.Interpreter.Th
-      Compiler.Parser.Utils
       Compiler.Prelude.Github
       Compiler.Prelude.Github.Auth
       Compiler.Prelude.Github.Utils
       Compiler.Scope.Ast
-      Compiler.Token.LexerGen
       Paths_ScriptFlow
   default-language: Haskell2010
 
@@ -135,6 +135,7 @@ test-suite Compiler-test
   build-depends:
       ScriptFlow
     , base
+    , bytestring
     , hspec
     , parsec
     , vector

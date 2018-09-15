@@ -247,6 +247,7 @@ class Runnable prog mm o where
 class Monad m => Desugar ast a m ast' b | a ast -> b, a ast -> ast' where
   transform :: ast a -> m (ast' b)
 
+-- * Lenses generated
 makeSuffixLenses ''PathVar
 makeSuffixLenses ''Rc
 makeSuffixLenses ''World
