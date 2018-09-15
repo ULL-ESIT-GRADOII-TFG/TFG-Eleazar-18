@@ -1,5 +1,5 @@
 name: ScriptFlow
-version: '0.0.2'
+version: '0.0.3'
 synopsis: An easy scripting language
 description: Please see README.org
 category: Development, Languages
@@ -11,6 +11,16 @@ github: ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
 extra-source-files:
   - README.org
   - defaultConfig.yaml
+  - templates/AlexTemplate
+  - templates/AlexTemplate-ghc
+  - templates/AlexTemplate-ghc-nopred
+  - templates/AlexWrapper-monadUserState-bytestring
+build-type: Custom
+
+custom-setup:
+  dependencies:
+    - base
+    - Cabal
 
 library:
   source-dirs: src

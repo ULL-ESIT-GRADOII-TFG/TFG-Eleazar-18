@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Compiler.Parser.Methods where
 
+{-
+  TODO:
+  Parsec it isn't designed to work in this way, there are problem with tokens
+  positions, it's impossible or too nasty get a start and end position work
+  correctly.
+-}
+
 import           Control.Monad
 import qualified Data.HashMap.Strict    as HM
 import qualified Data.Text              as T
@@ -9,10 +16,28 @@ import           Text.Parsec
 
 import           Compiler.Ast
 import           Compiler.Parser.Types
+import           Compiler.Parser.Utils
 import           Compiler.Prelude.Utils (Assoc (..), operatorsPrecedence)
-import           Compiler.Token.Lexer   (Lexeme)
-import           Compiler.Token.Methods
+import           Compiler.Token.Types   (Lexeme)
 
+
+{-
+stmts* -: classStmt / funStmt / exprsSeq
+
+classStmt -:  ClassT classId methods
+
+methods* -: funStmt
+
+funStmt -:  FunT NameIdT params exprs
+
+params* -: NameIdT
+
+exprsSeq* -: expr endStmt*
+
+expr -: unaryOperators / lambda / ifElse / if / for / assign / operators
+
+exprsScope* -: expr endStmt*
+-}
 
 -- | List of reserved keywords
 keywords :: [T.Text]
@@ -306,13 +331,13 @@ parseFactor = choice $ map
 parseFactorNoApply :: TokenParser (Expression Tok)
 parseFactorNoApply = choice $ map
   try
-  [ mkTokenInfo $ (\v i -> TokFactor (AStr v i) i) <$> litTextT
-  , mkTokenInfo $ (\v i -> TokFactor (ANum v i) i)<$> numberT
-  , mkTokenInfo $ (\v i -> TokFactor (ADecimal v i) i)<$> decimalT
-  , mkTokenInfo $ (\v i -> TokFactor (ARegex v i) i)<$> regexT
-  , mkTokenInfo $ (\v i -> TokFactor (AShellCommand v i) i)<$> shellCommandT
-  , mkTokenInfo $ (\v i -> TokFactor (ABool v i) i)<$> boolT
-  , mkTokenInfo $ (\i -> TokFactor (ANone i) i) <$ noneT
+  [ mkTokenInfo ((\v i -> TokFactor (AStr v i) i) <$> litTextT <?> "string")
+  , mkTokenInfo ((\v i -> TokFactor (ANum v i) i)<$> numberT <?> "integer")
+  , mkTokenInfo ((\v i -> TokFactor (ADecimal v i) i)<$> decimalT <?> "double")
+  , mkTokenInfo ((\v i -> TokFactor (ARegex v i) i)<$> regexT <?> "regex")
+  , mkTokenInfo ((\v i -> TokFactor (AShellCommand v i) i)<$> shellCommandT <?> "shell command")
+  , mkTokenInfo ((\v i -> TokFactor (ABool v i) i)<$> boolT <?> "bool")
+  , mkTokenInfo ((\i -> TokFactor (ANone i) i) <$ noneT <?> "none")
   , parseVector
   , parseDic
   , parensExp

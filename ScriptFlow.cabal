@@ -1,13 +1,13 @@
-cabal-version: >= 1.10
+cabal-version: >= 1.24
 
 -- This file has been generated from package.yaml by hpack version 0.29.6.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8bf5832cb34aa1a21691912762379a7abb7cb66c4e9ba890cf03f82bb590d02b
+-- hash: 4c0409c39d131631d256116486d9f417ab3c538b7e28e57a0a9a3386afd0cc39
 
 name:           ScriptFlow
-version:        0.0.2
+version:        0.0.3
 synopsis:       An easy scripting language
 description:    Please see README.org
 category:       Development, Languages
@@ -18,14 +18,23 @@ maintainer:     eleazardzdo@gmail.com
 copyright:      2018 Eleazar Díaz Delgado
 license:        BSD3
 license-file:   LICENSE
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     defaultConfig.yaml
     README.org
+    templates/AlexTemplate
+    templates/AlexTemplate-ghc
+    templates/AlexTemplate-ghc-nopred
+    templates/AlexWrapper-monadUserState-bytestring
 
 source-repository head
   type: git
   location: https://github.com/ULL-ESIT-GRADOII-TFG/TFG-Eleazar-18
+
+custom-setup
+  setup-depends:
+      Cabal
+    , base
 
 library
   hs-source-dirs:
@@ -95,10 +104,12 @@ library
       Compiler.Fuse
       Compiler.Interpreter
       Compiler.Interpreter.Th
+      Compiler.Parser.Utils
       Compiler.Prelude.Github
       Compiler.Prelude.Github.Auth
       Compiler.Prelude.Github.Utils
       Compiler.Scope.Ast
+      Compiler.Token.LexerGen
       Paths_ScriptFlow
   default-language: Haskell2010
 

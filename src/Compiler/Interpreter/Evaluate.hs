@@ -9,8 +9,10 @@ module Compiler.Interpreter.Evaluate where
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import           Data.Bifunctor
+import qualified Data.ByteString.Lazy         as BL
 import           Data.Maybe
 import qualified Data.Text                    as T
+import qualified Data.Text.Encoding           as T
 import qualified Data.Text.IO                 as T
 import           Data.Text.Prettyprint.Doc
 import           Lens.Micro.Platform
@@ -23,7 +25,8 @@ import           Compiler.Interpreter.Command
 import           Compiler.Parser.Methods
 import           Compiler.Prettify
 import           Compiler.Scope.Ast
-import           Compiler.Token.Lexer
+import           Compiler.Token.Methods
+import           Compiler.Token.Types
 import           Compiler.Types
 import           Compiler.World
 
@@ -106,7 +109,7 @@ handleREPLError err = case err of
 compileSource :: T.Text -> String -> Interpreter Object
 compileSource rawFile nameFile = do
   verbosity <- use verboseLevelA
-  tokenizer' <- catchEither id . return . first (Tokenizer . T.pack) . scanner True $ T.unpack rawFile
+  tokenizer' <- catchEither id . return . first (Tokenizer . T.pack . show) . scanner True $ BL.fromStrict $ T.encodeUtf8 rawFile
   when (verbosity > 2) $ do
     liftIO $ putStrLn "** Tokens **"
     liftIO $ print tokenizer'
@@ -144,9 +147,9 @@ evaluateScopedProgram astScoped = do
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer
-tokenizer input = case scanner False $ T.unpack input of
+tokenizer input = case scanner False $ BL.fromStrict $ T.encodeUtf8 input of
   Left err -> do
-    liftIO $ putStrLn err
+    liftIO $ print err
     return $ Complete mempty
   Right toks -> return toks
 
