@@ -1,0 +1,7 @@
+
+# Simple declaration
+test = [1,2,4]
+
+# Complex exresion
+first = test.get 0
+

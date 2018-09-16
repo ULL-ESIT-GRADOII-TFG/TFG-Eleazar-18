@@ -1,13 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Lexer where
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Vector          as V
 import           Test.Hspec
--- import           Text.Parsec
+import           Development.IncludeFile
 
 import           Compiler.Token.Methods
 import           Compiler.Token.Types
+
+$(includeFileInSource "./test/tokenizer/01-braces.sflow" "braces01")
+$(includeFileInSource "./test/tokenizer/01-ident.sflow" "ident01")
+
+$(includeFileInSource "./test/tokenizer/02-braces.sflow" "braces02")
+$(includeFileInSource "./test/tokenizer/02-ident.sflow" "ident02")
 
 tokenParse :: BL.ByteString -> Either ErrorTokenizer Token
 tokenParse val = do
@@ -21,6 +28,12 @@ tokenParse val = do
 tokenFlow :: BL.ByteString -> Either ErrorTokenizer [Token]
 tokenFlow val = do
   tokenizer' <- scanner False val
+  let tokens = getTokens tokenizer'
+  Right $ V.toList $ fmap tokn tokens
+
+tokenFlow' :: BL.ByteString -> Either ErrorTokenizer [Token]
+tokenFlow' val = do
+  tokenizer' <- scanner True val
   let tokens = getTokens tokenizer'
   Right $ V.toList $ fmap tokn tokens
 
@@ -115,3 +128,9 @@ lexerTest =
       tokenFlow ex2 `shouldBe`
          Right [ClassT, ClassIdT "Test", OBraceT, FunT, NameIdT "name", OBraceT, NameIdT "test", CBraceT, FunT, NameIdT "other", OBraceT, NameIdT "test2", CBraceT, CBraceT]
 
+    it "Indentation - Complex with comments - NOTE: Dont take care EndStmtT" $ do
+      -- Note this files must match in CBRACE and OBRACE, it is possible they
+      -- unmatch because of EndStmts Tokens (They have a different behavior in
+      -- each syntax)
+      tokenFlow' (BL.fromStrict braces02) `shouldBe` tokenFlow' (BL.fromStrict ident02)
+      tokenFlow' (BL.fromStrict braces01) `shouldBe` tokenFlow' (BL.fromStrict ident01)

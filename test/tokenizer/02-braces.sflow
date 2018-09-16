@@ -1,0 +1,6 @@
+fun test{
+    expr1;
+    expr2;
+    fun subFun{
+      expr3
+    }} # Hack to get symetry ident

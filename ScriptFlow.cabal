@@ -4,7 +4,7 @@ cabal-version: >= 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5a54ef2526a69ddd7ce59ff797c8021f301b4d04980f5697fc02193bb33471d2
+-- hash: ee94abb59be8a24eb535bc1b5262016966f844206469e0aac87863f2cfc00a08
 
 name:           ScriptFlow
 version:        0.0.3
@@ -37,38 +37,6 @@ custom-setup
     , base
 
 library
-  hs-source-dirs:
-      src
-  ghc-options: -Wall -Wno-orphans
-  build-depends:
-      aeson
-    , array
-    , base
-    , bytestring
-    , containers
-    , data-default
-    , directory
-    , filepath
-    , free
-    , haskeline
-    , http-client
-    , http-client-tls
-    , include-file
-    , microlens-aeson
-    , microlens-platform
-    , mtl
-    , parsec
-    , pcre-light
-    , prettyprinter
-    , process
-    , scientific
-    , template-haskell
-    , text
-    , unordered-containers
-    , vector
-    , yaml
-  build-tools:
-      alex
   exposed-modules:
       Compiler.Ast
       Compiler.Config
@@ -111,6 +79,38 @@ library
       Compiler.Prelude.Github.Utils
       Compiler.Scope.Ast
       Paths_ScriptFlow
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wno-orphans
+  build-depends:
+      aeson
+    , array
+    , base
+    , bytestring
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , free
+    , haskeline
+    , http-client
+    , http-client-tls
+    , include-file
+    , microlens-aeson
+    , microlens-platform
+    , mtl
+    , parsec
+    , pcre-light
+    , prettyprinter
+    , process
+    , scientific
+    , template-haskell
+    , text
+    , unordered-containers
+    , vector
+    , yaml
+  build-tools:
+      alex
   default-language: Haskell2010
 
 executable scriptflow
@@ -129,6 +129,12 @@ executable scriptflow
 test-suite Compiler-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
+  other-modules:
+      Lexer
+      Memory
+      Parser
+      Programs
+      Paths_ScriptFlow
   hs-source-dirs:
       test
   ghc-options: -Wall
@@ -136,13 +142,11 @@ test-suite Compiler-test
       ScriptFlow
     , base
     , bytestring
+    , containers
+    , data-default
     , hspec
+    , include-file
+    , mtl
     , parsec
     , vector
-  other-modules:
-      Lexer
-      Memory
-      Parser
-      Programs
-      Paths_ScriptFlow
   default-language: Haskell2010

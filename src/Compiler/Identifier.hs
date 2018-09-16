@@ -1,5 +1,5 @@
 module Compiler.Identifier
-  (getNewID)
+  (getNewID, counterID)
   where
 
 import           Data.IORef

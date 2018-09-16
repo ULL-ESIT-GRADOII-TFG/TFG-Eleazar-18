@@ -81,6 +81,7 @@ instance Runnable ProgInstr StWorld Address where
       retObj  <- call idFun args
       next retObj
 
+    -- Make raw copy of value
     Assign _ idObj address next -> do
       obj <- unwrap <$> getVar address
       addr <- setPathVar idObj (pure obj)

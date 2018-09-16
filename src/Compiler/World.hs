@@ -84,21 +84,30 @@ instance MemoryAccessor StWorld Object where
 
   setPathVar (PathVar addr dyns) var = do
     addr' <- buildFollowingPath addr dyns
-    setVar addr' var
-    return addr'
+    case unwrap var of
+      ORef ref -> do
+        ref' <- follow' ref
+        if ref' /= addr then do
+          setVar addr' var
+          return addr'
+        else return addr'
+      _ -> do
+        setVar addr' var
+        return addr'
 
 instance Deallocate StWorld where
   collectAddr addr = gcA %= (addr:)
   removeLocal = do
     gc <- use gcA
     mapM_ deleteVar gc
+    gcA .= []
 
   deleteVar addr = do
     obj <- unwrap <$> getVar addr
     mapM_ deleteVar (innerRefs obj)
     dropVarWorld addr
 
-  deleteUnsafe addr = void $ IM.delete (unAddr addr) <$> use tableA
+  deleteUnsafe addr = tableA %= IM.delete (unAddr addr)
 
 dropVarWorld :: Address -> StWorld Bool
 dropVarWorld addrRef = do

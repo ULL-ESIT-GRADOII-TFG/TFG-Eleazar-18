@@ -350,6 +350,8 @@ instance GetRef StWorld Object where
   mkRef (PathVar addr accessors) =
     if null accessors then do
       let ref = ORef addr
+      rc <- getVar addr
+      setVar addr (rc & refCounterA %~ (+1))
       addr' <- newVar $ wrap ref
       return (ref, addr')
     else do

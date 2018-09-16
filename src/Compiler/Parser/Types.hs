@@ -14,14 +14,14 @@ data TokenInfo = TokenInfo
   { _start :: !SrcPos
   , _end   :: !SrcPos
   }
-  deriving Show
+  deriving (Show, Eq)
 
 data SrcPos = SrcPos
   { _column :: !Int
   , _row    :: !Int
   , _offset :: !Int
   }
-  deriving Show
+  deriving (Show, Eq)
 
 instance Default SrcPos where
   def = SrcPos 0 0 0

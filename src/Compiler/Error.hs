@@ -18,7 +18,7 @@ data ErrorLevel = Critical | Warning | Error deriving (Show, Eq)
 data ErrorInfo a = ErrorInfo
   { _errorInfo     :: TokenInfo
   , _errorInternal :: a
-  } deriving Show
+  } deriving (Show, Eq)
 
 makeSuffixLenses ''ErrorInfo
 
@@ -27,7 +27,7 @@ data ScopeError
   | InternalFail
   | ErrorClass
   | NoSavedPathVar
-  deriving Show
+  deriving (Show, Eq)
 
 instance ReadeableError ScopeError where
   getAll err = case err of
@@ -55,7 +55,7 @@ data WorldError
   | NotExtensibleObject
   | WorldError T.Text
   | ScopeError ScopeError
-  deriving Show
+  deriving (Show, Eq)
 
 instance ReadeableError WorldError where
   getAll err = case err of

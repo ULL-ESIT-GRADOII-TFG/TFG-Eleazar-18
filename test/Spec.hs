@@ -4,9 +4,11 @@ import Test.Hspec
 
 import Lexer
 import Parser
+import Memory
 
 main :: IO ()
 main = hspec $ do
-  describe "GitScript Test" $ do
+  describe "ScripFlow Test" $ do
     lexerTest
+    memoryTest
     --parserTest

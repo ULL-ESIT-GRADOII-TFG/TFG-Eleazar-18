@@ -1,0 +1,29 @@
+# Tesot
+  # Test
+class Test:
+# Test
+    # Test
+  fun __init__ a_value b_value:
+  # Test
+    self.a = a_value
+    self.b = b_value
+
+  # Test
+  fun func01 name:
+    "ele"
+  # Test
+  fun func02 name:
+    apply
+       arg1
+       arg2
+     arg3 # This is allowed always that keep higher than apply
+    # Test
+  fun func03 name:
+    "ele"
+
+# End Complex
+; t = Test("Hello", "World") # Hack to get symetry with brace
+
+print "hello"
+
+tt= 4

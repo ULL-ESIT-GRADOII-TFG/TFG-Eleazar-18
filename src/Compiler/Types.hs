@@ -51,7 +51,7 @@ class TypeName o where
 
 newtype ScopeInfo = ScopeInfo
   { _renameInfo :: HM.HashMap T.Text PathVar
-  } deriving Show
+  } deriving (Show, Eq)
 
 type ScopeM = ExceptT (ErrorInfo ScopeError) (StateT Scope IO)
 
@@ -62,13 +62,13 @@ data Scope = Scope
   -- stackScope
   , _stackScope   :: [ScopeInfo]
   -- ^ All above scopes
-  } deriving Show
+  } deriving (Show, Eq)
 
 
 data ScopeInfoAST = ScopeInfoAST
   { _tokenInfo :: TokenInfo
   , _scopeInfo :: ScopeInfo
-  } deriving Show
+  } deriving (Show, Eq)
 
 -------------------------------------------------------------------------------
 -- * Memory relate types
@@ -82,7 +82,13 @@ data PathVar = PathVar
   { _ref     :: Address
   , _dynPath :: [Text]
   }
-  deriving Show
+  deriving (Show, Eq)
+
+-- data AddressVar = AddressVar
+--   { _ref     :: Address
+--   , _dynPath :: [Text]
+--   }
+--   deriving (Show, Eq)
 
 simple :: Address -> PathVar
 simple addr = PathVar addr []
@@ -146,9 +152,7 @@ type StWorld = StateT (World Object) (ExceptT (ErrorInfo WorldError) IO)
 data Rc o = Rc
   { _refCounter :: !Int
   , _rawObj     :: !o
-  }
-  deriving Show
-
+  } deriving (Eq, Show)
 
 -- | Keeps all information of running program (memory, debugging info ...)
 data World o = World
@@ -159,8 +163,7 @@ data World o = World
   , _lastTokenInfo :: TokenInfo
   -- ^ Used to generate precise errors locations
   , _gc            :: [Address]
-  }
-
+  } deriving (Show, Eq)
 
 -------------------------------------------------------------------------------
 -- * Object relate type classes
@@ -234,6 +237,43 @@ data Object
     , attributesClass :: HM.HashMap T.Text Address
     }
   | ONone
+
+instance Eq Object where
+  obj1 == obj2 = case (obj1, obj2) of
+    (OClassDef{}     , OClassDef{}     ) -> True
+    (ONative{}       , ONative{}       ) -> True
+    (OFunc{}         , OFunc{}         ) -> True
+    (OStr{}          , OStr{}          ) -> True
+    (ORegex{}        , ORegex{}        ) -> True
+    (OBound{}        , OBound{}        ) -> True
+    (OShellCommand{} , OShellCommand{} ) -> True
+    (ODouble{}       , ODouble{}       ) -> True
+    (OBool{}         , OBool{}         ) -> True
+    (ONum{}          , ONum{}          ) -> True
+    (OVector{}       , OVector{}       ) -> True
+    (ORef ref1       , ORef ref2       ) -> ref1 == ref2
+    (ONone           , ONone           ) -> True
+    (OObject{}       , OObject{}       ) -> True
+    (ONativeObject{} , ONativeObject{} ) -> True
+    _                                    -> False
+
+instance Show Object where
+  show obj = case obj of
+    OClassDef{}     -> "ClassDef"
+    ONative{}       -> "NativeFunction"
+    OFunc{}         -> "Function"
+    OStr{}          -> "Str"
+    ORegex{}        -> "Regex"
+    OBound{}        -> "BoundObject"
+    OShellCommand{} -> "ShellCommand"
+    ODouble{}       -> "Double"
+    OBool{}         -> "Bool"
+    ONum{}          -> "Num"
+    OVector{}       -> "Vector"
+    ORef ref        -> "Ref " ++ show ref
+    ONone           -> "None"
+    OObject{}       -> "Object"
+    ONativeObject{} -> "NativeObject"
 
 -------------------------------------------------------------------------------
 -- * Instruction relate type classes
