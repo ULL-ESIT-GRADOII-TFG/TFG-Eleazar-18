@@ -81,10 +81,13 @@ getPrompt = do
           else return $ T.unpack text
         OFunc{} -> do
           ostr <- liftWorld $ do
-            retAddr <- call (PathVar addr []) []
-            val <- unwrap <$> getVar addr
-            _ <- deleteVar retAddr
-            return val
+            passed <- call (PathVar addr []) []
+            case passed of
+              ByVal val -> return val
+              ByRef ref -> do
+                obj <- unwrap <$> getVar ref
+                deleteVar ref
+                return obj
           case ostr of
             OStr text ->
               if isMultiline then
@@ -138,12 +141,12 @@ evaluateScopedProgram astScoped = do
     liftIO $ putStrLn "** Instructions **"
     liftIO $ putDocLnPP verbosity $ pretty instrs
   liftWorld $ do
-    mAddress <- runProgram instrs
-    case mAddress of
-      Just address -> do
+    passing <- runProgram instrs
+    case passing of
+      ByRef address -> do
         val <- unwrap <$> getVar address
         return val
-      Nothing -> return ONone
+      ByVal val -> return val
 
 -- | First phase of interpreter
 tokenizer :: T.Text -> Interpreter Tokenizer

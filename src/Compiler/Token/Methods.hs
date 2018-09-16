@@ -271,9 +271,8 @@ scanner autoClose str = runAlex str $ do
   if V.null toks then
     return $ Complete toks
   else if (tokn (V.last toks) == OBraceT)
-          && (kindGenString /= None)
-          && (kindGenString /= Shell)
-          && (not $ null stackGroups) then
+          || ((kindGenString /= None) && (kindGenString /= Shell))
+          || (not $ null stackGroups) then
     return $ Partial toks
   else
     return $ Complete toks

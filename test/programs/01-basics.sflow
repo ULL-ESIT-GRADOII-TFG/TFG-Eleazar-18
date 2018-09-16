@@ -1,0 +1,31 @@
+# none
+t1 = none
+
+# Booleanos
+t2 = true
+t3 = false
+
+# Enteros
+t4 = 12 + 4 # ...
+
+# Decimales (Se utiliza un double para su
+# representación actualmente)
+t5 = 45.5
+
+# Las cadenas pueden ser multilineas se crean con
+# comillas dobles "
+t6 = "Un\nejemplo
+de cadena"
+
+# Las regex se construyen
+# con r" y terminan con ".
+# Usan la sintaxis de PCRE.
+t7 = r/a*/
+
+# Los comandos shell se crean con
+t8 = $cd #HOME/repos; nvim .
+
+# O la sintaxis alternativa
+t9 = $"pwd"
+
+none

@@ -1,18 +1,18 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Parser where
 
-import Control.Monad
-import Data.Bifunctor
-import Test.Hspec
-import Text.Parsec
-import qualified Data.ByteString.Lazy         as BL
+import           Control.Monad
+import           Data.Bifunctor
 import qualified Data.ByteString         as BS
+import qualified Data.ByteString.Lazy    as BL
 import           Development.IncludeFile
+import           Test.Hspec
+import           Text.Parsec
 
-import Compiler.Ast
-import Compiler.Token.Methods
-import Compiler.Parser.Methods
+import           Compiler.Ast
+import           Compiler.Parser.Methods
+import           Compiler.Token.Methods
 
 getAST :: BS.ByteString -> Either String Repl
 getAST rawFile = do

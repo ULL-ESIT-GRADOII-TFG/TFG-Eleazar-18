@@ -1,0 +1,15 @@
+counter = 1
+if true:
+   counter = counter + 1
+else:
+   none
+
+if false:
+   none
+else:
+   counter = counter + 1
+
+for val in [0,0,2,2]:
+   counter = counter + val
+
+counter + 0 # Tricky part to return a value instead of a reference

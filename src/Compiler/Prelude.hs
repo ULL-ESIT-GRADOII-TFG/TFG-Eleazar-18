@@ -36,11 +36,19 @@ internalMethod name =
   ( name
   , ONative $ \case
       []             -> throw $ NumArgsMissmatch 0 1 -- It shouldnt happen
-      addresses@(addr : _) -> do
-        obj <- unwrap <$> getVar addr
+      addresses@(passed : _) -> do
+        obj <- case passed of
+                 ByVal val -> return val
+                 ByRef ref -> unwrap <$> getVar ref
         addr' <- access obj name
         call (simple addr') addresses
   )
+
+passingToObj :: Passing -> StWorld Object
+passingToObj passed =
+  case passed of
+    ByVal val -> return val
+    ByRef ref -> unwrap <$> getVar ref
 
 
 -- | A set of basic functions avaialable in the base scope
@@ -78,55 +86,60 @@ baseBasicFunctions =
     "!" ,
     "@"]
 
-equivalence :: [Address] -> StWorld Address
+equivalence :: [Passing] -> StWorld Passing
 equivalence [addr1, addr2] = do
-  ob1 <- unwrap <$> getVar addr1
-  ob2 <- unwrap <$> getVar addr2
+  ob1 <- passingToObj addr1
+  ob2 <- passingToObj addr2
   if typeEquivalence ob1 ob2 then do
     addr <- access ob1 "=="
     call (simple addr) [addr1, addr2]
   else
-    newVar . wrap $ OBool False
+    return . ByVal $ OBool False
 equivalence addrs = throw $ NumArgsMissmatch (length addrs) 2 -- It shouldnt happend
 
 
-nonequivalence :: [Address] -> StWorld Address
+nonequivalence :: [Passing] -> StWorld Passing
 nonequivalence [addr1, addr2] = do
-  ob1 <- unwrap <$> getVar addr1
-  ob2 <- unwrap <$> getVar addr2
+  ob1 <- passingToObj addr1
+  ob2 <- passingToObj addr2
   if typeEquivalence ob1 ob2 then do
     addr <- access ob1 "!="
     call (simple addr) [addr1, addr2]
   else
-    newVar . wrap $ OBool True
+    return . ByVal $ OBool True
 nonequivalence addrs = throw $ NumArgsMissmatch (length addrs) 2 -- It shouldnt happend
 
 createONative :: ([Object] -> StWorld Object) -> Object
 createONative func = ONative $ \addrs -> do
-  objs <- mapM (fmap unwrap . getVar) addrs
+  objs <- mapM passingToObj addrs
   obj <- func objs
-  newVar $ wrap obj
+  return $ ByVal obj
 
-internalCall :: [Address] -> StWorld Address
+internalCall :: [Passing] -> StWorld Passing
 internalCall [] = throw $ WorldError "Report Error: Internal Call without args"
-internalCall (arg:args) = call (simple arg) args
+internalCall (arg:args) = do
+  obj <- passingToObj arg
+  case obj of
+    ONum num -> call (simple (Adr num)) args
+    _ -> throw $ WorldError "Report Error: Internal Call Not a number as parameter"
 
-printWrapper :: [Address] -> StWorld Address
-printWrapper [addr] = do
-  printObj addr
-  newVar $ wrap ONone
+printWrapper :: [Passing] -> StWorld Passing
+printWrapper [passing] = do
+  printObj passing
+  return $ ByVal ONone
 printWrapper ls = throw $ NumArgsMissmatch 1 (length ls)
 
-printObj :: Address -> StWorld ()
-printObj addr = unwrap <$> getVar addr >>= \case
+printObj :: Passing -> StWorld ()
+printObj (ByRef ref) = ByVal . unwrap <$> getVar ref >>= printObj
+printObj (ByVal val) = case val of
   obj@(OObject (Just classRef) _attrs) -> do
     clsObj <- unwrap . fst <$> findPathVar (simple classRef)
     case clsObj of
       OClassDef name methods -> case HM.lookup "__print__" methods of
         Just func' -> do
-          retAddr   <- call (PathVar func' []) [addr]
-          obj' <- unwrap <$> getVar retAddr
-          docs   <- showObject obj'
+          retPassed <- call (PathVar func' []) [ByVal val]
+          obj' <- passingToObj retPassed
+          docs <- showObject obj'
           liftIO $ putDoc docs
           liftIO $ putStr "\n"
         Nothing -> do

@@ -221,24 +221,21 @@ instance Callable StWorld where
     else do
       let addr = pathVar ^. refA
       -- objCaller <- unwrap <$> getVar addr
-      directCall obj' (addr:args)
+      directCall obj' ((ByRef addr):args)
     where
-      directCall :: Object -> [Address] -> StWorld Address
+      directCall :: Object -> [Passing] -> StWorld Passing
       directCall obj addresses = case obj of
         OFunc _ ids prog ->
           if length ids /= length addresses then
             throw $ NumArgsMissmatch (length ids) (length addresses)
           else do
-            mAddr <- runProgram $ prog addresses
-            case mAddr of
-              Just addr -> return addr
-              Nothing   -> newVar $ wrap ONone
+            runProgram $ prog addresses
 
         ONative native ->
           native addresses
 
         OBound self method ->
-          directCall (ORef method) (self:addresses)
+          directCall (ORef method) ((ByRef self):addresses)
 
         OClassDef _name methods -> do
           self <- newVar . wrap $ OObject (Just (pathVar^.refA)) mempty
@@ -246,13 +243,13 @@ instance Callable StWorld where
           case HM.lookup "__init__" methods of
             Just method -> do
               method' <- follow method
-              _ <- directCall method' (selfRef:addresses)
+              _ <- directCall method' ((ByRef selfRef):addresses)
               deleteUnsafe selfRef
-              return self
+              return $ ByRef self
             Nothing ->
               if null addresses then do
                 deleteUnsafe selfRef
-                return self
+                return $ ByRef self
               else
                 throw $ NumArgsMissmatch 0 (length addresses)
 
@@ -264,7 +261,8 @@ instance Callable StWorld where
 
 instance Iterable StWorld where
   -- | Iterate over a object if it is iterable
-  mapOver addr func = unwrap <$> getVar addr >>= \case
+  mapOver (ByRef addr) func = (ByVal . unwrap) <$> getVar addr >>= flip mapOver func
+  mapOver (ByVal obj) func = case obj of
     OStr str ->
       -- TODO: Avoid unpack. Revisit what kind of problems there are to it doesn't exist an
       --       instance of foldable for Text
@@ -273,18 +271,19 @@ instance Iterable StWorld where
                 func retAddr
             ) (T.unpack str)
     OVector vec                    -> mapM_ func vec
-    ORef    word                   -> follow' word >>= flip mapOver func
+    ORef    word                   -> ByRef <$> follow' word >>= flip mapOver func
     OObject (Just classRef) _attrs -> do
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
         OClassDef _name methods ->
           case HM.lookup "__map__" methods of
             Just mapMethod -> do
-              let fixParams :: (Address -> StWorld ()) -> [Address] -> StWorld Address
-                  fixParams f [adr] = f adr >> newVar (wrap ONone)
+              let fixParams :: (Address -> StWorld ()) -> [Passing] -> StWorld Passing
+                  fixParams f [ByRef adr] = f adr >> return (ByVal ONone)
                   fixParams _ ls    = throw $ NumArgsMissmatch 1 (length ls)
+
               funcAddr <- newVar . wrap $ ONative (fixParams func)
-              _ <- call (PathVar mapMethod []) [addr, funcAddr]
+              _ <- call (PathVar mapMethod []) [ByVal obj, ByRef funcAddr]
               deleteUnsafe funcAddr
               return ()
             Nothing -> return ()
@@ -293,14 +292,15 @@ instance Iterable StWorld where
 
 instance Booleanable StWorld where
   -- | Check truthfulness of an object
-  checkBool addr = unwrap <$> getVar addr >>= \case
+  checkBool (ByRef addr) = (ByVal . unwrap) <$> getVar addr >>= checkBool
+  checkBool (ByVal obj) = case obj of
     OBool bool                     -> return bool
     OObject (Just classRef) _attrs -> do
       clsObj <- unwrap <$> getVar classRef
       case clsObj of
         OClassDef _name methods -> case HM.lookup "__bool__" methods of
           Just func' -> do
-            call (PathVar func' []) [addr] >>= checkBool
+            call (PathVar func' []) [ByVal obj] >>= checkBool
           Nothing -> throw $ NotBoolean "Object"
         o -> throw $ NotBoolean (typeName o)
     o -> throw $ NotBoolean (typeName o)
@@ -327,7 +327,7 @@ instance Showable StWorld Object where
         <+> pretty args
         <>  "{"
         <>  line
-        <>  indent 2 (pretty (body (repeat 0)))
+        <>  indent 2 (pretty (body (repeat (ByVal ONone))))
         <>  line
         <>  "}"
     ONative _          -> return "Native Function"
@@ -490,9 +490,12 @@ internalMethods obj = case obj of
         <$> mapM
               (\(name, func) -> do
                 ref <- newVar $ wrap (ONative $ \addrs -> do
-                                  objs <- mapM (fmap unwrap . getVar) addrs
-                                  o <- func objs
-                                  newVar $ wrap o
+                                  objs <- mapM (\passing -> do
+                                                   case passing of
+                                                     ByVal val -> return val
+                                                     ByRef ref -> unwrap <$> getVar ref
+                                               ) addrs
+                                  ByVal <$> func objs
                               )
                 return (name, ref)
               )

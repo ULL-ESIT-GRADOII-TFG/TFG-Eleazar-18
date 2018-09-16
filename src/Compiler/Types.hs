@@ -169,13 +169,13 @@ data World o = World
 -- * Object relate type classes
 
 class Callable mm where
-  call :: PathVar -> [Address] -> mm Address
+  call :: PathVar -> [Passing] -> mm Passing
 
 class Iterable mm where
-  mapOver :: Address -> (Address -> mm ()) -> mm ()
+  mapOver :: Passing -> (Address -> mm ()) -> mm ()
 
 class Booleanable mm where
-  checkBool :: Address -> mm Bool
+  checkBool :: Passing -> mm Bool
 
 class Showable mm o where
   showObject :: o -> mm (Doc ann)
@@ -217,14 +217,14 @@ data Object
   -- ^ Shell command
   | OVector (V.Vector Address)
   -- ^ Sequence of objects
-  | forall prog. (Runnable prog StWorld Address, Pretty (prog Address))
-    => OFunc [Address] [Address] ([Address] -> prog Address)
+  | forall prog. (Runnable prog StWorld, Pretty (prog Passing))
+    => OFunc [Address] [Address] ([Passing] -> prog Passing)
   -- ^ Lambda with possible scope/vars attached
   | OBound Address Address
   -- ^ Used to Bound methods to variables
   | OObject (Maybe Address) (HM.HashMap T.Text Address)
   -- ^ Object instance from class Address
-  | ONative ([Address] -> StWorld Address)
+  | ONative ([Passing] -> StWorld Passing)
   -- ^ Native function
   | ONativeObject Any
   -- ^ Native object. It can't be interacted by scriptflow directly, no copy or move
@@ -275,10 +275,19 @@ instance Show Object where
     OObject{}       -> "Object"
     ONativeObject{} -> "NativeObject"
 
+
+data Passing
+  = ByVal Object
+  | ByRef Address
+
+instance Pretty Passing where
+  pretty (ByVal obj) = "ByVal" <+> pretty (show obj)
+  pretty (ByRef ref) = "ByRef" <+> pretty ref
+
 -------------------------------------------------------------------------------
 -- * Instruction relate type classes
-class Runnable prog mm o where
-  runProgram :: prog o -> mm (Maybe o)
+class Runnable prog mm where
+  runProgram :: prog Passing -> mm Passing
 
 -------------------------------------------------------------------------------
 -- * AST relate type classes

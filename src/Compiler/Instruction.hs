@@ -19,6 +19,7 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Data.Text.Prettyprint.Doc
 import qualified Data.Vector                as V
+import           Lens.Micro.Platform        hiding (assign)
 import           Text.Regex.PCRE.Light
 
 import           Compiler.Ast
@@ -44,9 +45,9 @@ type ProgInstr = Free Instruction
 data Instruction next
   = CreateVar !Info !Object !(Address -> next)
   -- ^ Build basic types
-  | CallCommand !Info !PathVar ![Address] (Address -> next)
+  | CallCommand !Info !PathVar ![Passing] (Passing -> next)
   -- ^ Make a call to and defined function
-  | Assign !Info !PathVar !Address (Address -> next)
+  | Assign !Info !PathVar !Passing (Address -> next)
   -- ^ Assign an object to local variable
   | DropVar !Info !PathVar next
   -- ^ Remove a var from memory
@@ -59,18 +60,18 @@ data Instruction next
   | DirectRef !Info !Address next
   -- ^ Implies the address have been linked to another, without generate
   -- intermediate object to reference it
-  | Loop !Info !Address (Address -> ProgInstr Address) next
+  | Loop !Info !Passing (Address -> ProgInstr Passing) next
   -- ^ Loop over a object
-  | Cond !Info !Address (ProgInstr Address) (ProgInstr Address) next
+  | Cond !Info !Passing (ProgInstr Passing) (ProgInstr Passing) (Passing -> next)
   -- ^ If sentence given a object
   | Noop
   deriving Functor
 
 makeFree ''Instruction
 
-instance Runnable ProgInstr StWorld Address where
+instance Runnable ProgInstr StWorld where
   -- | Execute a sequence of instructions
-  runProgram prog = flip iterM (fmap Just prog) $ \case
+  runProgram prog = flip iterM prog $ \case
     -- Used to create complex basic objects
     CreateVar _ obj next -> do
       addr <- newVar (wrap obj)
@@ -82,8 +83,11 @@ instance Runnable ProgInstr StWorld Address where
       next retObj
 
     -- Make raw copy of value
-    Assign _ idObj address next -> do
-      obj <- unwrap <$> getVar address
+    Assign _ idObj passing next -> do
+      obj <- case passing of
+        ByVal val -> return val
+        ByRef ref -> unwrap <$> getVar ref
+
       addr <- setPathVar idObj (pure obj)
       next addr
 
@@ -107,8 +111,8 @@ instance Runnable ProgInstr StWorld Address where
     Cond _ addrObj trueNext falseNext next -> do
       bool <- checkBool addrObj
       if bool
-        then runProgram trueNext >> next
-        else runProgram falseNext >> next
+        then runProgram trueNext >>= next
+        else runProgram falseNext >>= next
 
     GetRef _ idObj next -> do
       (_o, addr) <- mkRef idObj :: StWorld (Object, Address)
@@ -119,9 +123,9 @@ instance Runnable ProgInstr StWorld Address where
       setVar addr (rc { _refCounter = _refCounter rc + 1 })
       next
 
-    Noop -> return Nothing
+    Noop -> return $ ByVal ONone
 
-instance Pretty (ProgInstr Address) where
+instance Pretty (ProgInstr Passing) where
   -- TODO: The fake generate address doesn't match with a real behavior
   pretty instrs = flip evalState 0 $ flip iterM (fmap pretty instrs) $ \case
     CreateVar _ builder next -> do
@@ -136,7 +140,7 @@ instance Pretty (ProgInstr Address) where
 
     CallCommand _ idFun args next -> do
       adr <- fakeAdr
-      docs <- next adr
+      docs <- next $ ByRef adr
       return $
         pretty adr
         <+> "<- CallCommand"
@@ -168,7 +172,7 @@ instance Pretty (ProgInstr Address) where
         "Loop"
         <+> pretty accObject
         <> line
-        <> indent 2 (pretty (prog adr))
+        <> indent 2 (pretty (prog  adr))
         <> line
         <> docs
 
@@ -183,7 +187,8 @@ instance Pretty (ProgInstr Address) where
         "ApplyLocalGC" <> line <> docs
 
     Cond _ objectCond trueNext falseNext next -> do
-      docs <- next
+      adr <- fakeAdr
+      docs <- next $ ByRef adr
       return $
         "Cond"
         <+> pretty objectCond
@@ -224,11 +229,11 @@ instance Pretty (ProgInstr Address) where
 
 newtype ExprSeq a = ExprSeq [Expression a]
 
-instance Desugar ExprSeq Rn Identity ProgInstr Address where
+instance Desugar ExprSeq Rn Identity ProgInstr Passing where
   transform (ExprSeq exprs) = do
     instrs <- mapM transform exprs
     if null instrs then
-      return noop
+      return $ return (ByVal ONone)
     else
       return $ do
         addrs <- sequence instrs
@@ -236,7 +241,7 @@ instance Desugar ExprSeq Rn Identity ProgInstr Address where
 
 -- | Transform AST to a simplified intermediate language, more related to
 -- memory management
-instance Desugar Expression Rn Identity ProgInstr Address where
+instance Desugar Expression Rn Identity ProgInstr Passing where
   transform expr = case expr of
     RnFunExpr captureIds idNames prog info -> do
       let info' = tokToInfo info
@@ -244,15 +249,13 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       body <- transform prog
       return $ do
         capturedAddresses <- mapM (getRef info') captureIds
-        addr <- createVar info' $ OFunc capturedAddresses addresses (\objs -> do
+        return . ByVal $ OFunc capturedAddresses addresses (\objs -> do
           let argsIDs = map simple addresses
           addrs <- zipWithM (assign info') argsIDs objs
-          mapM_ collectAddress addrs
-          obj <- body
-          -- mapM_ (dropVar info') argsIDs
-          return obj
+          retAddr <- body
+          mapM_ (dropVar info') argsIDs
+          return retAddr
           )
-        collectAddress addr
 
 
     RnVarExpr isNewVar pathVar exprValue info -> do
@@ -261,34 +264,40 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       return $ do
         oldAddr <- instr
         addr <- assign info' pathVar oldAddr
-        if isNewVar then
-          collectAddress addr
-        else
-          return addr
+        return $ ByRef addr
+        -- if isNewVar then
+        --   collectAddress addr
+        -- else
+        --   return addr
 
 
     RnSeqExpr exprs _info -> do
       -- let info' = tokToInfo info
       instrs <- mapM transform exprs
       if null instrs then
-        return noop
+        return $ return (ByVal ONone)
       else
         return $ do
           addrs <- sequence instrs
           return $ last addrs
 
-    RnMkScope _scope exprs info -> do
+    RnMkScope scope exprs info -> do
       let info' = tokToInfo info
       instrs <- mapM transform exprs
       if null instrs then
-        return noop
+        return $ return (ByVal ONone)
       else
         return $ do
-          addrs <- sequence instrs
-          -- mapM_ (dropVar info') (HM.elems $ scope^.renameInfoA)
-          addr <- getRef info' (PathVar (last addrs) [])
-          applyLocalGC
-          collectAddress addr
+          passings <- sequence instrs
+          case last passings of
+            ByRef ref -> do
+              addr <- getRef info' (PathVar ref [])
+              mapM_ (dropVar info') (HM.elems $ scope^.renameInfoA)
+              return $ ByRef addr
+            ByVal val -> do
+              mapM_ (dropVar info') (HM.elems $ scope^.renameInfoA)
+              return $ ByVal val
+
 
     RnIf condExpr prog info -> do
       let info' = tokToInfo info
@@ -296,8 +305,7 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       instrTrue <- transform prog
       return $ do
         value <- instr
-        cond info' value instrTrue (createVar info' ONone)
-        noop
+        cond info' value instrTrue (return $ ByVal ONone)
 
     RnIfElse condExpr trueProg falseProg info -> do
       let info' = tokToInfo info
@@ -308,7 +316,6 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       return $ do
         val <- condInstrs
         cond info' val trueInstrs falseInstrs
-        noop
 
     RnFor idName iterExpr prog info -> do
       let info' = tokToInfo info
@@ -318,77 +325,87 @@ instance Desugar Expression Rn Identity ProgInstr Address where
       -- TODO: Remove inner collectLocalGC move to end
       return $ do
         iter' <- instrsIter
-        loop info' iter' (\val -> assign info' (simple $ idToAdr idName) val >> instrsBody)
-        noop
+        loop info' iter' (\val -> assign info' (simple $ idToAdr idName) (ByRef val) >> instrsBody)
+        return $ ByVal ONone
 
     RnApply pathVar argsExpr info -> do
       let info' = tokToInfo info
       instrArgs <- mapM transform argsExpr
       return $ do
         args <- sequence instrArgs
-        addr <- callCommand info' pathVar args
-        collectAddress addr
+        callCommand info' pathVar args
 
 
     RnIdentifier pathVar info -> do
       let info' = tokToInfo info
       return $ do
         addr <- getRef info' pathVar
-        collectAddress addr
+        return $ ByRef addr
 
     RnFactor atom _info -> do
       instrs <- transform atom
       return $ do
-        addr <- instrs
-        collectAddress addr
+        instrs
 
     _ -> error "No supported AST Node"
 
 -- | Transform literal data from AST to an object
-instance Desugar Atom Rn Identity ProgInstr Address where
+instance Desugar Atom Rn Identity ProgInstr Passing where
   transform atom = case atom of
     ANone info         -> do
       let info' = tokToInfo info
-      return $ createVar info' ONone
+      return . return $ ByVal ONone
     ANum num info         -> do
       let info' = tokToInfo info
-      return . createVar info' $ ONum num
+      return . return . ByVal $ ONum num
     AStr str info          -> do
       let info' = tokToInfo info
-      return . createVar info' $ OStr str
+      return . return . ByVal $ OStr str
     ADecimal double info   -> do
       let info' = tokToInfo info
-      return . createVar info' $ ODouble double
+      return . return . ByVal $ ODouble double
     ARegex reg info        -> do
       let info' = tokToInfo info
-      return . createVar info' $ ORegex reg (compile (T.encodeUtf8 reg) [])
+      return . return . ByVal $ ORegex reg (compile (T.encodeUtf8 reg) [])
     AShellCommand cmd info -> do
       let info' = tokToInfo info
-      return . createVar info' $ OShellCommand cmd
+      return . return . ByVal $ OShellCommand cmd
     ABool bool info        -> do
       let info' = tokToInfo info
-      return . createVar info' $ OBool bool
+      return . return . ByVal $ OBool bool
     AVector items info     -> do
       let info' = tokToInfo info
-      addresses <- mapM transform items
+      passingArgs <- mapM transform items
       return $ do
-        addresses' <- sequence addresses
-        mapM_ (directRef info') addresses'
-        createVar info' . OVector $ V.fromList addresses'
+        passingArgs' <- sequence passingArgs
+        addresses' <- mapM (\passing -> do
+                               case passing of
+                                 ByVal val -> createVar info' val
+                                 ByRef ref -> directRef info' ref >> return ref
+                           ) passingArgs'
+        return . ByVal . OVector $ V.fromList addresses'
     ADic items info      -> do
       let info' = tokToInfo info
       elems <- mapM (\(key, expr) -> (,) key <$> transform expr) items
       return $ do
-        elems' <- mapM (\(name, val) -> (,) name <$> val) elems
-        mapM_ (directRef info' . snd) elems'
-        createVar info' . OObject Nothing $ HM.fromList elems'
+        elems' <- mapM (\(n, val) -> (,) n <$> val) elems
+        elems'' <- mapM (\(name, passing) -> (,) name <$> do
+                            case passing of
+                              ByVal val -> createVar info' val
+                              ByRef ref -> directRef info' ref >> return ref
+                       ) elems'
+        return . ByVal . OObject Nothing $ HM.fromList elems''
     AClass name methods info -> do
       let info' = tokToInfo info
       methods' <- mapM (\(key, expr) -> (,) <$> return key <*> transform expr) methods
       return $ do
         methods'' <- mapM (\(n, val) -> (,) n <$> val) methods'
-        mapM_ (directRef info' . snd) methods''
-        createVar info' $ OClassDef name (HM.fromList methods'')
+        methods''' <- mapM (\(name, passing) -> (,) name <$> do
+                            case passing of
+                              ByVal val -> createVar info' val
+                              ByRef ref -> directRef info' ref >> return ref
+                       ) methods''
+        return . ByVal $ OClassDef name (HM.fromList methods''')
 
 -------------------------------------------------------------------------------
 -- * Utils
