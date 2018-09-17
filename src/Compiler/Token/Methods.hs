@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Compiler.Token.Methods where
   {-

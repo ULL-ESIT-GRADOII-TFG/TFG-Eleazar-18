@@ -1,4 +1,5 @@
 
+
 class FuncMonoid:
   fun __init__ func:
     self.func = lam s param { func param }
@@ -15,6 +16,5 @@ class FuncMonoid:
 task = FuncMonoid (lam repo { !$"echo hola" })
 task2 = FuncMonoid (lam repo { !$"echo adios" })
 
-tasks = task
-   + task2
-   + FuncMonoid (lam repo { !$"echo hi" })
+#tasks =
+   # + FuncMonoid (lam repo { !$"echo hi" })

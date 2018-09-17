@@ -244,11 +244,11 @@ instance Callable StWorld where
             Just method -> do
               method' <- follow method
               _ <- directCall method' ((ByRef selfRef):addresses)
-              deleteUnsafe selfRef
+              -- deleteUnsafe selfRef
               return $ ByRef self
             Nothing ->
               if null addresses then do
-                deleteUnsafe selfRef
+                -- deleteUnsafe selfRef
                 return $ ByRef self
               else
                 throw $ NumArgsMissmatch 0 (length addresses)
@@ -349,17 +349,23 @@ instance Showable StWorld Object where
 instance GetRef StWorld Object where
   mkRef (PathVar addr accessors) =
     if null accessors then do
-      let ref = ORef addr
-      rc <- getVar addr
+      addr' <- follow' addr -- TODO: Remove
+      let ref = ORef addr'
+      rc <- getVar addr'
       setVar addr (rc & refCounterA %~ (+1))
-      addr' <- newVar $ wrap ref
-      return (ref, addr')
+      addr'' <- newVar $ wrap ref
+      return (ref, addr'')
     else do
       let (initials, rest) = splitAt (length accessors - 1) accessors
       (rcParent, addrParent) <- findPathVar (PathVar addr initials)
       (rcChild, addrChild) <- findPathVar (PathVar addrParent rest)
       setVar addrChild (rcChild & refCounterA %~ (+1))
       case (unwrap rcParent, unwrap rcChild) of
+        (OObject{}, ONative{} ) -> do
+          let boundMethod = OBound addrParent addrChild
+          setVar addrParent (rcParent & refCounterA %~ (+1))
+          address <- newVar $ wrap boundMethod
+          return (boundMethod, address)
         (OObject{}, OFunc{} ) -> do
           let boundMethod = OBound addrParent addrChild
           setVar addrParent (rcParent & refCounterA %~ (+1))
