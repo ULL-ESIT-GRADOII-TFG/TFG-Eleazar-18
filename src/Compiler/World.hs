@@ -22,7 +22,6 @@ import {-# SOURCE #-} Compiler.Object            ()
 -- import           Compiler.Prettify
 import           Compiler.Scope
 import           Compiler.Types
-import           Compiler.Utils
 
 
 instance Functor Rc where
@@ -44,8 +43,8 @@ instance GetInfo StWorld where
 instance Naming StWorld where
   newId = liftScope . newId
   getNewId = liftScope getNewId
-  findAddress = liftScope . findAddress
-  findAddress' = liftScope . findAddress'
+  findIdPath = liftScope . findIdPath
+  findIdPath' = liftScope . findIdPath'
 
 instance Default (World o) where
   def = World
@@ -53,24 +52,44 @@ instance Default (World o) where
     , _scope = def
     , _lastTokenInfo = def
     , _gc = []
+    , _free = []
+    , _counterAddr = 0
+    , _tableIdPath = mempty
     }
 
 instance TypeName o => Pretty (World o) where
-  pretty (World tb scope _ _) =
-    let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ unAddr . _ref) (IM.toList tb)
-    in
+  pretty World{_table=_tb, _scope=_scope} =
+    -- let aux = leftInnerJoin ((HM.toList (_renameInfo $ _currentScope scope)) & each._2 %~ unAddr . _ref) (IM.toList tb)
+    -- in
       "World {" <> line <>
       -- Do a cross joint
-      nest 2 (vcat (map (\(name, address, value) ->
-        pretty name
-        <+> " -> "
-        <+> "#"
-        <> pretty (show address)
-        <+> pretty value) aux)) <> line <>
+      -- nest 2 (vcat (map (\(name, address, value) ->
+      --   pretty name
+      --   <+> " -> "
+      --   <+> "#"
+      --   <> pretty (show address)
+      --   <+> pretty value) aux)) <> line <>
       "}"
 
 instance MemoryAccessor StWorld Object where
   type Store StWorld = Rc
+  newVar rc = do
+    addr <- use counterAddrA
+    setVar (Adr addr) rc
+    counterAddrA += 0
+    return $ Adr addr
+
+  newVarWithName name obj = do
+    addr <- newVar $ wrap obj
+    idName <- newId name
+    linkIdPathToAddressPath idName (simple addr)
+    return addr
+
+  linkIdPathToAddressPath idName addrPath = do
+    tableIdPathA %= IM.insert (idName^.idVarA & unIdName) (addrPath^.refA)
+
+  unlinkIdPathToAddressPath idName = do
+    tableIdPathA %= IM.delete (idName^.idVarA & unIdName)
 
   getVar addr = do
     table <- use tableA
@@ -80,9 +99,15 @@ instance MemoryAccessor StWorld Object where
 
   setVar addr var = tableA %= IM.insert (unAddr addr) var
 
-  findPathVar (PathVar addr accessors) = through addr accessors
+  findVarWithIdPath idPath = do
+    idPathToAddressPath idPath >>= findVarWithAddressPath
 
-  setPathVar (PathVar addr dyns) var = do
+  setVarWithIdPath idPath rc = do
+    idPathToAddressPath idPath >>= flip setVarWithAddressPath rc
+
+  findVarWithAddressPath (AddressPath addr accessors) = through addr accessors
+
+  setVarWithAddressPath (AddressPath addr dyns) var = do
     addr' <- buildFollowingPath addr dyns
     case unwrap var of
       ORef ref -> do
@@ -94,6 +119,13 @@ instance MemoryAccessor StWorld Object where
       _ -> do
         setVar addr' var
         return addr'
+
+  idPathToAddressPath idPath = do
+    tableIdPath <- use tableIdPathA
+    case IM.lookup (idPath^.idVarA & unIdName) tableIdPath of
+      Just addr -> return (AddressPath addr (idPath^.accessorsA))
+      Nothing -> throw $ WorldError ""
+
 
 instance Deallocate StWorld where
   collectAddr addr = gcA %= (addr:)
@@ -144,16 +176,14 @@ addSubObject word acc obj = do
   var <- do
     lastAddr <- follow' word
     getVar lastAddr `catchError` const (throw NotExtensibleObject)
-  idName <- getNewId
-  let addr = idToAdr idName
+
+  addr <- newVar $ wrap obj
 
   case var ^. rawObjA of
     ONone -> do
       setVar word (var & rawObjA .~ OObject Nothing (HM.singleton acc addr))
-      setVar addr (pure obj)
     OObject parent attrs -> do
       setVar word (var & rawObjA .~ OObject parent (HM.insert acc addr attrs))
-      setVar addr (pure obj)
     _ -> throw NotExtensibleObject
   return addr
 

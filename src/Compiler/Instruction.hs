@@ -45,17 +45,23 @@ type ProgInstr = Free Instruction
 data Instruction next
   = CreateVar !Info !Object !(Address -> next)
   -- ^ Build basic types
-  | CallCommand !Info !PathVar ![Passing] (Passing -> next)
+  | CallCommand !Info !AddressPath ![Passing] (Passing -> next)
   -- ^ Make a call to and defined function
-  | Assign !Info !PathVar !Passing (Address -> next)
+  | LinkIdToAddr !Info IdPath Address next
+  -- ^ Links name identifiers to current address
+  | Assign !Info !AddressPath !Passing (Address -> next)
   -- ^ Assign an object to local variable
-  | DropVar !Info !PathVar next
+  | DropAddressPath !Info !AddressPath next
   -- ^ Remove a var from memory
+  | DropIdPath !Info !IdPath next
+  -- ^
   | CollectAddress Address (Address -> next)
   -- ^ Collect address to remove later
   | ApplyLocalGC next
   -- ^ Apply a local GC with collect variables
-  | GetRef !Info !PathVar (Address -> next)
+  | GetAddrRef !Info !AddressPath (Address -> next)
+  -- ^ Apply a local GC with collect variables
+  | GetIdRef !Info !IdPath (Address -> next)
   -- ^ Retrieve a object from a memory reference
   | DirectRef !Info !Address next
   -- ^ Implies the address have been linked to another, without generate
@@ -82,17 +88,26 @@ instance Runnable ProgInstr StWorld where
       retObj  <- call idFun args
       next retObj
 
+    LinkIdToAddr _ idPath addr next -> do
+      linkIdPathToAddressPath idPath (simple addr)
+      next
+
     -- Make raw copy of value
     Assign _ idObj passing next -> do
       obj <- case passing of
         ByVal val -> return val
         ByRef ref -> unwrap <$> getVar ref
 
-      addr <- setPathVar idObj (pure obj)
+      addr <- setVarWithAddressPath idObj (pure obj)
       next addr
 
-    DropVar _ idObj next -> do
-      addr <- snd <$> findPathVar idObj
+    DropAddressPath _ idObj next -> do
+      addr <- snd <$> findVarWithAddressPath idObj
+      _ <- deleteVar addr
+      next
+
+    DropIdPath _ idObj next -> do
+      addr <- snd <$> findVarWithIdPath idObj
       _ <- deleteVar addr
       next
 
@@ -114,8 +129,13 @@ instance Runnable ProgInstr StWorld where
         then runProgram trueNext >>= next
         else runProgram falseNext >>= next
 
-    GetRef _ idObj next -> do
+    GetAddrRef _ idObj next -> do
       (_o, addr) <- mkRef idObj :: StWorld (Object, Address)
+      next addr
+
+    GetIdRef _ idPath next -> do
+      pathVar <- idPathToAddressPath idPath
+      (_o, addr) <- mkRef pathVar :: StWorld (Object, Address)
       next addr
 
     DirectRef _ addr next -> do
@@ -144,9 +164,18 @@ instance Pretty (ProgInstr Passing) where
       return $
         pretty adr
         <+> "<- CallCommand"
-        <+> pAddr idFun
+        <+> pretty idFun
         <+> "With:"
         <+> pretty args
+        <> line
+        <> docs
+
+    LinkIdToAddr _ idPath passing next -> do
+      docs <- next
+      return $
+        "LinkIdToAddr"
+        <+> pretty idPath
+        <+> pretty passing
         <> line
         <> docs
 
@@ -156,14 +185,18 @@ instance Pretty (ProgInstr Passing) where
       return $
         pretty adr
         <+> "<- Assign"
-        <+> pAddr idObj
+        <+> pretty idObj
         <+> pretty accObject
         <> line
         <> docs
 
-    DropVar _ idObj next -> do
+    DropIdPath _ idObj next -> do
       docs <- next
-      return $ "Drop" <+> pAddr idObj <> line <> docs
+      return $ "Drop" <+> pretty idObj <> line <> docs
+
+    DropAddressPath _ idObj next -> do
+      docs <- next
+      return $ "Drop" <+> pretty idObj <> line <> docs
 
     Loop _ accObject prog next -> do
       adr <- fakeAdr
@@ -203,13 +236,23 @@ instance Pretty (ProgInstr Passing) where
         <> line
         <> docs
 
-    GetRef _ idObj next -> do
+    GetAddrRef _ idObj next -> do
       adr <- fakeAdr
       docs <- next adr
       return $
         pretty adr
-        <+> "<- GetRef"
-        <+> pAddr idObj
+        <+> "<- GetAddrRef"
+        <+> pretty idObj
+        <> line
+        <> docs
+
+    GetIdRef _ idObj next -> do
+      adr <- fakeAdr
+      docs <- next adr
+      return $
+        pretty adr
+        <+> "<- GetIdRef"
+        <+> pretty idObj
         <> line
         <> docs
 
@@ -245,26 +288,36 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
   transform expr = case expr of
     RnFunExpr captureIds idNames prog info -> do
       let info' = tokToInfo info
-      let addresses = map idToAdr idNames
       body <- transform prog
       return $ do
-        capturedAddresses <- mapM (getRef info') captureIds
-        return . ByVal $ OFunc capturedAddresses addresses (\objs -> do
-          let argsIDs = map simple addresses
-          addrs <- zipWithM (assign info') argsIDs objs
+        capturedAddresses <- mapM (getIdRef info') captureIds
+        return . ByVal $ OFunc capturedAddresses [] (\objs -> do
+          let argsIDs = map (flip IdPath []) idNames
+          addrs <- mapM (\passing -> case passing of
+                            ByVal val -> do
+                              createVar info' val
+                            ByRef ref -> do
+                              return ref
+                        ) objs
+          zipWithM_ (linkIdToAddr info') argsIDs addrs
           retAddr <- body
-          mapM_ (dropVar info') argsIDs
+          -- mapM_ (dropVar info') argsIDs
           return retAddr
           )
 
 
-    RnVarExpr isNewVar pathVar exprValue info -> do
+    RnVarExpr _isNewVar idPath exprValue info -> do
       let info' = tokToInfo info
       instr <- transform exprValue
       return $ do
-        oldAddr <- instr
-        addr <- assign info' pathVar oldAddr
-        return $ ByRef addr
+        passed <- instr
+        addr <- case passed of
+          ByVal val -> do
+            createVar info' val
+          ByRef ref -> do
+            return ref
+        linkIdToAddr info' idPath addr
+        return passed
         -- if isNewVar then
         --   collectAddress addr
         -- else
@@ -291,11 +344,11 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
           passings <- sequence instrs
           case last passings of
             ByRef ref -> do
-              addr <- getRef info' (PathVar ref [])
-              mapM_ (dropVar info') (HM.elems $ scope^.renameInfoA)
+              addr <- getAddrRef info' (AddressPath ref [])
+              mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
               return $ ByRef addr
             ByVal val -> do
-              mapM_ (dropVar info') (HM.elems $ scope^.renameInfoA)
+              mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
               return $ ByVal val
 
 
@@ -325,21 +378,25 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
       -- TODO: Remove inner collectLocalGC move to end
       return $ do
         iter' <- instrsIter
-        loop info' iter' (\val -> assign info' (simple $ idToAdr idName) (ByRef val) >> instrsBody)
+        loop info' iter' (\addr -> do
+                            linkIdToAddr info' (IdPath idName []) addr
+                            instrsBody
+                         )
         return $ ByVal ONone
 
-    RnApply pathVar argsExpr info -> do
+    RnApply idPath argsExpr info -> do
       let info' = tokToInfo info
       instrArgs <- mapM transform argsExpr
       return $ do
         args <- sequence instrArgs
-        callCommand info' pathVar args
+        addr <- getIdRef info' idPath
+        callCommand info' (simple addr) args
 
 
-    RnIdentifier pathVar info -> do
+    RnIdentifier idPath info -> do
       let info' = tokToInfo info
       return $ do
-        addr <- getRef info' pathVar
+        addr <- getIdRef info' idPath
         return $ ByRef addr
 
     RnFactor atom _info -> do
@@ -414,8 +471,3 @@ instance Desugar Atom Rn Identity ProgInstr Passing where
 -- infoASTToInfo :: ScopeInfoAST -> ScopeM Info
 -- infoASTToInfo scopeInfoAST =
 --   Info <$> return mempty <*> return (scopeInfoAST ^. tokenInfoA)
-
-pAddr :: PathVar -> Doc ann
-pAddr (PathVar addr vals) =
-  let path = if not $ null vals then "-" <> (T.intercalate "." vals) else ""
-  in  "#" <> pretty addr <> pretty path

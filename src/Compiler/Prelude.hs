@@ -133,11 +133,11 @@ printObj :: Passing -> StWorld ()
 printObj (ByRef ref) = ByVal . unwrap <$> getVar ref >>= printObj
 printObj (ByVal val) = case val of
   obj@(OObject (Just classRef) _attrs) -> do
-    clsObj <- unwrap . fst <$> findPathVar (simple classRef)
+    clsObj <- unwrap . fst <$> findVarWithAddressPath (simple classRef)
     case clsObj of
       OClassDef name methods -> case HM.lookup "__print__" methods of
         Just func' -> do
-          retPassed <- call (PathVar func' []) [ByVal val]
+          retPassed <- call (simple func') [ByVal val]
           obj' <- passingToObj retPassed
           docs <- showObject obj'
           liftIO $ putDoc docs
@@ -205,8 +205,10 @@ layerObjectIntoScope :: Object -> StWorld Object
 layerObjectIntoScope obj@(ORef address) = do
   dic <- exploreObjectAttributes obj
   lAddress <- mapM (\(name, _addr) -> do
-                       addr' <- snd <$> (mkRef (PathVar address [name]) :: StWorld (Object, Address))
-                       return (name, PathVar addr' [])
+                       addr' <- snd <$> (mkRef (AddressPath address [name]) :: StWorld (Object, Address))
+                       idName <- newId name
+                       linkIdPathToAddressPath idName (simple addr')
+                       return (name, idName)
                    ) dic
   let objScope = ScopeInfo (HM.fromList lAddress)
   scopeA.stackScopeA %= (++ [objScope])
@@ -214,11 +216,15 @@ layerObjectIntoScope obj@(ORef address) = do
 layerObjectIntoScope _ = undefined
 
 -- | Remove a module layer from scope
+-- TODO: Revise this feature is problably damage by IdPath / AddressPath
 unlayerObjectIntoScope :: StWorld ()
 unlayerObjectIntoScope = do
   stackScope <- use $ scopeA.stackScopeA
   if length stackScope >  0 then do
-    mapM_ (\pathVar -> deleteVar (pathVar^.refA)) (last stackScope ^. renameInfoA & HM.elems)
+    mapM_ (\idPath -> do
+             addressPath <- idPathToAddressPath idPath
+             deleteVar (addressPath^.refA)
+          ) (last stackScope ^. renameInfoA & HM.elems)
     scopeA.stackScopeA .= take (length stackScope - 1) stackScope
   else do
     liftIO $ putStrLn "No layered object to be unlayered"

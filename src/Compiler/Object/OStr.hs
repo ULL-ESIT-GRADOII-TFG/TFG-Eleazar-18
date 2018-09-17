@@ -29,4 +29,5 @@ methodsTh
   , fn "tail" [| T.tail :: T.Text -> T.Text |]
   , fn "init" [| T.init :: T.Text -> T.Text |]
   , fn "null" [| T.null :: T.Text -> Bool |]
+  , fn "words" [| T.words :: T.Text -> [T.Text] |]
   ]

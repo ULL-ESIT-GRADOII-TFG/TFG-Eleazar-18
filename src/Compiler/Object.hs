@@ -213,13 +213,13 @@ instance ToObject a => ToObject (Maybe a) where
 
 instance Callable StWorld where
   -- | From memory address, check if object callable and call it with given arguments
-  call pathVar args = do
-    (obj, _address) <- findPathVar pathVar
+  call addressPath args = do
+    (obj, _address) <- findVarWithAddressPath addressPath
     let obj' = unwrap obj
-    if null (pathVar ^. dynPathA) then do
+    if null (addressPath ^. dynPathA) then do
       directCall obj' args
     else do
-      let addr = pathVar ^. refA
+      let addr = addressPath ^. refA
       -- objCaller <- unwrap <$> getVar addr
       directCall obj' ((ByRef addr):args)
     where
@@ -238,7 +238,7 @@ instance Callable StWorld where
           directCall (ORef method) ((ByRef self):addresses)
 
         OClassDef _name methods -> do
-          self <- newVar . wrap $ OObject (Just (pathVar^.refA)) mempty
+          self <- newVar . wrap $ OObject (Just (addressPath^.refA)) mempty
           selfRef <- newVar . wrap $ ORef self
           case HM.lookup "__init__" methods of
             Just method -> do
@@ -283,7 +283,7 @@ instance Iterable StWorld where
                   fixParams _ ls    = throw $ NumArgsMissmatch 1 (length ls)
 
               funcAddr <- newVar . wrap $ ONative (fixParams func)
-              _ <- call (PathVar mapMethod []) [ByVal obj, ByRef funcAddr]
+              _ <- call (AddressPath mapMethod []) [ByVal obj, ByRef funcAddr]
               deleteUnsafe funcAddr
               return ()
             Nothing -> return ()
@@ -300,7 +300,7 @@ instance Booleanable StWorld where
       case clsObj of
         OClassDef _name methods -> case HM.lookup "__bool__" methods of
           Just func' -> do
-            call (PathVar func' []) [ByVal obj] >>= checkBool
+            call (AddressPath func' []) [ByVal obj] >>= checkBool
           Nothing -> throw $ NotBoolean "Object"
         o -> throw $ NotBoolean (typeName o)
     o -> throw $ NotBoolean (typeName o)
@@ -347,7 +347,7 @@ instance Showable StWorld Object where
       -------------------------------------------------------
 
 instance GetRef StWorld Object where
-  mkRef (PathVar addr accessors) =
+  mkRef (AddressPath addr accessors) =
     if null accessors then do
       addr' <- follow' addr -- TODO: Remove
       let ref = ORef addr'
@@ -357,8 +357,8 @@ instance GetRef StWorld Object where
       return (ref, addr'')
     else do
       let (initials, rest) = splitAt (length accessors - 1) accessors
-      (rcParent, addrParent) <- findPathVar (PathVar addr initials)
-      (rcChild, addrChild) <- findPathVar (PathVar addrParent rest)
+      (rcParent, addrParent) <- findVarWithAddressPath (AddressPath addr initials)
+      (rcChild, addrChild) <- findVarWithAddressPath (AddressPath addrParent rest)
       setVar addrChild (rcChild & refCounterA %~ (+1))
       case (unwrap rcParent, unwrap rcChild) of
         (OObject{}, ONative{} ) -> do

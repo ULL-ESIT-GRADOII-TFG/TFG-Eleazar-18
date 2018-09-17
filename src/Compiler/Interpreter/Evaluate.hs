@@ -81,7 +81,7 @@ getPrompt = do
           else return $ T.unpack text
         OFunc{} -> do
           ostr <- liftWorld $ do
-            passed <- call (PathVar addr []) []
+            passed <- call (simple addr) []
             case passed of
               ByVal val -> return val
               ByRef ref -> do

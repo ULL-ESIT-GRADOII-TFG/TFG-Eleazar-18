@@ -38,19 +38,19 @@ pattern ID i = IdName i
 
 -- | Allows generation of new names, with its ids associated
 class Monad sc => Naming sc where
-  newId :: T.Text -> sc PathVar
+  newId :: T.Text -> sc IdPath
   getNewId :: sc IdName
-  findAddress :: T.Text -> sc (Maybe PathVar)
-  findAddress = findAddress' . return
-  findAddress' :: NL.NonEmpty T.Text -> sc (Maybe PathVar)
-  {-# MINIMAL newId, getNewId, findAddress' #-}
+  findIdPath :: T.Text -> sc (Maybe IdPath)
+  findIdPath = findIdPath' . return
+  findIdPath' :: NL.NonEmpty T.Text -> sc (Maybe IdPath)
+  {-# MINIMAL newId, getNewId, findIdPath' #-}
 
 -- | Mainly used for debug propurses or type info display
 class TypeName o where
   typeName :: o -> Text
 
 newtype ScopeInfo = ScopeInfo
-  { _renameInfo :: HM.HashMap T.Text PathVar
+  { _renameInfo :: HM.HashMap T.Text IdPath
   } deriving (Show, Eq)
 
 type ScopeM = ExceptT (ErrorInfo ScopeError) (StateT Scope IO)
@@ -78,24 +78,28 @@ newtype Address = Address { unAddr :: Int } deriving (Show, Eq, Num, Pretty, Ord
 pattern Adr :: Int -> Address
 pattern Adr i = Address i
 
-data PathVar = PathVar
+data IdPath = IdPath
+  { _idVar     :: IdName
+  , _accessors :: [Text]
+  }
+  deriving (Show, Eq)
+
+data AddressPath = AddressPath
   { _ref     :: Address
   , _dynPath :: [Text]
   }
   deriving (Show, Eq)
 
--- data AddressVar = AddressVar
---   { _ref     :: Address
---   , _dynPath :: [Text]
---   }
---   deriving (Show, Eq)
+simple :: Address -> AddressPath
+simple addr = AddressPath addr []
 
-simple :: Address -> PathVar
-simple addr = PathVar addr []
+instance Pretty IdPath where
+  pretty (IdPath r p) =
+    "ID#" <> pretty r <> (if null p then "" else  "." <> pretty (T.intercalate "." p))
 
-instance Pretty PathVar where
-  pretty (PathVar r p) =
-    "ADDR#" <> pretty r <> "." <> pretty (T.intercalate "." p)
+instance Pretty AddressPath where
+  pretty (AddressPath r p) =
+    "ADDR#" <> pretty r <> (if null p then "" else  "." <> pretty (T.intercalate "." p))
 
 class Applicative r => Wrapper r where
   wrap :: a -> r a
@@ -105,12 +109,23 @@ class Applicative r => Wrapper r where
 class (Naming mm, Wrapper (Store mm))
     => MemoryAccessor (mm :: * -> *) o | mm -> o where
   type Store mm :: * -> *
+  newVar :: Store mm Object -> mm Address
+  newVarWithName :: T.Text -> Object -> mm Address
   getVar :: Address -> mm (Store mm o)
   setVar :: Address -> Store mm o -> mm ()
   -- | Look into memory to find the final object pointed, and returns also its address
   -- Fails in case of not found the object `NotFoundObject`
-  findPathVar :: PathVar -> mm (Store mm o, Address)
-  setPathVar :: PathVar -> Store mm o -> mm Address
+  findVarWithIdPath :: IdPath -> mm (Store mm o, Address)
+  setVarWithIdPath :: IdPath -> Store mm o -> mm Address
+
+  findVarWithAddressPath :: AddressPath -> mm (Store mm o, Address)
+  setVarWithAddressPath :: AddressPath -> Store mm o -> mm Address
+
+  idPathToAddressPath :: IdPath -> mm AddressPath
+
+  unlinkIdPathToAddressPath :: IdPath -> mm ()
+  linkIdPathToAddressPath :: IdPath -> AddressPath -> mm ()
+
 
 
 class Deallocate mm where
@@ -119,32 +134,32 @@ class Deallocate mm where
   deleteVar :: Address -> mm Bool
   deleteUnsafe :: Address -> mm ()
 
-idToAdr :: IdName -> Address
-idToAdr (IdName i) = Adr i
+-- idToAdr :: IdName -> Address
+-- idToAdr (IdName i) = Adr i
 
-adrToId :: Address -> IdName
-adrToId (Address i) = IdName i
+-- adrToId :: Address -> IdName
+-- adrToId (Address i) = IdName i
 
-newVar :: MemoryAccessor mm Object => Store mm Object -> mm Address
-newVar var = do
-  addr <- idToAdr <$> getNewId
-  setVar addr var
-  return addr
+-- newVar :: MemoryAccessor mm Object => Store mm Object -> mm Address
+-- newVar var = do
+--   addr <- idToAdr <$> getNewId
+--   setVar addr var
+--   return addr
 
-newVarWithName :: MemoryAccessor mm Object => T.Text -> Object -> mm Address
-newVarWithName nameId obj = do
-  ref <- _ref <$> newId nameId
-  setVar ref (pure obj)
-  return ref
+-- newVarWithName :: MemoryAccessor mm Object => T.Text -> Object -> mm Address
+-- newVarWithName nameId obj = do
+--   ref <- _ref <$> newId nameId
+--   setVar ref (pure obj)
+--   return ref
 
 getVarWithName
   :: (MonadError (ErrorInfo WorldError) mm
      , GetInfo mm, MemoryAccessor mm Object)
   => T.Text -> mm (Store mm Object, Address)
 getVarWithName nameId = do
-  mPathVar <- findAddress nameId
-  case mPathVar of
-    Just pathVar -> findPathVar pathVar
+  mIdPath <- findIdPath nameId
+  case mIdPath of
+    Just idPath -> findVarWithIdPath idPath
     Nothing      -> throw (ScopeError (NotDefinedObject nameId))
 
 type StWorld = StateT (World Object) (ExceptT (ErrorInfo WorldError) IO)
@@ -163,13 +178,20 @@ data World o = World
   , _lastTokenInfo :: TokenInfo
   -- ^ Used to generate precise errors locations
   , _gc            :: [Address]
+  -- ^ No used
+  , _free          :: [Address]
+  -- ^ Free Addresses that there been used and now there free
+  , _counterAddr   :: Int
+  -- ^ Higher addr give to a var. total_addrs_used = _counterAddr - length _free
+  , _tableIdPath  :: IM.IntMap Address
+  -- ^ Link variables IDs with addreses in memory
   } deriving (Show, Eq)
 
 -------------------------------------------------------------------------------
 -- * Object relate type classes
 
 class Callable mm where
-  call :: PathVar -> [Passing] -> mm Passing
+  call :: AddressPath -> [Passing] -> mm Passing
 
 class Iterable mm where
   mapOver :: Passing -> (Address -> mm ()) -> mm ()
@@ -182,7 +204,7 @@ class Showable mm o where
 
 -- | Creates reference to address specified
 class GetRef mm o where
-  mkRef :: PathVar -> mm (o, Address)
+  mkRef :: AddressPath -> mm (o, Address)
 
 class Redirection mm where
   follow' :: Address -> mm Address
@@ -297,7 +319,8 @@ class Monad m => Desugar ast a m ast' b | a ast -> b, a ast -> ast' where
   transform :: ast a -> m (ast' b)
 
 -- * Lenses generated
-makeSuffixLenses ''PathVar
+makeSuffixLenses ''AddressPath
+makeSuffixLenses ''IdPath
 makeSuffixLenses ''Rc
 makeSuffixLenses ''World
 makeSuffixLenses ''ScopeInfoAST

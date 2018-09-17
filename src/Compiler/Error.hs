@@ -26,7 +26,7 @@ data ScopeError
   = NotDefinedObject T.Text
   | InternalFail
   | ErrorClass
-  | NoSavedPathVar
+  | NoSavedIdPath
   deriving (Show, Eq)
 
 instance ReadeableError ScopeError where
@@ -37,7 +37,7 @@ instance ReadeableError ScopeError where
       "A Internal Fail into Scope phase was happened. Report it."
     ErrorClass        -> (,) Error
       ""
-    NoSavedPathVar -> (,) Critical
+    NoSavedIdPath -> (,) Critical
       "Problem generating unique ids for variable name. Report it."
 
 data WorldError

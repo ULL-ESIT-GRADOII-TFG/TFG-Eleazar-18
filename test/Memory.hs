@@ -30,7 +30,7 @@ memoryTest =
       it "Simple CreateVar, DropVar" $ do
         memory <- getMemory $ do
           addr <- createVar info ONone
-          dropVar info (simple addr)
+          dropAddressPath info (simple addr)
           noop
 
         memory `shouldBe` (Right (def :: World Object))
@@ -38,7 +38,7 @@ memoryTest =
       it "References RC counter - Sum" $ do
         memory <- getMemory $ do
           addr <- createVar info ONone
-          addr1 <- getRef info (simple addr)
+          addr1 <- getAddrRef info (simple addr)
           noop
 
         memory `shouldBe`
@@ -53,8 +53,8 @@ memoryTest =
       it "References RC counter - Minus" $ do
         memory <- getMemory $ do
           addr <- createVar info ONone
-          addr1 <- getRef info (simple addr)
-          dropVar info (simple addr1)
+          addr1 <- getAddrRef info (simple addr)
+          dropAddressPath info (simple addr1)
           noop
 
         memory `shouldBe`
@@ -69,9 +69,9 @@ memoryTest =
       it "References RC counter - Minus 2" $ do
         memory <- getMemory $ do
           addr <- createVar info ONone
-          addr1 <- getRef info (simple addr)
-          dropVar info (simple addr1)
-          dropVar info (simple addr)
+          addr1 <- getAddrRef info (simple addr)
+          dropAddressPath info (simple addr1)
+          dropAddressPath info (simple addr)
           noop
 
         memory `shouldBe` Right (def :: World Object)
@@ -82,7 +82,7 @@ memoryTest =
         memory <- getMemory $ do
           addr <- createVar info ONone
           addr1 <- assign info (simple test) (ByRef addr)
-          addr2 <- getRef info (simple addr1)
+          addr2 <- getAddrRef info (simple addr1)
           noop
 
         memory `shouldBe`
@@ -98,7 +98,7 @@ memoryTest =
       it "Cyclic References" $ do
         memory <- getMemory $ do
           addr <- createVar info ONone
-          addr1 <- getRef info (simple addr)
+          addr1 <- getAddrRef info (simple addr)
           assign info (simple addr) (ByRef addr1) -- It should keep at the same raw value
           noop
 
@@ -118,7 +118,7 @@ memoryTest =
         memory <- getMemory $ do
           addr <- createVar info ONone -- #2
           testAdr <- assign info (simple test) (ByRef addr) -- #0
-          addr1 <- getRef info (simple testAdr) -- #3
+          addr1 <- getAddrRef info (simple testAdr) -- #3
           assign info (simple test2) (ByRef addr1)  -- #1
           assign info (simple test) (ByRef test2) -- Cyclic
           noop
@@ -138,8 +138,8 @@ memoryTest =
 
         memory <- getMemory $ do
           addr <- createVar info ONone
-          addr1 <- getRef info (simple addr)
-          dropVar info (simple addr)
+          addr1 <- getAddrRef info (simple addr)
+          dropAddressPath info (simple addr)
           noop
 
         memory `shouldBe`

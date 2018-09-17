@@ -32,19 +32,19 @@ instance Default Scope where
 instance Naming ScopeM where
   newId name = addNewIdentifier (return name)
   getNewId = liftIO $ ID <$> getNewID
-  findAddress' (name NL.:| names) = do
+  findIdPath' (name NL.:| names) = do
     renamer <- use $ currentScopeA.renameInfoA
     case HM.lookup name renamer of
-      Just ref' -> return . Just $ PathVar (ref'^.refA) names
+      Just ref' -> return . Just $ IdPath (ref'^.idVarA) names
       Nothing   -> do
         stack <- use stackScopeA
         return (findInStack stack)
 
      where
-      findInStack :: [ScopeInfo] -> Maybe PathVar
+      findInStack :: [ScopeInfo] -> Maybe IdPath
       findInStack []         = Nothing
       findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & HM.lookup name of
-        Just (PathVar word _) -> Just $ PathVar word names
+        Just (IdPath word _) -> Just $ IdPath word names
         Nothing               -> findInStack xs
 
 instance Default ScopeInfo where
@@ -117,8 +117,8 @@ instance Desugar Expression Tok ScopeM Expression Rn where
       RnFunExpr
         <$> pure []
         <*> mapM (\arg -> do
-                     pathArg <- addNewIdentifier $ return arg
-                     return $ pathArg^.refA & adrToId
+                     idPath <- addNewIdentifier $ return arg
+                     return $ idPath^.idVarA
                  ) args
         <*> transform body
         <*> pure info
@@ -161,7 +161,7 @@ instance Desugar Expression Tok ScopeM Expression Rn where
       iterExpr' <- withNewScope $ transform iterExpr
       pathVar   <- addNewIdentifier $ return name
       body'     <- withNewScope $ transform body
-      return $ RnFor (pathVar^.refA & adrToId) iterExpr' body' info
+      return $ RnFor (pathVar^.idVarA) iterExpr' body' info
 
     TokApply name args info -> do
       RnApply
@@ -241,40 +241,39 @@ withNewScope :: ScopeM a -> ScopeM a
 withNewScope = withScope def
 
 -- | Add new variable name to scope and return its ID
-addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM PathVar
+addNewIdentifier :: NL.NonEmpty T.Text -> ScopeM IdPath
 addNewIdentifier (name NL.:| names) = do
   idName <- getNewId
-  let addr = idToAdr idName
-  let pathVar = PathVar addr names
+  let pathVar = IdPath idName names
   currentScopeA.renameInfoA %= HM.insert name pathVar
   return pathVar
 
 -- | Get a specific ID from variable name
-getIdentifier :: NL.NonEmpty T.Text -> TokenInfo -> ScopeM PathVar
+getIdentifier :: NL.NonEmpty T.Text -> TokenInfo -> ScopeM IdPath
 getIdentifier (name NL.:| names) info = do
   renamer <- use $ currentScopeA.renameInfoA
   case HM.lookup name renamer of
-    Just ref' -> return $ PathVar (ref'^.refA) names
+    Just ref' -> return $ IdPath (ref'^.idVarA) names
     Nothing   -> do
       stack <- use $ stackScopeA
       maybe (throwWithInfo info (NotDefinedObject name)) return (findInStack stack)
 
  where
-  findInStack :: [ScopeInfo] -> Maybe PathVar
+  findInStack :: [ScopeInfo] -> Maybe IdPath
   findInStack []         = Nothing
   findInStack (scopeInfo':xs) = case scopeInfo'^.renameInfoA & HM.lookup name of
-    Just (PathVar word _) -> Just $ PathVar word names
+    Just (IdPath word _) -> Just $ IdPath word names
     Nothing               -> findInStack xs
 
 -- | Generate ScopeInfoAST using the current scope info
 getScopeInfoAST :: TokenInfo -> ScopeM ScopeInfoAST
 getScopeInfoAST info = ScopeInfoAST info <$> use currentScopeA
 
-getPathVar :: Show a => Accessor a -> ScopeInfoAST -> ScopeM PathVar
-getPathVar acc scopeInfoAST =
+getIdPath :: Show a => Accessor a -> ScopeInfoAST -> ScopeM IdPath
+getIdPath acc scopeInfoAST =
   case HM.lookup (mainName acc) (scopeInfoAST^.scopeInfoA.renameInfoA) of
-    Just (PathVar addr _) -> return $ PathVar addr (tailName acc)
-    Nothing               -> throwWithInfo (scopeInfoAST^.tokenInfoA) NoSavedPathVar
+    Just (IdPath addr _) -> return $ IdPath addr (tailName acc)
+    Nothing               -> throwWithInfo (scopeInfoAST^.tokenInfoA) NoSavedIdPath
 
 -- | Simplies accesor to non empty list
 simplifiedAccessor

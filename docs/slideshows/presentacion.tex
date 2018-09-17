@@ -116,9 +116,9 @@
 \end{frame}
 
 
-\section{Usos}
+\section{Ejemplos de scripts}
 \begin{frame}[allowframebreaks,fragile]
-  \frametitle{Usos}
+  \frametitle{Ejemplos de scripts}
   \begin{center}
     \begin{itemize}
       \item Pequeños scripts.
@@ -132,8 +132,24 @@
     %%      de la shell
     %% TODO Ejemplos de interación con la shell
     \begin{lstlisting}[language=scriptflow]
-      class Utils:
-        fun ...
+      # Overloading
+      class Tuple:
+        fun __init__ a, b:
+          self.a = a
+          self.b = b
+        fun __plus__ t:
+          new_a = self.a + t.a
+          new_b = self.b + t.b
+          Tuple a b
+    \end{lstlisting}
+  \end{center}
+  \framebreak{}
+  \begin{center}
+    \begin{lstlisting}[language=scriptflow]
+      # class Tuple
+      t1 = Tuple 5 0
+      t2 = Tuple 0 1
+      t1 + t2
     \end{lstlisting}
   \end{center}
 

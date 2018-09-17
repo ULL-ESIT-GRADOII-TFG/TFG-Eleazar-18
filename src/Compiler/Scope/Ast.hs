@@ -10,9 +10,9 @@ data Rn
 type ExprRn = Expression Rn
 
 type instance XName Rn = IdName
-type instance XAccessor Rn = PathVar
+type instance XAccessor Rn = IdPath
 
-type instance XFunExpr Rn = [PathVar]
+type instance XFunExpr Rn = [IdPath]
 type instance XVarExpr Rn = Bool
 type instance XSeqExpr Rn = Empty
 type instance XMkScope Rn = ScopeInfo
@@ -23,10 +23,10 @@ type instance XApply Rn = Empty
 type instance XIdentifier Rn = Empty
 type instance XFactor Rn = Empty
 
-pattern RnFunExpr :: [PathVar] -> [IdName] -> ExprRn -> Loc -> ExprRn
+pattern RnFunExpr :: [IdPath] -> [IdName] -> ExprRn -> Loc -> ExprRn
 pattern RnFunExpr pathvars acc expr loc = FunExpr pathvars acc expr loc
 
-pattern RnVarExpr :: Bool -> PathVar -> ExprRn -> Loc -> ExprRn
+pattern RnVarExpr :: Bool -> IdPath -> ExprRn -> Loc -> ExprRn
 pattern RnVarExpr newVar acc expr loc = VarExpr newVar acc expr loc
 
 pattern RnSeqExpr :: [ExprRn] -> Loc -> ExprRn
@@ -48,11 +48,11 @@ pattern RnFor :: IdName -> ExprRn -> ExprRn -> Loc -> ExprRn
 pattern RnFor name iterExpr bodyExpr loc <- For _ name iterExpr bodyExpr loc
   where RnFor name iterExpr bodyExpr loc = For absurb name iterExpr bodyExpr loc
 
-pattern RnApply :: PathVar -> [ExprRn] -> Loc -> ExprRn
+pattern RnApply :: IdPath -> [ExprRn] -> Loc -> ExprRn
 pattern RnApply acc exprs loc <- Apply _ acc exprs loc
   where RnApply acc exprs loc = Apply absurb acc exprs loc
 
-pattern RnIdentifier :: PathVar -> Loc -> ExprRn
+pattern RnIdentifier :: IdPath -> Loc -> ExprRn
 pattern RnIdentifier acc loc <- Identifier _ acc loc
   where RnIdentifier acc loc = Identifier absurb acc loc
 
