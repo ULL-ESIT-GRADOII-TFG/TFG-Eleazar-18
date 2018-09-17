@@ -1,0 +1,13 @@
+# Overloading
+class Tuple:
+  fun __init__ a b:
+    self.a = a
+    self.b = b
+  fun __plus__ t:
+    new_a = self.a + t.a
+    new_b = self.b + t.b
+    Tuple new_a new_b
+
+
+t1 = Tuple 5 0
+t2 = Tuple 0 1

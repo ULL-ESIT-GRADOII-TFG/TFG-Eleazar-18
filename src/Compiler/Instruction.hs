@@ -9,6 +9,7 @@
 module Compiler.Instruction where
 
 import           Control.Monad
+import           Control.Monad.Except
 import           Control.Monad.Free         hiding (wrap)
 import           Control.Monad.Free.TH
 import           Control.Monad.Identity
@@ -55,13 +56,13 @@ data Instruction next
   -- ^ Remove a var from memory
   | DropIdPath !Info !IdPath next
   -- ^
-  | CollectAddress Address (Address -> next)
-  -- ^ Collect address to remove later
-  | ApplyLocalGC next
-  -- ^ Apply a local GC with collect variables
+  | IsLinked !Info IdPath (Bool -> next)
+  -- ^
   | GetAddrRef !Info !AddressPath (Address -> next)
   -- ^ Apply a local GC with collect variables
-  | GetIdRef !Info !IdPath (Address -> next)
+  | GetIdRef !Info !IdPath (AddressPath -> next)
+  -- ^ Retrieve a object from a memory reference
+  | FindIdRefAddr !Info !IdPath (Address -> next)
   -- ^ Retrieve a object from a memory reference
   | DirectRef !Info !Address next
   -- ^ Implies the address have been linked to another, without generate
@@ -98,6 +99,7 @@ instance Runnable ProgInstr StWorld where
         ByVal val -> return val
         ByRef ref -> unwrap <$> getVar ref
 
+      --traceShowM idObj
       addr <- setVarWithAddressPath idObj (pure obj)
       next addr
 
@@ -115,19 +117,17 @@ instance Runnable ProgInstr StWorld where
       _ <- mapOver accObject (\addr -> void . runProgram $ body addr)
       next
 
-    CollectAddress addr next -> do
-      collectAddr addr
-      next addr
-
-    ApplyLocalGC next -> do
-      removeLocal
-      next
-
     Cond _ addrObj trueNext falseNext next -> do
       bool <- checkBool addrObj
       if bool
         then runProgram trueNext >>= next
         else runProgram falseNext >>= next
+
+    IsLinked _ idPath next -> do
+      bool <- catchError
+        (idPathToAddressPath idPath >> return True)
+        (\error -> return False)
+      next bool
 
     GetAddrRef _ idObj next -> do
       (_o, addr) <- mkRef idObj :: StWorld (Object, Address)
@@ -135,8 +135,11 @@ instance Runnable ProgInstr StWorld where
 
     GetIdRef _ idPath next -> do
       pathVar <- idPathToAddressPath idPath
-      (_o, addr) <- mkRef pathVar :: StWorld (Object, Address)
-      next addr
+      next pathVar
+
+    FindIdRefAddr _ idPath next -> do
+      (_rc, address) <- findVarWithIdPath idPath
+      next address
 
     DirectRef _ addr next -> do
       rc <- getVar addr
@@ -209,16 +212,6 @@ instance Pretty (ProgInstr Passing) where
         <> line
         <> docs
 
-    CollectAddress addr next -> do
-      docs <- next addr
-      return $
-        "CollectAddress" <+> pretty addr <> line <> docs
-
-    ApplyLocalGC next -> do
-      docs <- next
-      return $
-        "ApplyLocalGC" <> line <> docs
-
     Cond _ objectCond trueNext falseNext next -> do
       adr <- fakeAdr
       docs <- next $ ByRef adr
@@ -236,6 +229,14 @@ instance Pretty (ProgInstr Passing) where
         <> line
         <> docs
 
+    IsLinked _ idPath next -> do
+      docs <- next True
+      return $
+        "isLinked"
+        <+> pretty idPath
+        <> line
+        <> docs
+
     GetAddrRef _ idObj next -> do
       adr <- fakeAdr
       docs <- next adr
@@ -248,11 +249,21 @@ instance Pretty (ProgInstr Passing) where
 
     GetIdRef _ idObj next -> do
       adr <- fakeAdr
-      docs <- next adr
+      docs <- next (simple adr)
       return $
         pretty adr
         <+> "<- GetIdRef"
         <+> pretty idObj
+        <> line
+        <> docs
+
+    FindIdRefAddr _ idPath next -> do
+      adr <- fakeAdr
+      docs <- next adr
+      return $
+        pretty adr
+        <+> "<- FindIdRefAddr"
+        <+> pretty idPath
         <> line
         <> docs
 
@@ -290,38 +301,49 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
       let info' = tokToInfo info
       body <- transform prog
       return $ do
-        capturedAddresses <- mapM (getIdRef info') captureIds
-        return . ByVal $ OFunc capturedAddresses [] (\objs -> do
+        capturedAddresses <- mapM (findIdRefAddr info') captureIds
+        addrs <- mapM (\idName -> do
+          return (Adr 0)
+          ) idNames
+
+        return . ByVal $ OFunc capturedAddresses addrs (\objs -> do
           let argsIDs = map (flip IdPath []) idNames
-          addrs <- mapM (\passing -> case passing of
-                            ByVal val -> do
-                              createVar info' val
-                            ByRef ref -> do
-                              return ref
-                        ) objs
-          zipWithM_ (linkIdToAddr info') argsIDs addrs
+          zipWithM_ (\arg obj -> do
+                      case obj of
+                        ByVal val -> do
+                          ref <- createVar info' val
+                          linkIdToAddr info' arg ref
+                        ByRef ref -> do
+                          linkIdToAddr info' arg ref
+                    ) argsIDs objs
           retAddr <- body
           -- mapM_ (dropVar info') argsIDs
           return retAddr
           )
 
 
-    RnVarExpr _isNewVar idPath exprValue info -> do
+    RnVarExpr isNewVar idPath exprValue info -> do
+      -- TODO si el idPath esta compuesto, mirar si esta declarado
+      -- el valor
       let info' = tokToInfo info
       instr <- transform exprValue
       return $ do
         passed <- instr
-        addr <- case passed of
-          ByVal val -> do
-            createVar info' val
-          ByRef ref -> do
-            return ref
-        linkIdToAddr info' idPath addr
-        return passed
-        -- if isNewVar then
-        --   collectAddress addr
-        -- else
-        --   return addr
+        linked <- isLinked info' idPath
+        if not linked then do
+          addr <- case passed of
+            ByVal val -> do
+              createVar info' val
+            ByRef ref -> do
+              directRef info' ref
+              return ref
+          linkIdToAddr info' idPath addr
+          return passed
+        else do
+          addr <- findIdRefAddr info' idPath
+          addr' <- assign info' (simple addr) passed
+          return (ByRef addr')
+
 
 
     RnSeqExpr exprs _info -> do
@@ -344,11 +366,11 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
           passings <- sequence instrs
           case last passings of
             ByRef ref -> do
-              addr <- getAddrRef info' (AddressPath ref [])
-              mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
-              return $ ByRef addr
+              -- addr <- getAddrRef info' (AddressPath ref [])
+              --mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
+              return $ ByRef ref
             ByVal val -> do
-              mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
+              -- mapM_ (dropIdPath info') (HM.elems $ scope^.renameInfoA)
               return $ ByVal val
 
 
@@ -389,15 +411,15 @@ instance Desugar Expression Rn Identity ProgInstr Passing where
       instrArgs <- mapM transform argsExpr
       return $ do
         args <- sequence instrArgs
-        addr <- getIdRef info' idPath
-        callCommand info' (simple addr) args
+        addressPath <- getIdRef info' idPath
+        callCommand info' addressPath args
 
 
     RnIdentifier idPath info -> do
       let info' = tokToInfo info
       return $ do
-        addr <- getIdRef info' idPath
-        return $ ByRef addr
+        address <- findIdRefAddr info' idPath
+        return $ ByRef address
 
     RnFactor atom _info -> do
       instrs <- transform atom

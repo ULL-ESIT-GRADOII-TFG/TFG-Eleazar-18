@@ -31,6 +31,7 @@ import           Compiler.Prelude.Utils
 import           Compiler.Types
 import           Compiler.World                ()
 
+import Debug.Trace
 
 
 followRef :: FromObject b => Object -> T.Text -> StWorld b
@@ -231,7 +232,9 @@ instance Callable StWorld where
           else do
             runProgram $ prog addresses
 
-        ONative native ->
+        ONative native -> do
+          traceShowM "By Here ONative"
+          traceShowM addresses
           native addresses
 
         OBound self method ->
@@ -239,11 +242,12 @@ instance Callable StWorld where
 
         OClassDef _name methods -> do
           self <- newVar . wrap $ OObject (Just (addressPath^.refA)) mempty
-          selfRef <- newVar . wrap $ ORef self
+
+          -- selfRef <- newVar . wrap $ ORef self
           case HM.lookup "__init__" methods of
             Just method -> do
               method' <- follow method
-              _ <- directCall method' ((ByRef selfRef):addresses)
+              _ <- directCall method' ((ByRef self):addresses)
               -- deleteUnsafe selfRef
               return $ ByRef self
             Nothing ->

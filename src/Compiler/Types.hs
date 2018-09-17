@@ -301,6 +301,7 @@ instance Show Object where
 data Passing
   = ByVal Object
   | ByRef Address
+  deriving Show
 
 instance Pretty Passing where
   pretty (ByVal obj) = "ByVal" <+> pretty (show obj)

@@ -76,7 +76,7 @@ instance MemoryAccessor StWorld Object where
   newVar rc = do
     addr <- use counterAddrA
     setVar (Adr addr) rc
-    counterAddrA += 0
+    counterAddrA += 1
     return $ Adr addr
 
   newVarWithName name obj = do
