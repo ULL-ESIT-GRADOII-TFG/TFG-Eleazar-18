@@ -56,8 +56,8 @@ tokens :-
     "if"          { mkL IfT }
     "else"        { mkL ElseT }
     "class"       { mkL ClassT }
-    "use"         { mkL UseT }
-    "cd"          { mkL CdT }
+    -- "use"         { mkL UseT }
+    -- "cd"          { mkL CdT }
     "["           { mkGroupOL OBracketT }
     "]"           { mkGroupCL OBracketT CBracketT }
     "{"           { mkGroupOL OBraceT }

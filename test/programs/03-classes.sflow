@@ -8,13 +8,14 @@ class FuncMonoid:
 
   fun __plus__ r_f_monoid:
     new_f_monoid = lam param:
-      self.call param + r_f_monoid param
+      self.call param + r_f_monoid.call param
 
     FuncMonoid new_f_monoid
 
 task = FuncMonoid (lam repo { !$"echo hola" })
 task2 = FuncMonoid (lam repo { !$"echo adios" })
 
-tasks = task
+tasks =
+   task
    + task2
    + FuncMonoid (lam repo { !$"echo hi" })

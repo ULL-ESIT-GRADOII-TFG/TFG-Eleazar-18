@@ -105,14 +105,14 @@
         % El proceso reusar las funciones de haskell es un tema con dificultad debido
         % a la propia diferencia entre lenguajes, tipado estrito vs dinamico, funciones currificadas
         %
-        \begin{minted}[fontsize=\small]{haskell}
+    \end{itemize}
+  \end{center}
+        \begin{lstlisting}[basicstyle=\small,language=haskell]
           methodsTh
             [ fn "init" [| T.init :: T.Text -> T.Text |]
             , fn "null" [| T.null :: T.Text -> Bool |]
             ]
-        \end{minted}
-    \end{itemize}
-  \end{center}
+        \end{lstlisting}
 \end{frame}
 
 
@@ -128,15 +128,101 @@
   \end{center}
   \framebreak{}
   \begin{center}
+    % Simples ejemplos
+    \begin{lstlisting}[language=scriptflow]
+      >>> 5 + 7 / 7
+      6
+      >>> reg = r"TFG-([0-9][0-9])"
+      /TFG-([0-9][0-9])/
+      >>> # reg = r/TFG-([0-9][0-9])/
+      none
+      >>> reg.match "TFG-76"
+      ["TFG-00", "00"]
+      >>> |
+    \end{lstlisting}
+  \end{center}
+
+  \framebreak{}
+  \begin{center}
+    % Simples ejemplos
+    \begin{lstlisting}[language=scriptflow]
+      >>> !$"echo hola"
+      "hola
+      "
+      >>> # !$echo hola
+      none
+      >>> |
+    \end{lstlisting}
+  \end{center}
+
+  \framebreak{}
+  \begin{center}
+    % Simples ejemplos
+    \begin{lstlisting}[language=scriptflow]
+      >>> test = none
+      none
+      >>> test.a.b.c = 1
+      {
+        a -> {
+          b -> {
+            c -> 1
+        }
+      }
+      >>> |
+    \end{lstlisting}
+  \end{center}
+
+  \framebreak{}
+  \begin{center}
+    % Simples ejemplos
+    \begin{lstlisting}[language=scriptflow]
+      >>> dir ""
+      [ "length"
+      , "strip_end"
+      , "init"
+      , "/="
+      , "intercalate"
+      , "null"
+      ...
+      ]
+      >>> |
+    \end{lstlisting}
+  \end{center}
+
+  \framebreak{}
+  \begin{center}
     %% TODO Realizar ejemplos que permitan simplificar cierto trabajo
     %%      de la shell
     %% TODO Ejemplos de interación con la shell
     \begin{lstlisting}[language=scriptflow]
-      class Utils:
-        fun ...
+# No funcional
+class Criterio:
+  fun __init__ func:
+    self.func = lam s param { func param }
+
+  fun call param:
+    self.func param
+
+  fun __plus__ r_f_monoid:
+    new_f_monoid = lam param:
+      self.call param + r_f_monoid.call param
+
+    Criterio new_f_monoid
     \end{lstlisting}
   \end{center}
 
+  \framebreak{}
+  \begin{center}
+    \begin{lstlisting}[language=scriptflow]
+task = Criterio (lam repo { checkear_criterio_1 })
+task2 = Criterio (lam repo { checkear_criterio_2 })
+
+tasks =
+   task
+   + task2
+   + Criterio (lam repo { Otro_criterio })
+    \end{lstlisting}
+  \end{center}
 \end{frame}
 
 \section{Conclusiones y futuras mejoras}
